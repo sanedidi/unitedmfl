@@ -20,12 +20,12 @@ export function LivePickPage() {
   });
   return (
     <div className="live stack">
-      <div><h1 style={{ fontFamily: "var(--font-display)", fontSize: 24 }}>Live-pult</h1><p className="muted" style={{ margin: "4px 0 0" }}>Match operatori uchun</p></div>
+      <div><h1 style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 800, letterSpacing: "-.02em" }}>Live-pult</h1><p className="muted" style={{ margin: "4px 0 0" }}>Match operatori uchun</p></div>
       {list.length === 0 && <Empty title="Faol matchlar yo‘q" text="Yangi match «Matchlar» bo‘limida yaratiladi." />}
       {list.map((m, i) => {
         const live = m.status === "live" || m.status === "halftime";
         return (
-          <div key={m.id} className="live-board" style={i > 0 && !live ? { borderColor: "var(--border)" } : undefined}>
+          <div key={m.id} className={`live-board${live ? " on" : i > 0 ? " idle" : ""}`}>
             <div className="row" style={{ justifyContent: "space-between" }}><StageTag m={m} /><StatusBadge s={m.status} /></div>
             <div className="live-score">
               <div className="live-team"><Crest team={m.home} size={44} /><span>{m.home?.name || "Aniqlanmagan"}</span></div>
@@ -316,7 +316,7 @@ function EventSheet({ action, side, team, clock, lineup, squad, shootout, onClos
         {people.length > 0 ? (
           <div className="picker">
             {people.map((p, i) => (
-              <button key={i} aria-pressed={i === p1 || i === p2} onClick={() => pick(i)} style={i === p2 ? { borderColor: "var(--berry)", background: "var(--bg-live-subtle)" } : undefined}>
+              <button key={i} aria-pressed={i === p1 || i === p2} onClick={() => pick(i)} style={i === p2 ? { borderColor: "var(--red-500)", background: "var(--red-50)", color: "var(--red-600)" } : undefined}>
                 <b>{p.number ?? "—"}</b><span>{p.name.split(" ").slice(-1)[0]}</span>
               </button>
             ))}

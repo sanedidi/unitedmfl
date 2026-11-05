@@ -1,47 +1,28 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getImageProps } from "next/image";
-import { Calendar, ChevronLeft, ChevronRight, Clock, Pin, Ticket } from "./Icons";
+import Link from "next/link";
+import { Calendar, Clock, Pin } from "./Icons";
 import type { Banner } from "@/lib/types";
 
-const INTERVAL = 5000;
+const INTERVAL = 6000;
 
-/** Art-directed hero image: separate mobile crop, optimized sizes, the first slide is the LCP image. */
-function HeroPicture({ desktop, mobile, alt, first }: { desktop: string; mobile: string; alt: string; first: boolean }) {
-  const common = { alt, fill: true, sizes: "100vw", priority: first, quality: 80 } as const;
-  if (!desktop.startsWith("/uploads/")) {
-    return (
-      <picture>
-        {mobile && <source media="(max-width: 720px)" srcSet={mobile} />}
-        <img src={desktop} alt={alt} fetchPriority={first ? "high" : "auto"} loading={first ? "eager" : "lazy"} decoding="async" />
-      </picture>
-    );
+/** Approved poster in its native ~2:1 frame; the first slide is the LCP image. */
+function HeroPicture({ src, alt, first }: { src: string; alt: string; first: boolean }) {
+  if (!src.startsWith("/uploads/")) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={alt} fetchPriority={first ? "high" : "auto"} loading={first ? "eager" : "lazy"} decoding="async" />;
   }
-  const { props: d } = getImageProps({ ...common, src: desktop });
-  const m = mobile && mobile.startsWith("/uploads/") ? getImageProps({ ...common, src: mobile }).props : null;
-  return (
-    <picture>
-      {m && <source media="(max-width: 720px)" srcSet={m.srcSet} sizes={m.sizes} />}
-      <source media={m ? "(min-width: 721px)" : "all"} srcSet={d.srcSet} sizes={d.sizes} />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img {...d} alt={alt} style={{ ...d.style, objectFit: "cover" }} />
-    </picture>
-  );
+  const { props } = getImageProps({ src, alt, fill: true, sizes: "(max-width: 1024px) 100vw, 760px", priority: first, quality: 82 });
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img {...props} alt={alt} style={{ ...props.style, objectFit: "cover" }} />;
 }
 
-function badgeClass(t: string) {
-  if (t === "stage") return "badge badge-stage";
-  if (t === "live") return "badge badge-live";
-  if (t === "muted") return "badge badge-muted";
-  return "badge badge-accent";
-}
-
-export function HeroCarousel({ banners, dates }: { banners: Banner[]; dates: Record<number, string> }) {
+export function HeroCarousel({ banners, dates, season = "United MFL 2026" }: { banners: Banner[]; dates: Record<number, string>; season?: string }) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
-  // Autoplay starts after the visitor's first interaction (scroll, touch, mouse, key).
-  // Rotating slides before that would keep repainting the largest element and push
-  // back Largest Contentful Paint; after the first input LCP is final anyway.
+  // Autoplay starts after the visitor's first interaction: rotating slides before
+  // that would keep repainting the largest element and push back LCP.
   const [engaged, setEngaged] = useState(false);
   useEffect(() => {
     const go = () => setEngaged(true);
@@ -80,72 +61,81 @@ export function HeroCarousel({ banners, dates }: { banners: Banner[]; dates: Rec
 
   return (
     <section
-      className="hero"
+      className="hero on-dark"
       aria-roledescription="carousel"
       aria-label="Asosiy e’lonlar"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
-      onTouchEnd={(e) => {
-        if (touch.current == null) return;
-        const dx = e.changedTouches[0].clientX - touch.current;
-        if (Math.abs(dx) > 50) go(i + (dx < 0 ? 1 : -1));
-        touch.current = null;
-      }}
       onKeyDown={(e) => {
         if (e.key === "ArrowRight") go(i + 1);
         if (e.key === "ArrowLeft") go(i - 1);
       }}
     >
-      {banners.map((s, k) => (
-        <div key={s.id} className={`hero-slide${k === i ? " active" : ""}`} aria-hidden={k !== i} role="group" aria-roledescription="slide" aria-label={`${k + 1} / ${n}`}>
-          {s.image_desktop || s.image_mobile ? (
-            <HeroPicture desktop={s.image_desktop || s.image_mobile} mobile={s.image_mobile} alt={s.title} first={k === 0} />
-          ) : (
-            <div className="hero-art">
-              <div>
-                <div className="kicker">UNITED MFL · {s.badge || "2026"}</div>
-                <div className="title">{s.title}</div>
+      <div className="container">
+        <div className="hero-grid">
+          <div className="hero-copy" aria-live="polite">
+            <div>
+              <div className="hero-kicker">{season}{b.badge ? ` · ${b.badge}` : ""}</div>
+              <div className="display" role="heading" aria-level={2}>{b.title}</div>
+              <div className="hero-meta">
+                {b.event_date && <span><Calendar size={16} /> {dates[b.id]}</span>}
+                {b.event_time && <span><Clock size={16} /> {b.event_time}</span>}
+                {b.venue && <span><Pin size={16} /> {b.venue}</span>}
               </div>
             </div>
-          )}
-        </div>
-      ))}
-      <div className="hero-shade" />
+            <div className="hero-ctas">
+              {b.cta_url && (
+                <a className="btn btn-primary btn-lg" href={b.cta_url} {...(ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+                  {b.cta_label || "Batafsil"}
+                </a>
+              )}
+              <Link className="btn btn-ghost btn-lg" href="/matchlar">Matchlar taqvimi</Link>
+            </div>
+          </div>
 
-      <div className="hero-bar">
-        <div className="hero-info" aria-live="polite">
-          <div className="hero-title">
-            {b.badge && <span className={badgeClass(b.badge_type)}>{b.badge}</span>}
-            <span>{b.title}</span>
-          </div>
-          <div className="hero-meta">
-            {b.event_date && <span><Calendar size={14} /> {dates[b.id]}</span>}
-            {b.event_time && <span><Clock size={14} /> {b.event_time}</span>}
-            {b.venue && <span><Pin size={14} /> {b.venue}</span>}
+          <div
+            className="hero-media"
+            onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
+            onTouchEnd={(e) => {
+              if (touch.current == null) return;
+              const dx = e.changedTouches[0].clientX - touch.current;
+              if (Math.abs(dx) > 50) go(i + (dx < 0 ? 1 : -1));
+              touch.current = null;
+            }}
+          >
+            {banners.map((s, k) => (
+              <div key={s.id} className={`hero-slide${k === i ? " active" : ""}`} aria-hidden={k !== i} role="group" aria-roledescription="slide" aria-label={`${k + 1} / ${n}`}>
+                {s.image_desktop || s.image_mobile ? (
+                  <HeroPicture src={s.image_desktop || s.image_mobile} alt={s.title} first={k === 0} />
+                ) : (
+                  <div className="hero-art">
+                    <div>
+                      <div className="kicker">UNITED MFL · {s.badge || "2026"}</div>
+                      <div className="title">{s.title}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
-        {b.cta_url && (
-          <a className="btn btn-primary" href={b.cta_url} {...(ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-            {b.cta_label || "Batafsil"} <Ticket />
-          </a>
-        )}
+
         {n > 1 && (
           <>
-            <span className="hero-divider" />
-            <div className="hero-thumbs" role="tablist" aria-label="Slaydlar">
-              {banners.map((s, k) => (
-                <button key={s.id} role="tab" aria-selected={k === i} aria-label={s.title} className={`hero-thumb${k === i ? " active" : ""}`} onClick={() => go(k)}>
-                  {s.image_desktop ? <img src={s.image_desktop} alt="" loading="lazy" /> : s.badge || s.title}
-                  {k === i && <span className="progress" style={{ width: `${(tick / INTERVAL) * 100}%` }} />}
+            <div className="hero-tabs" role="tablist" aria-label="Slaydlar" style={{ ["--n" as string]: Math.min(n, 4) }}>
+              {banners.slice(0, 4).map((s, k) => (
+                <button key={s.id} role="tab" aria-selected={k === i} className={`hero-tab${k === i ? " active" : ""}`} onClick={() => go(k)}>
+                  {k === i && <span className="progress" style={{ width: engaged && !paused ? `${(tick / INTERVAL) * 100}%` : "100%" }} />}
+                  <b><small>{String(k + 1).padStart(2, "0")}</small>{s.title}</b>
+                  <span>{[dates[s.id], s.event_time].filter(Boolean).join(" · ") || s.badge}</span>
                 </button>
               ))}
             </div>
-            <div className="hero-arrows">
-              <button className="icon-btn" aria-label="Oldingi" onClick={() => go(i - 1)}><ChevronLeft size={20} /></button>
-              <button className="icon-btn" aria-label="Keyingi" onClick={() => go(i + 1)}><ChevronRight size={20} /></button>
+            <div className="hero-dots" aria-hidden>
+              {banners.map((s, k) => <button key={s.id} tabIndex={-1} className={k === i ? "active" : ""} onClick={() => go(k)} />)}
+              <span>{String(i + 1).padStart(2, "0")} / {String(n).padStart(2, "0")}</span>
             </div>
           </>
         )}

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { I } from "./Icons";
-import { initials, teamColor } from "@/lib/format";
+import { initials } from "@/lib/format";
 import { uploadImage } from "@/lib/api";
 
 /* ---------- Toasts ---------- */
@@ -85,9 +85,9 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 
 /* ---------- Bits ---------- */
 export function Crest({ team, size = 28 }: { team: { id: number; name: string; short_name?: string; crest_url?: string; colors?: string[] } | null | undefined; size?: number }) {
-  if (!team) return <span className="crest" style={{ width: size, height: size, background: "#cbd1da", fontSize: size * 0.36 }}>?</span>;
+  if (!team) return <span className="crest" style={{ width: size, height: size, fontSize: size * 0.36 }}>?</span>;
   return (
-    <span className="crest" style={{ width: size, height: size, background: teamColor(team), fontSize: Math.max(9, size * 0.32) }}>
+    <span className="crest" style={{ width: size, height: size, fontSize: Math.max(9, size * 0.32) }}>
       {team.crest_url ? <img src={team.crest_url} alt="" /> : initials(team.name, team.short_name)}
     </span>
   );

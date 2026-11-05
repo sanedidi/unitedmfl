@@ -75,7 +75,7 @@ export default async function MatchPage({ params }: { params: P }) {
     { name: eventLd.name, path: canonical },
   ];
   return (
-    <div className="container" style={{ paddingBottom: 24 }}>
+    <div className="container">
       <nav className="crumbs" aria-label="Breadcrumb">
         <Link href="/matchlar">Matchlar</Link><ChevronRight size={12} />
         {m.stage && <><Link href={`/matchlar?bosqich=${m.stage.id}`}>{m.stage.name}</Link><ChevronRight size={12} /></>}

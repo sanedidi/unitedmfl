@@ -1,6 +1,6 @@
 import type React from "react";
 import Link from "next/link";
-import { LogoMark } from "./Logo";
+import { Logo } from "./Logo";
 import { Instagram, Telegram, Youtube } from "./Icons";
 
 export function Footer() {
@@ -16,11 +16,8 @@ export function Footer() {
       <div className="container">
         <div className="footer-grid">
           <div>
-            <div className="row">
-              <LogoMark size={40} />
-              <b style={{ color: "#fff", fontFamily: "var(--font-display)", fontSize: 18 }}>UNITED MFL</b>
-            </div>
-            <p style={{ maxWidth: 320, marginTop: 16 }}>Media futbol ligasi: blogerlar, sportchilar va san’at yulduzlari jamoalari bir maydonda.</p>
+            <Link href="/" className="brand" aria-label="United MFL — bosh sahifa"><Logo size={30} /></Link>
+            <p style={{ maxWidth: 360, margin: "16px 0 0" }}>Media-futbol ligasi: blogerlar, sportchilar va san’at yulduzlari jamoalari. Rasmiy natijalar, jadval va statistika.</p>
             {socials.length > 0 && (
               <div className="socials">
                 {socials.map((x) => (
@@ -58,7 +55,7 @@ export function Footer() {
         </div>
         <div className="footer-bottom">
           <span>© {year} United MFL. Barcha huquqlar himoyalangan.</span>
-          <span>unitedmfl.com</span>
+          <span>O‘zbekcha · Русский va English — tez orada</span>
         </div>
       </div>
     </footer>

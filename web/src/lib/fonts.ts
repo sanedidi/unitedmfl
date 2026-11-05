@@ -1,24 +1,25 @@
 import localFont from "next/font/local";
 
-// Self-hosted variable fonts (no third-party requests), subset to Latin + Uzbek
-// punctuation (ʻ ‘ ’) — see src/assets/fonts.
-// Body face: preloaded, swaps in over a metric-matched fallback (no layout shift).
-// Display face: not preloaded (so it does not compete with CSS for the first paint)
-// and "optional": used when already available (cached after the first page view),
-// never causing a late repaint that would push LCP back on slow mobile networks.
-export const onest = localFont({
-  src: "../assets/fonts/onest-latin-var.woff2",
+// Self-hosted variable fonts (no third-party requests), Latin subset incl. Uzbek
+// punctuation (ʻ ‘ ’) — see src/assets/fonts. Cyrillic for Inter is a separate
+// @font-face with a unicode-range in globals.css (/public/fonts), so Latin pages
+// never download it.
+// UI face: preloaded, swaps in over a metric-matched fallback (no layout shift).
+// Display face (headings, scores): not preloaded so it does not compete with CSS
+// for the first paint; "optional" never causes a late repaint that would push LCP.
+export const inter = localFont({
+  src: "../assets/fonts/inter-latin-var.woff2",
   weight: "400 800",
   display: "swap",
-  variable: "--font-onest",
+  variable: "--font-inter",
   fallback: ["system-ui", "Segoe UI", "Roboto", "Arial", "sans-serif"],
 });
 
-export const unbounded = localFont({
-  src: "../assets/fonts/unbounded-latin-var.woff2",
-  weight: "600 900",
+export const archivo = localFont({
+  src: "../assets/fonts/archivo-latin-var.woff2",
+  weight: "500 900",
   display: "optional",
   preload: false,
-  variable: "--font-unbounded",
-  fallback: ["Arial Black", "Arial", "sans-serif"],
+  variable: "--font-archivo",
+  fallback: ["Arial", "Helvetica", "sans-serif"],
 });

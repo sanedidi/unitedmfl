@@ -1,5 +1,5 @@
 type P = { size?: number; className?: string };
-const s = (size = 16) => ({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true });
+const s = (size = 16) => ({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true });
 
 export const ArrowRight = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M5 12h14M13 6l6 6-6 6" /></svg>);
 export const ChevronLeft = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M15 6l-6 6 6 6" /></svg>);
@@ -19,3 +19,6 @@ export const Swap = ({ size, className }: P) => (<svg {...s(size)} className={cl
 export const Instagram = ({ size, className }: P) => (<svg {...s(size)} className={className}><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" /></svg>);
 export const Telegram = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M21 4L3 11l6 2 2 6 3-4 5 4z" /><path d="M9 13l12-9" /></svg>);
 export const Youtube = ({ size, className }: P) => (<svg {...s(size)} className={className}><rect x="2.5" y="5.5" width="19" height="13" rx="4" /><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" /></svg>);
+export const Globe = ({ size, className }: P) => (<svg {...s(size)} className={className}><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.5 2.6 2.5 14.4 0 17M12 3.5c-2.5 2.6-2.5 14.4 0 17" /></svg>);
+export const ChevronDown = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M6 9l6 6 6-6" /></svg>);
+export const Info = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M14 3.5H7a1.5 1.5 0 00-1.5 1.5v14A1.5 1.5 0 007 20.5h10a1.5 1.5 0 001.5-1.5V8z" /><path d="M14 3.5V8h4.5M9 13h6M9 16.5h6" /></svg>);

@@ -3,7 +3,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { JsonLd } from "@/components/JsonLd";
 import nextDynamic from "next/dynamic";
-import { onest, unbounded } from "@/lib/fonts";
+import { archivo, inter } from "@/lib/fonts";
 import { DEFAULT_OG, ORG_ID, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: "#020304", width: "device-width", initialScale: 1, colorScheme: "dark" };
+export const viewport: Viewport = { themeColor: "#15181C", width: "device-width", initialScale: 1, colorScheme: "light" };
 
 const siteLd = {
   "@context": "https://schema.org",
@@ -46,7 +46,7 @@ const siteLd = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const ticketUrl = process.env.TICKETS_URL || "/matchlar";
   return (
-    <html lang="uz" className={`${onest.variable} ${unbounded.variable}`}>
+    <html lang="uz" className={`${inter.variable} ${archivo.variable}`}>
       <body>
         <a href="#main" className="sr-only">Asosiy kontentga o‘tish</a>
         <Header ticketUrl={ticketUrl} />

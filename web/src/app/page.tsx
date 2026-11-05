@@ -3,12 +3,10 @@ import { api, safe } from "@/lib/api";
 import { fmtPlainDate, isFinished, isLive } from "@/lib/format";
 import type { Banner, Leaders, Match, NewsItem, Product, Season, Standings, Team, Video } from "@/lib/types";
 import { HeroCarousel } from "@/components/HeroCarousel";
-import { MatchCard, ResultRow } from "@/components/Match";
+import { MatchCard } from "@/components/Match";
 import { SectionHead } from "@/components/SectionHead";
 import { StandingsTable } from "@/components/Standings";
 import { NewsCard, ProductCard, VideoCard } from "@/components/Cards";
-import { Crest } from "@/components/Crest";
-import { ChevronRight } from "@/components/Icons";
 import { pageMeta, playerPath } from "@/lib/seo";
 
 const PARTNERS = ["realme", "Click", "Wildberries"]; // final sponsors announced on unitedmfl.com
@@ -37,120 +35,87 @@ export default async function Home() {
   const live = matches.filter(isLive);
   const upcoming = matches.filter((m) => m.status === "scheduled").sort((a, b) => +new Date(a.kickoff_at) - +new Date(b.kickoff_at));
   const featured = [...live, ...upcoming].slice(0, 3);
-  const results = matches.filter(isFinished).sort((a, b) => +new Date(b.kickoff_at) - +new Date(a.kickoff_at)).slice(0, 6);
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const leagueTeams = teams.filter((t) => t.group_label);
   const firstGroup = standings ? Object.keys(standings.groups).sort()[0] : undefined;
   const scorers = (leaders?.scorers || []).slice(0, 5);
   const teamGoals = (leaders?.team_goals || []).filter((t) => t.group_label).slice(0, 8);
-  const maxGoals = Math.max(1, ...teamGoals.map((t) => t.goals));
   const dates = Object.fromEntries(banners.map((b) => [b.id, fmtPlainDate(b.event_date)]));
+
+  const results = matches.filter(isFinished).sort((a, b) => +new Date(b.kickoff_at) - +new Date(a.kickoff_at));
+  const strip = [...featured, ...results].slice(0, 4);
+  const topTeam = teamGoals[0];
 
   return (
     <>
-      <HeroCarousel banners={banners} dates={dates} />
+      <HeroCarousel banners={banners} dates={dates} season={season?.name} />
 
-      <section className="facts" aria-label="Liga raqamlarda">
-        <div className="container facts-inner">
-          <div className="fact"><b>{season?.teams_planned ?? leagueTeams.length}</b><span>jamoa</span></div>
-          <div className="fact"><b>{season?.matches_planned ?? matches.length}</b><span>match mavsumda</span></div>
-          <div className="fact"><b>{leaders?.summary.goals ?? 0}</b><span>gol urildi</span></div>
-          <div className="fact"><b>{(leaders?.summary.goals_per_match ?? 0).toString().replace(".", ",")}</b><span>gol har matchda</span></div>
-        </div>
-      </section>
-
-      <section className="section intro" aria-labelledby="intro-title">
+      <section className="intro" aria-labelledby="intro-title">
         <div className="container intro-inner">
-          <div>
-            <div className="overline">Media Football League</div>
-            <h1 id="intro-title" className="h2">United MFL — media futbol ligasi</h1>
-          </div>
+          <h1 id="intro-title">United MFL — media futbol ligasi</h1>
           <p className="lead">
-            United MFL{season ? ` ${season.name.replace("United MFL ", "")} mavsumida` : ""} {season?.teams_planned ?? leagueTeams.length} ta jamoa ishtirok etmoqda: blogerlar, sportchilar va san’at yulduzlari.
+            United MFL{season ? ` ${season.name.replace("United MFL ", "")} mavsumida` : ""} {season?.teams_planned ?? leagueTeams.length} ta jamoa: blogerlar, sportchilar va san’at yulduzlari.
             Bu yerda <Link href="/matchlar">matchlar taqvimi va natijalar</Link>, <Link href="/jadval">turnir jadvali</Link>,{" "}
             <Link href="/jamoalar">jamoalar</Link>, <Link href="/oyinchilar">o‘yinchilar</Link> va <Link href="/yangiliklar">liga yangiliklari</Link>.
           </p>
         </div>
       </section>
 
-      {featured.length > 0 && (
+      {strip.length > 0 && (
         <section className="section">
           <div className="container">
-            <SectionHead overline="Matchlar" title={live.length ? "Jonli va yaqin matchlar" : "Yaqin matchlar"} href="/matchlar" />
-            <div className="grid grid-3">
-              {featured.map((m) => <MatchCard key={m.id} match={m} season={season?.name} />)}
+            <SectionHead title={live.length ? "Jonli va yaqin matchlar" : "Matchlar"} href="/matchlar" linkLabel="Barcha matchlar" />
+            <div className="grid grid-4">
+              {strip.map((m) => <MatchCard key={m.id} match={m} season={season?.name} />)}
             </div>
-          </div>
-        </section>
-      )}
-
-      {results.length > 0 && (
-        <section className="section">
-          <div className="container">
-            <SectionHead overline="Natijalar" title="So‘nggi natijalar" href="/matchlar?holat=yakunlangan" />
-            <div className="card">{results.map((m) => <ResultRow key={m.id} match={m} />)}</div>
           </div>
         </section>
       )}
 
       {standings && firstGroup && (
-        <section className="section">
+        <section className="section alt">
           <div className="container">
-            <SectionHead overline="Guruh bosqichi" title="Turnir jadvali" href="/jadval" />
-            <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1.7fr) minmax(0, 1fr)", alignItems: "start" }} data-split>
-              <StandingsTable group={firstGroup} rows={standings.groups[firstGroup]} provisional={standings.groups_provisional} teams={teamMap} />
-              <section className="card card-pad">
-                <div className="row" style={{ justifyContent: "space-between", marginBottom: 10 }}>
-                  <h3 className="h4">Bombardirlar</h3>
-                  <Link href="/statistika" className="link-more" style={{ fontSize: 12, color: "var(--text-2)" }}>Barchasi <ChevronRight size={14} /></Link>
-                </div>
-                {scorers.length === 0 ? (
-                  <p className="muted" style={{ fontSize: 14 }}>O‘yinchilar statistikasi hali e’lon qilinmagan.</p>
-                ) : (
-                  scorers.map((s, i) => (
-                    <Link key={`${s.player_id}-${i}`} href={s.player_id ? playerPath({ id: s.player_id, name: s.name }) : "/statistika"} className={`leader${i === 0 ? " first" : ""}`}>
-                      <span className="rank">{i + 1}</span>
-                      <span className="avatar">{s.name.slice(0, 1)}</span>
-                      <span className="grow"><b style={{ display: "block" }}>{s.name}</b><small className="muted">{s.team}</small></span>
-                      <span className="val">{s.goals}</span>
-                    </Link>
-                  ))
+            <div className="grid" style={{ gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", alignItems: "start" }} data-split>
+              <div>
+                <SectionHead title="Turnir jadvali" href="/jadval" linkLabel="To‘liq jadval" />
+                <StandingsTable group={firstGroup} rows={standings.groups[firstGroup]} provisional={standings.groups_provisional} teams={teamMap} />
+              </div>
+              <div>
+                <SectionHead title="Raqamlarda" href="/statistika" linkLabel="Statistika" />
+                <section className="card numbers" aria-label="Liga raqamlarda">
+                  <div className="number-row"><b className="tnum">{leaders?.summary.goals ?? 0}</b><span>gol<small>{leaders?.summary.matches ?? 0} ta e’lon qilingan matchda</small></span></div>
+                  <div className="number-row"><b className="tnum">{(leaders?.summary.goals_per_match ?? 0).toString().replace(".", ",")}</b><span>gol / match<small>Mavsum bo‘yicha o‘rtacha</small></span></div>
+                  {topTeam ? (
+                    <Link href={`/jamoalar/${topTeam.slug}`} className="number-row"><b className="tnum">{topTeam.goals}</b><span>gol — {topTeam.name}<small>Eng hujumkor jamoa</small></span></Link>
+                  ) : (
+                    <div className="number-row"><b className="tnum">{season?.teams_planned ?? leagueTeams.length}</b><span>jamoa<small>Mavsum ishtirokchilari</small></span></div>
+                  )}
+                </section>
+                {scorers.length > 0 && (
+                  <section className="card card-pad" style={{ marginTop: 24, paddingTop: 8, paddingBottom: 8 }}>
+                    {scorers.map((sc, i) => (
+                      <Link key={`${sc.player_id}-${i}`} href={sc.player_id ? playerPath({ id: sc.player_id, name: sc.name }) : "/statistika"} className={`leader${i === 0 ? " first" : ""}`}>
+                        <span className="rank">{i + 1}</span>
+                        <span className="avatar">{sc.name.slice(0, 1)}</span>
+                        <span className="grow"><b style={{ display: "block", fontSize: 14 }}>{sc.name}</b><small className="muted">{sc.team}</small></span>
+                        <span className="val">{sc.goals}</span>
+                      </Link>
+                    ))}
+                  </section>
                 )}
-              </section>
+              </div>
             </div>
           </div>
         </section>
       )}
 
-      {teamGoals.length > 0 && (
+      {news.length > 0 && (
         <section className="section">
           <div className="container">
-            <SectionHead overline="Statistika" title="Eng ko‘p gol urgan jamoalar" href="/statistika" />
-            <div className="card card-pad stack" style={{ gap: 18 }}>
-              {teamGoals.map((t) => (
-                <Link key={t.id} href={`/jamoalar/${t.slug}`} className="row" style={{ gap: 16 }}>
-                  <Crest team={teamMap.get(t.id) || { id: t.id, name: t.name }} size={32} />
-                  <b className="tg-name">{t.name}</b>
-                  <div className="bar grow"><i style={{ width: `${(t.goals / maxGoals) * 100}%` }} /></div>
-                  <span className="tnum" style={{ width: 90, textAlign: "right", fontFamily: "var(--font-display)", fontWeight: 800 }}>{t.goals}<small className="muted" style={{ fontFamily: "var(--font-ui)", fontWeight: 500 }}> / {t.played} o‘yin</small></span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {leagueTeams.length > 0 && (
-        <section className="section">
-          <div className="container">
-            <SectionHead overline="Ishtirokchilar" title={`${leagueTeams.length} jamoa`} href="/jamoalar" />
-            <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
-              {leagueTeams.map((t) => (
-                <Link key={t.id} href={`/jamoalar/${t.slug}`} className="card card-hover team-tile" style={{ padding: 18 }}>
-                  <Crest team={t} size={56} />
-                  <b style={{ fontSize: 14 }}>{t.name}</b>
-                </Link>
-              ))}
+            <SectionHead title="Yangiliklar" href="/yangiliklar" linkLabel="Barcha yangiliklar" />
+            <div className="news-editorial">
+              <NewsCard item={news[0]} feature />
+              {news.length > 1 && <div>{news.slice(1, 5).map((n) => <NewsCard key={n.slug} item={n} compact />)}</div>}
             </div>
           </div>
         </section>
@@ -159,27 +124,16 @@ export default async function Home() {
       {videos.length > 0 && (
         <section className="section">
           <div className="container">
-            <SectionHead overline="Media" title="Video" href="/media" />
+            <SectionHead title="Video" href="/media" linkLabel="Media" />
             <div className="grid grid-3">{videos.map((v) => <VideoCard key={v.id} v={v} />)}</div>
           </div>
         </section>
       )}
 
-      {news.length > 0 && (
-        <section className="section">
-          <div className="container">
-            <SectionHead overline="Yangiliklar" title="So‘nggi yangiliklar" href="/yangiliklar" />
-            <div className="grid grid-4">
-              {news.map((n, i) => <NewsCard key={n.slug} item={n} feature={i === 0} />)}
-            </div>
-          </div>
-        </section>
-      )}
-
       {products.length > 0 && (
-        <section className="section">
+        <section className="section alt">
           <div className="container">
-            <SectionHead overline="Do‘kon" title="Rasmiy merch" href="/merch" />
+            <SectionHead title="Rasmiy do‘kon" href="/merch" linkLabel="Barcha mahsulotlar" />
             <div className="grid grid-4">{products.slice(0, 4).map((p) => <ProductCard key={p.id} p={p} />)}</div>
           </div>
         </section>
@@ -187,10 +141,10 @@ export default async function Home() {
 
       <section className="section">
         <div className="container">
-          <SectionHead overline="Hamkorlar" title="Final homiylari" href="/biz-haqimizda#aloqa" linkLabel="Hamkor bo‘lish" />
+          <SectionHead title="Final homiylari" href="/biz-haqimizda#aloqa" linkLabel="Hamkor bo‘lish" />
           <div className="partners">
             {PARTNERS.map((p) => <div key={p} className="partner">{p}</div>)}
-            <Link href="/biz-haqimizda#aloqa" className="partner" style={{ fontSize: 14, fontFamily: "var(--font-ui)", color: "var(--accent)" }}>+ Sizning brendingiz</Link>
+            <Link href="/biz-haqimizda#aloqa" className="partner" style={{ fontSize: 14, fontFamily: "var(--font-ui)", fontWeight: 600, color: "var(--text-2)" }}>+ Sizning brendingiz</Link>
           </div>
         </div>
       </section>

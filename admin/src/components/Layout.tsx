@@ -4,6 +4,7 @@ import { I } from "./Icons";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { ROLE_LABEL, initials } from "@/lib/format";
+import { Logo } from "./Logo";
 
 type Item = { to: string; label: string; icon: ReactNode; perm: string; count?: "protocols" | "requests" };
 const NAV: { group?: string; items: Item[] }[] = [
@@ -56,8 +57,8 @@ export function Layout() {
       {open && <div className="sb-scrim" onClick={() => setOpen(false)} />}
       <aside className={`sidebar${open ? " open" : ""}`}>
         <div className="sb-brand">
-          <img src="/favicon.svg" width={36} height={36} alt="" />
-          <div><b>United MFL</b><small>Admin panel</small></div>
+          <Logo compact />
+          <span className="tagline">Admin</span>
         </div>
         {NAV.map((g, i) => {
           const items = g.items.filter((it) => can(it.perm));
@@ -83,7 +84,9 @@ export function Layout() {
       <div className="main">
         <header className="topbar">
           <button className="btn btn-ghost btn-icon menu-toggle" aria-label="Menyu" onClick={() => setOpen(true)}><I.menu /></button>
+          <Logo compact size={18} className="mobile-brand" />
           <div className="grow" />
+          <span className="env hide-mobile">Mavsum 2026</span>
           <a className="btn btn-sm" href={SITE_URL} target="_blank" rel="noopener noreferrer"><I.globe size={16} /> <span className="hide-mobile">Saytni ochish</span></a>
         </header>
         <div className="content"><Outlet /></div>

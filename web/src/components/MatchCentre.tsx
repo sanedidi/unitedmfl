@@ -34,7 +34,7 @@ function EventIcon({ type }: { type: string }) {
     );
   if (type === "sub") return <span className="ev-icon" style={{ color: "var(--accent)" }}><Swap size={18} /></span>;
   if (type === "goal" || type === "penalty_goal" || type === "own_goal" || type === "shootout_scored")
-    return <span className="ev-icon" style={{ color: type === "own_goal" ? "var(--red-500)" : "#fff" }}><Ball size={18} /></span>;
+    return <span className="ev-icon" style={{ color: type === "own_goal" ? "var(--red-500)" : "var(--text)" }}><Ball size={18} /></span>;
   return <span className="ev-icon muted"><Ball size={18} /></span>;
 }
 

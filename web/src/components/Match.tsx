@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Crest } from "./Crest";
-import { ArrowRight, Calendar, Clock, Ticket } from "./Icons";
+import { ArrowRight, ChevronRight } from "./Icons";
 import { LiveMinute } from "./LiveMinute";
 import { fmtDate, fmtTime, fmtWeekday, isLive, isToday, matchMinute } from "@/lib/format";
 import type { Match } from "@/lib/types";
@@ -15,58 +15,54 @@ export function StageBadge({ match }: { match: Match }) {
   return <span className="badge badge-stage">{match.stage.name}</span>;
 }
 
-function placeholder(m: Match, side: "home" | "away") {
-  const k = m.stage?.kind;
-  if (k === "final") return "Yarim final g‘olibi";
-  return "Aniqlanmagan";
+function placeholder(m: Match) {
+  return m.stage?.kind === "final" ? "Yarim final g‘olibi" : "Aniqlanmagan";
+}
+
+/** Status badge for the card corner: live minute, date for upcoming, «Yakunlandi» for results. */
+function StatusBadge({ m }: { m: Match }) {
+  if (isLive(m)) return <span className="badge badge-live">Jonli · <LiveMinute match={m} initial={matchMinute(m)} /></span>;
+  if (m.status === "scheduled") return <span className="badge badge-upcoming">{isToday(m.kickoff_at) ? "Bugun" : fmtDate(m.kickoff_at, false)}</span>;
+  if (m.status === "postponed" || m.status === "cancelled") return <span className="badge badge-outline">{m.status === "postponed" ? "Qoldirildi" : "Bekor qilindi"}</span>;
+  return <span className="badge badge-muted">Yakunlandi</span>;
 }
 
 export function MatchCard({ match: m, season = "United MFL 2026" }: { match: Match; season?: string }) {
   const live = isLive(m);
   const hasScore = m.home_score != null && m.away_score != null && m.status !== "scheduled";
-  const day = isToday(m.kickoff_at) ? "Bugun" : fmtDate(m.kickoff_at);
+  const stage = m.stage ? (m.stage.kind === "group" ? m.round || m.stage.name : m.stage.name) : season;
+  const winner = hasScore && m.home_score !== m.away_score ? (m.home_score! > m.away_score! ? "home" : "away") : m.home_pen != null && m.away_pen != null ? (m.home_pen > m.away_pen ? "home" : "away") : null;
+  const row = (side: "home" | "away") => {
+    const t = side === "home" ? m.home : m.away;
+    const score = side === "home" ? m.home_score : m.away_score;
+    return (
+      <div className={`mt-row${winner && winner !== side && m.status === "finished" ? " lose" : ""}`}>
+        <Crest team={t} size={32} />
+        <span className={`name${t ? "" : " tbd"}`}>{t?.name || placeholder(m)}</span>
+        {hasScore && <span className="score tnum">{score}</span>}
+      </div>
+    );
+  };
   return (
     <article className={`card card-hover match-card${live ? " is-live" : ""}`}>
       <div className="match-card-top">
-        <span>{season}</span>
-        <StageBadge match={m} />
+        <span className="overline">{stage} · {season}</span>
+        <StatusBadge m={m} />
       </div>
-      <div className="match-card-mid">
-        <div className="match-team">
-          <Crest team={m.home} size={52} />
-          <span>{m.home?.name || placeholder(m, "home")}</span>
-        </div>
-        <div>
-          {hasScore ? (
-            <div className="match-score">{m.home_score} : {m.away_score}</div>
-          ) : (
-            <div className="match-time">{fmtTime(m.kickoff_at)}</div>
-          )}
-          <div className="match-sub">
-            {live ? (
-              <span style={{ color: "var(--live-text)", fontWeight: 700 }}>
-                <LiveMinute match={m} initial={matchMinute(m)} />
-              </span>
-            ) : hasScore ? (
-              m.home_pen != null ? <span>pen. {m.home_pen}:{m.away_pen}</span> : <span>Yakunlandi</span>
-            ) : (
-              <><Clock size={13} /> {fmtWeekday(m.kickoff_at)}</>
-            )}
-          </div>
-        </div>
-        <div className="match-team">
-          <Crest team={m.away} size={52} />
-          <span>{m.away?.name || placeholder(m, "away")}</span>
-        </div>
+      <div className="match-card-teams">
+        {row("home")}
+        {row("away")}
+        {!hasScore && (
+          <div className="match-card-ko"><b className="tnum">{fmtTime(m.kickoff_at)}</b>{fmtWeekday(m.kickoff_at)} · Toshkent vaqti</div>
+        )}
+        {hasScore && m.home_pen != null && <div className="match-card-ko">Penaltilar {m.home_pen}:{m.away_pen}</div>}
       </div>
       <div className="match-card-foot">
-        <span className="row" style={{ gap: 6 }}>
-          <Calendar size={14} /> {day}{m.venue ? ` · ${m.venue.split(",")[0]}` : ""}
-        </span>
+        <span className="venue">{m.venue ? m.venue : fmtDate(m.kickoff_at)}</span>
         {m.ticket_url && m.status === "scheduled" ? (
-          <a className="ticket" href={m.ticket_url} target="_blank" rel="noopener noreferrer">Chipta <Ticket /></a>
+          <a href={m.ticket_url} target="_blank" rel="noopener noreferrer">Chipta <ArrowRight size={14} /></a>
         ) : (
-          <Link href={matchPath(m)}>Batafsil <ArrowRight /></Link>
+          <Link href={matchPath(m)}>Match markazi <ArrowRight size={14} /></Link>
         )}
       </div>
     </article>
@@ -83,16 +79,16 @@ export function ResultRow({ match: m }: { match: Match }) {
       </div>
       <div className="team home">
         <span>{m.home?.name || "Aniqlanmagan"}</span>
-        <Crest team={m.home} size={36} />
+        <Crest team={m.home} size={24} />
       </div>
-      <div className={`result-score tnum${played ? "" : " upcoming"}`}>
-        {played ? `${m.home_score}:${m.away_score}` : fmtTime(m.kickoff_at)}
+      <div className={`result-score tnum${played ? "" : " upcoming"}${isLive(m) ? " live" : ""}`}>
+        {played ? `${m.home_score} – ${m.away_score}` : fmtTime(m.kickoff_at)}
       </div>
       <div className="team">
-        <Crest team={m.away} size={36} />
+        <Crest team={m.away} size={24} />
         <span>{m.away?.name || "Aniqlanmagan"}</span>
       </div>
-      <span className="result-link">{isLive(m) ? <span className="badge badge-live">Jonli</span> : <>Match markazi →</>}</span>
+      <span className="result-link" aria-hidden>{isLive(m) ? <span className="badge badge-live">Jonli</span> : <ChevronRight size={18} />}</span>
     </Link>
   );
 }

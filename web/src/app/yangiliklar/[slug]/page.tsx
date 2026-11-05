@@ -76,7 +76,7 @@ export default async function ArticlePage({ params }: { params: P }) {
               <Img src={n.cover_url} alt={n.title} sizes="(max-width: 800px) 100vw, 760px" priority />
             </div>
           )}
-          {n.excerpt && <p className="lead" style={{ marginBottom: 24, color: "#fff" }}>{n.excerpt}</p>}
+          {n.excerpt && <p className="lead" style={{ marginBottom: 24, color: "var(--text)" }}>{n.excerpt}</p>}
           {n.body ? <Prose text={n.body} /> : null}
           {n.tags?.length > 0 && <div className="chips" style={{ marginTop: 32 }}>{n.tags.map((t) => <span key={t} className="chip">#{t}</span>)}</div>}
         </div>

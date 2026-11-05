@@ -1,25 +1,34 @@
 import Link from "next/link";
 
-export function LogoMark({ size = 44 }: { size?: number }) {
+/** League mark: four corner pieces around a ring (Figma: Logo/Mark). Uses currentColor. */
+export function LogoMark({ size = 28, title }: { size?: number; title?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
-      <circle cx="24" cy="24" r="24" fill="#fff" />
-      <g fill="#1F2A6B">
-        <path d="M13 13h8v4h-4v4h-4zM35 13h-8v4h4v4h4zM13 35h8v-4h-4v-4h-4zM35 35h-8v-4h4v-4h4z" />
-      </g>
-      <circle cx="24" cy="24" r="6.5" fill="none" stroke="#E5383B" strokeWidth="3.5" />
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="currentColor" role={title ? "img" : undefined} aria-hidden={title ? undefined : true} aria-label={title}>
+      <path d="M0 0H37V14.3A38 38 0 0 0 14.3 37H0Z" />
+      <path d="M100 0H63V14.3A38 38 0 0 1 85.7 37H100Z" />
+      <path d="M0 100H37V85.7A38 38 0 0 1 14.3 63H0Z" />
+      <path d="M100 100H63V85.7A38 38 0 0 0 85.7 63H100Z" />
+      <path fillRule="evenodd" d="M50 21.5a28.5 28.5 0 1 1 0 57 28.5 28.5 0 0 1 0-57Zm0 13a15.5 15.5 0 1 0 0 31 15.5 15.5 0 0 0 0-31Z" />
     </svg>
   );
 }
 
-export function Brand() {
+/** Horizontal lockup «United ⧉ MFL»; `compact` drops «MFL» (mobile header). */
+export function Logo({ compact = false, size = 26 }: { compact?: boolean; size?: number }) {
+  const fs = Math.round(size * 0.86);
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: Math.round(size * 0.3), fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: fs, letterSpacing: "-0.03em", lineHeight: 1 }}>
+      <span>United</span>
+      <LogoMark size={size} />
+      {!compact && <span>MFL</span>}
+    </span>
+  );
+}
+
+export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="brand" aria-label="United MFL — bosh sahifa">
-      <LogoMark />
-      <span className="brand-text">
-        <b>UNITED MFL</b>
-        <small>MEDIA FOOTBALL LEAGUE</small>
-      </span>
+      <Logo compact={compact} />
     </Link>
   );
 }
