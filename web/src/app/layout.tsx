@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { JsonLd } from "@/components/JsonLd";
-import { Analytics } from "@/components/Analytics";
+import nextDynamic from "next/dynamic";
 import { onest, unbounded } from "@/lib/fonts";
 import { DEFAULT_OG, ORG_ID, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
@@ -10,6 +10,10 @@ import "./globals.css";
 // Pages are server-rendered per request (fresh scores); API data itself is cached
 // in the Next.js data cache and purged on every admin change (see lib/api.ts).
 export const dynamic = "force-dynamic";
+
+// GA4 + Web Vitals reporting ships only when a measurement id is configured.
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+const Analytics = GA_ID ? nextDynamic(() => import("@/components/Analytics").then((m) => m.Analytics)) : () => null;
 
 const DESCRIPTION = "United MFL — media futbol ligasi: matchlar taqvimi va natijalari, jonli hisob, turnir jadvali, jamoalar, o‘yinchilar va yangiliklar.";
 
