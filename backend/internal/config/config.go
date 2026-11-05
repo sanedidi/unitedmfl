@@ -18,6 +18,7 @@ type Config struct {
 	UploadDir        string
 	WebRevalidateURL string // e.g. http://web:3000/internal/revalidate
 	RevalidateSecret string
+	MirrorImageHosts string // external hosts whose banner images are copied into /uploads
 	PublicBaseURL    string // prefix for uploaded file URLs; empty = site-relative (/uploads/...)
 	CORSOrigins      []string
 	AdminEmail       string
@@ -63,6 +64,7 @@ func Load() (*Config, error) {
 		Env:              env("APP_ENV", "development"),
 		WebRevalidateURL: env("WEB_REVALIDATE_URL", ""),
 		RevalidateSecret: env("REVALIDATE_SECRET", ""),
+		MirrorImageHosts: env("MIRROR_IMAGE_HOSTS", "www.unitedmfl.com,unitedmfl.com"),
 		// Points rules are a proposal until confirmed by the league regulations.
 		PointsWin:  envInt("POINTS_WIN", 3),
 		PointsDraw: envInt("POINTS_DRAW", 1),

@@ -30,7 +30,19 @@ export function Header({ ticketUrl }: { ticketUrl: string }) {
   const active = (href: string) => (href === "/" ? path === "/" : path === href || path.startsWith(href + "/"));
   const external = /^https?:/.test(ticketUrl);
 
+  // Esc closes the menu
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  // The mobile menu is rendered next to <header>, not inside it: the header's
+  // backdrop-filter creates a containing block, which squeezed the fixed menu
+  // into the header's own 64px box.
   return (
+    <>
     <header className="header">
       <div className="container header-inner">
         <Brand />
@@ -48,12 +60,13 @@ export function Header({ ticketUrl }: { ticketUrl: string }) {
           <a className="btn btn-primary" href={ticketUrl} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
             Chipta <Ticket />
           </a>
-          <button className="icon-btn menu-btn" aria-label={open ? "Menyuni yopish" : "Menyuni ochish"} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          <button className="icon-btn menu-btn" aria-label={open ? "Menyuni yopish" : "Menyuni ochish"} aria-expanded={open} aria-controls="mobile-nav" onClick={() => setOpen((v) => !v)}>
             {open ? <Close size={20} /> : <Menu size={20} />}
           </button>
         </div>
       </div>
-      <nav className="mobile-nav" data-open={open} aria-label="Mobil menyu">
+    </header>
+      <nav id="mobile-nav" className="mobile-nav" data-open={open} aria-label="Mobil menyu" hidden={!open}>
         {NAV.map((n) => (
           <Link key={n.href} href={n.href} aria-current={active(n.href) ? "page" : undefined}>
             {n.label}
@@ -64,6 +77,6 @@ export function Header({ ticketUrl }: { ticketUrl: string }) {
           Chipta sotib olish <Ticket />
         </a>
       </nav>
-    </header>
+    </>
   );
 }

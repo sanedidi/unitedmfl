@@ -44,9 +44,13 @@ func run() error {
 		return err
 	}
 
+	server := api.New(conn, cfg)
+	// copy hero images from the old site into /uploads (no-op once done)
+	go server.MirrorRemoteImages(ctx)
+
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           api.New(conn, cfg).Routes(),
+		Handler:           server.Routes(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		IdleTimeout:       120 * time.Second,
