@@ -293,7 +293,7 @@ function Lineup({ title, rows }: { title: string; rows: LineupRow[] }) {
   const item = (r: LineupRow) => (
     <li key={`${r.side}-${r.player_id}`}>
       <span className="num">{r.number ?? "–"}</span>
-      <Link href={`/oyinchilar/${r.player_id}`}>{r.player_name}</Link>
+      {r.player_id ? <Link href={`/oyinchilar/${r.player_id}`}>{r.player_name}</Link> : <span>{r.player_name}</span>}
       {r.is_captain && <span className="cap" title="Sardor">C</span>}
       <span className="pos-tag">{POSITION_LABEL[r.position] || r.position}</span>
     </li>

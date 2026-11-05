@@ -25,7 +25,7 @@ const teamJSON = `CASE WHEN %[1]s.id IS NULL THEN NULL ELSE json_build_object('i
 // matchSelect is the shared projection for match cards.
 var matchSelect = `SELECT m.id, m.season_id, m.round, m.kickoff_at, m.venue, m.ticket_url, m.status, m.period,
 	m.clock_started_at, m.clock_offset_sec, m.home_score, m.away_score, m.home_ht, m.away_ht, m.home_et, m.away_et,
-	m.home_pen, m.away_pen, m.attendance, m.banner_url, m.video_url, m.show_in_hero,
+	m.home_pen, m.away_pen, m.attendance, m.banner_url, m.video_url, m.show_in_hero, m.published,
 	CASE WHEN st.id IS NULL THEN NULL ELSE json_build_object('id', st.id, 'name', st.name, 'kind', st.kind) END AS stage,
 	` + fmt.Sprintf(teamJSON, "h") + ` AS home, ` + fmt.Sprintf(teamJSON, "a") + ` AS away
 	FROM matches m
@@ -142,9 +142,10 @@ func (s *Server) publicMatches(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) matchDetailJSON(ctx context.Context, id int64, adminView bool) ([]byte, error) {
-	pub := "AND m.published"
+	pub, extra := "AND m.published", ""
 	if adminView {
-		pub = ""
+		// admins also get the raw row (notes, added time, ids) for the edit form
+		pub, extra = "", ",\n\t\t'row', (SELECT row_to_json(mr) FROM matches mr WHERE mr.id = x.id)"
 	}
 	return s.queryJSON(ctx, `SELECT json_build_object(
 		'match', row_to_json(x),
@@ -158,7 +159,7 @@ func (s *Server) matchDetailJSON(ctx context.Context, id int64, adminView bool) 
 		'news', (SELECT coalesce(json_agg(n), '[]') FROM (SELECT slug, title, cover_url, published_at FROM news WHERE match_id = x.id AND status='published' ORDER BY published_at DESC LIMIT 5) n),
 		'protocol_pdf', (SELECT CASE WHEN p.id IS NULL THEN NULL ELSE '/api/v1/matches/' || x.id || '/protocol.pdf' END
 			FROM protocols p WHERE p.match_id = x.id AND p.status = 'applied' AND p.publish_pdf ORDER BY p.applied_at DESC LIMIT 1),
-		'server_time', now())
+		'server_time', now()`+extra+`)
 		FROM (`+matchSelect+` WHERE m.id = $1 `+pub+`) x`, id)
 }
 

@@ -62,7 +62,7 @@ export type MatchEvent = {
 
 export type LineupRow = {
   side: "home" | "away";
-  player_id: number;
+  player_id: number | null;
   player_name: string;
   number: number | null;
   position: string;

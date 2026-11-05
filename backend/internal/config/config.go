@@ -16,7 +16,7 @@ type Config struct {
 	AccessTTL      time.Duration
 	RefreshTTL     time.Duration
 	UploadDir      string
-	PublicBaseURL  string
+	PublicBaseURL  string // prefix for uploaded file URLs; empty = site-relative (/uploads/...)
 	CORSOrigins    []string
 	AdminEmail     string
 	AdminPassword  string
@@ -53,7 +53,7 @@ func Load() (*Config, error) {
 		AccessTTL:      time.Duration(envInt("ACCESS_TTL_MIN", 60)) * time.Minute,
 		RefreshTTL:     time.Duration(envInt("REFRESH_TTL_DAYS", 30)) * 24 * time.Hour,
 		UploadDir:      env("UPLOAD_DIR", "./data/uploads"),
-		PublicBaseURL:  strings.TrimRight(env("PUBLIC_BASE_URL", "http://localhost:8080"), "/"),
+		PublicBaseURL:  strings.TrimRight(env("UPLOAD_URL_BASE", ""), "/"),
 		AdminEmail:     env("ADMIN_EMAIL", ""),
 		AdminPassword:  env("ADMIN_PASSWORD", ""),
 		AdminName:      env("ADMIN_NAME", "Bosh admin"),

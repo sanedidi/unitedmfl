@@ -6,7 +6,7 @@ import { VideoCard } from "@/components/Cards";
 
 export const metadata: Metadata = { title: "Media", description: "United MFL videolari: sharhlar, gollar va intervyular." };
 
-const KIND: Record<string, string> = { highlight: "Sharhlar", goal: "Gollar", interview: "Intervyular", backstage: "Backstage", other: "Boshqa" };
+const KIND: Record<string, string> = { highlight: "Sharhlar", interview: "Intervyular", announcement: "Anonslar", full: "To‘liq o‘yinlar" };
 
 export default async function MediaPage() {
   const videos = await safe(api<Video[]>("/videos?limit=100"), []);

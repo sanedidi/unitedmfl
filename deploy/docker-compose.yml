@@ -1,0 +1,89 @@
+# United MFL — production stack: Postgres + Go API + Next.js site + Caddy (HTTPS, admin SPA)
+name: unitedmfl
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: unitedmfl
+      POSTGRES_USER: unitedmfl
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unitedmfl -d unitedmfl"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ../backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      ADDR: ":8080"
+      DATABASE_URL: postgres://unitedmfl:${POSTGRES_PASSWORD}@db:5432/unitedmfl?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (32+ chars)}
+      # uploads are returned as site-relative /uploads/... URLs (served on both site and admin)
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      UPLOAD_DIR: /data/uploads
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_NAME: ${ADMIN_NAME:-Bosh admin}
+      POINTS_WIN: ${POINTS_WIN:-3}
+      POINTS_DRAW: ${POINTS_DRAW:-1}
+      POINTS_LOSS: ${POINTS_LOSS:-0}
+      OCR_LANG: ${OCR_LANG:-eng}
+    volumes:
+      - uploads:/data/uploads
+
+  web:
+    build:
+      context: ../web
+      args:
+        API_INTERNAL_URL: http://api:8080
+        NEXT_PUBLIC_SITE_URL: ${PUBLIC_BASE_URL:-https://unitedmfl.com}
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      API_INTERNAL_URL: http://api:8080
+      NEXT_PUBLIC_SITE_URL: ${PUBLIC_BASE_URL:-https://unitedmfl.com}
+      TICKETS_URL: ${TICKETS_URL:-}
+      SHOP_URL: ${SHOP_URL:-}
+      SOCIAL_INSTAGRAM: ${SOCIAL_INSTAGRAM:-}
+      SOCIAL_TELEGRAM: ${SOCIAL_TELEGRAM:-}
+      SOCIAL_YOUTUBE: ${SOCIAL_YOUTUBE:-}
+
+  proxy:
+    build:
+      context: ..
+      dockerfile: deploy/proxy.Dockerfile
+      args:
+        VITE_SITE_URL: ${PUBLIC_BASE_URL:-https://unitedmfl.com}
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      ADMIN_ADDRESS: ${ADMIN_ADDRESS:-:8081}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+      - "8081:8081"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  db:
+  uploads:
+  caddy_data:
+  caddy_config:

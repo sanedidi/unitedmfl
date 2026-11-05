@@ -19,3 +19,4 @@ dist/
 # never commit real protocols
 *.pdf
 *.tsbuildinfo
+/deploy/FIRST_ADMIN.txt
