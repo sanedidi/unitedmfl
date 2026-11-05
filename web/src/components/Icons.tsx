@@ -1,0 +1,21 @@
+type P = { size?: number; className?: string };
+const s = (size = 16) => ({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true });
+
+export const ArrowRight = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M5 12h14M13 6l6 6-6 6" /></svg>);
+export const ChevronLeft = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M15 6l-6 6 6 6" /></svg>);
+export const ChevronRight = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M9 6l6 6-6 6" /></svg>);
+export const Calendar = ({ size, className }: P) => (<svg {...s(size)} className={className}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>);
+export const Clock = ({ size, className }: P) => (<svg {...s(size)} className={className}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>);
+export const Pin = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></svg>);
+export const Ticket = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M3 8a2 2 0 002-2h14a2 2 0 002 2v2a2 2 0 000 4v2a2 2 0 00-2 2H5a2 2 0 00-2-2v-2a2 2 0 000-4V8z" /><path d="M10 9v6M14 9v6" /></svg>);
+export const Search = ({ size, className }: P) => (<svg {...s(size)} className={className}><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>);
+export const Menu = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M4 7h16M4 12h16M4 17h16" /></svg>);
+export const Close = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M6 6l12 12M18 6L6 18" /></svg>);
+export const Play = ({ size, className }: P) => (<svg width={size || 16} height={size || 16} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}><path d="M8 5.5v13a1 1 0 001.5.86l10.5-6.5a1 1 0 000-1.72L9.5 4.64A1 1 0 008 5.5z" /></svg>);
+export const Users = ({ size, className }: P) => (<svg {...s(size)} className={className}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0113 0M16 4.5a3.5 3.5 0 010 7M21.5 20a6.5 6.5 0 00-4-6" /></svg>);
+export const Doc = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>);
+export const Ball = ({ size, className }: P) => (<svg {...s(size)} className={className}><circle cx="12" cy="12" r="9" /><path d="M12 7l4 3-1.5 4.5h-5L8 10z M12 7V3M16 10l4-1M14.5 14.5l2.5 3.5M9.5 14.5L7 18M8 10L4 9" /></svg>);
+export const Swap = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M7 4v14M3 14l4 4 4-4M17 20V6M13 10l4-4 4 4" /></svg>);
+export const Instagram = ({ size, className }: P) => (<svg {...s(size)} className={className}><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" /></svg>);
+export const Telegram = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M21 4L3 11l6 2 2 6 3-4 5 4z" /><path d="M9 13l12-9" /></svg>);
+export const Youtube = ({ size, className }: P) => (<svg {...s(size)} className={className}><rect x="2.5" y="5.5" width="19" height="13" rx="4" /><path d="M10 9.5v5l4.5-2.5z" fill="currentColor" /></svg>);

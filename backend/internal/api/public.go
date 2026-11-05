@@ -1,10 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -24,7 +26,7 @@ const teamJSON = `CASE WHEN %[1]s.id IS NULL THEN NULL ELSE json_build_object('i
 var matchSelect = `SELECT m.id, m.season_id, m.round, m.kickoff_at, m.venue, m.ticket_url, m.status, m.period,
 	m.clock_started_at, m.clock_offset_sec, m.home_score, m.away_score, m.home_ht, m.away_ht, m.home_et, m.away_et,
 	m.home_pen, m.away_pen, m.attendance, m.banner_url, m.video_url, m.show_in_hero,
-	json_build_object('id', st.id, 'name', st.name, 'kind', st.kind) AS stage,
+	CASE WHEN st.id IS NULL THEN NULL ELSE json_build_object('id', st.id, 'name', st.name, 'kind', st.kind) END AS stage,
 	` + fmt.Sprintf(teamJSON, "h") + ` AS home, ` + fmt.Sprintf(teamJSON, "a") + ` AS away
 	FROM matches m
 	LEFT JOIN stages st ON st.id = m.stage_id
@@ -110,10 +112,10 @@ func (s *Server) publicPlayer(w http.ResponseWriter, r *http.Request) {
 		'player', json_build_object('id', p.id, 'full_name', p.full_name, 'number', p.number, 'position', p.position, 'photo_url', p.photo_url, 'instagram', p.instagram),
 		'team', CASE WHEN t.id IS NULL THEN NULL ELSE json_build_object('id', t.id, 'name', t.name, 'slug', t.slug) END,
 		'stats', json_build_object(
-			'appearances', (SELECT count(DISTINCT match_id) FROM lineups WHERE player_id = p.id),
-			'goals', (SELECT count(*) FROM match_events WHERE player_id = p.id AND type IN ('goal','penalty_goal')),
-			'yellow', (SELECT count(*) FROM match_events WHERE player_id = p.id AND type IN ('yellow','second_yellow')),
-			'red', (SELECT count(*) FROM match_events WHERE player_id = p.id AND type = 'red')))
+			'appearances', (SELECT count(DISTINCT match_id) FROM lineups WHERE player_id = p.id AND match_id IN (SELECT id FROM matches WHERE published)),
+			'goals', (SELECT count(*) FROM match_events WHERE player_id = p.id AND match_id IN (SELECT id FROM matches WHERE published) AND type IN ('goal','penalty_goal')),
+			'yellow', (SELECT count(*) FROM match_events WHERE player_id = p.id AND match_id IN (SELECT id FROM matches WHERE published) AND type IN ('yellow','second_yellow')),
+			'red', (SELECT count(*) FROM match_events WHERE player_id = p.id AND match_id IN (SELECT id FROM matches WHERE published) AND type = 'red')))
 		FROM players p LEFT JOIN teams t ON t.id = p.team_id WHERE p.id = $1 AND p.is_active`, id)
 }
 
@@ -226,7 +228,7 @@ func (s *Server) computeStandings(ctx context.Context, seasonID int64) (map[stri
 	rows.Close()
 	res, err := s.DB.QueryContext(ctx, `SELECT m.home_team_id, m.away_team_id, m.home_score, m.away_score, extract(epoch FROM coalesce(m.kickoff_at, m.created_at))::bigint
 		FROM matches m JOIN stages st ON st.id = m.stage_id
-		WHERE m.season_id = $1 AND st.kind = 'group' AND m.status = 'finished'
+		WHERE m.season_id = $1 AND m.published AND st.kind = 'group' AND m.status = 'finished'
 		  AND m.home_team_id IS NOT NULL AND m.away_team_id IS NOT NULL AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL`, seasonID)
 	if err != nil {
 		return nil, err
@@ -290,7 +292,7 @@ func (s *Server) publicLeaders(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, r, err)
 		return
 	}
-	s.respondQuery(w, r, `WITH fm AS (SELECT * FROM matches WHERE season_id = $1 AND status = 'finished' AND home_score IS NOT NULL),
+	s.respondQuery(w, r, `WITH fm AS (SELECT * FROM matches WHERE season_id = $1 AND published AND status = 'finished' AND home_score IS NOT NULL),
 	tg AS (
 		SELECT team_id, sum(g) AS goals, count(*) AS played FROM (
 			SELECT home_team_id AS team_id, home_score AS g FROM fm UNION ALL SELECT away_team_id, away_score FROM fm) z
@@ -303,12 +305,12 @@ func (s *Server) publicLeaders(w http.ResponseWriter, r *http.Request) {
 		'scorers', (SELECT coalesce(json_agg(x ORDER BY x.goals DESC, x.name), '[]') FROM
 			(SELECT coalesce(p.full_name, e.player_name) AS name, e.player_id, t.name AS team, t.slug AS team_slug, count(*) AS goals
 			 FROM match_events e JOIN fm ON fm.id = e.match_id LEFT JOIN players p ON p.id = e.player_id LEFT JOIN teams t ON t.id = e.team_id
-			 WHERE e.type IN ('goal','penalty_goal') GROUP BY 1, 2, 3, 4 LIMIT 20) x),
+			 WHERE e.type IN ('goal','penalty_goal') GROUP BY 1, 2, 3, 4 ORDER BY 5 DESC, 1 LIMIT 20) x),
 		'cards', (SELECT coalesce(json_agg(x ORDER BY x.yellow DESC, x.red DESC), '[]') FROM
-			(SELECT coalesce(p.full_name, e.player_name) AS name, e.player_id, t.name AS team,
+			(SELECT coalesce(p.full_name, e.player_name) AS name, e.player_id, t.name AS team, t.slug AS team_slug,
 			        count(*) FILTER (WHERE e.type IN ('yellow','second_yellow')) AS yellow, count(*) FILTER (WHERE e.type = 'red') AS red
 			 FROM match_events e JOIN fm ON fm.id = e.match_id LEFT JOIN players p ON p.id = e.player_id LEFT JOIN teams t ON t.id = e.team_id
-			 WHERE e.type IN ('yellow','second_yellow','red') GROUP BY 1, 2, 3 LIMIT 20) x))`, seasonID)
+			 WHERE e.type IN ('yellow','second_yellow','red') GROUP BY 1, 2, 3, 4 ORDER BY 5 DESC, 6 DESC, 1 LIMIT 20) x))`, seasonID)
 }
 
 func (s *Server) publicNews(w http.ResponseWriter, r *http.Request) {
@@ -432,7 +434,7 @@ func (s *Server) liveStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 	ch, unsub := s.Hub.Subscribe(id)
 	defer unsub()
-	fmt.Fprintf(w, "event: match\ndata: %s\n\n", snap)
+	writeSSE(w, "match", snap)
 	fl.Flush()
 	ping := time.NewTicker(20 * time.Second)
 	defer ping.Stop()
@@ -444,7 +446,7 @@ func (s *Server) liveStream(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
-			fmt.Fprintf(w, "event: match\ndata: %s\n\n", msg)
+			writeSSE(w, "match", msg)
 			fl.Flush()
 		case <-ping.C:
 			fmt.Fprint(w, ": ping\n\n")
@@ -461,4 +463,21 @@ func (s *Server) broadcastMatch(ctx context.Context, id int64) {
 	if snap, err := s.matchDetailJSON(ctx, id, false); err == nil {
 		s.Hub.Publish(id, snap)
 	}
+}
+
+// writeSSE writes one Server-Sent Event. Postgres JSON output may contain
+// newlines, and a bare newline would end the data field, so every line gets
+// its own "data:" prefix (clients join them back with "\n").
+func writeSSE(w io.Writer, event string, data []byte) {
+	var b bytes.Buffer
+	b.WriteString("event: ")
+	b.WriteString(event)
+	b.WriteByte('\n')
+	for _, line := range bytes.Split(data, []byte("\n")) {
+		b.WriteString("data: ")
+		b.Write(bytes.TrimRight(line, "\r"))
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
+	_, _ = w.Write(b.Bytes())
 }
