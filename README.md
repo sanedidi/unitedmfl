@@ -17,13 +17,13 @@ curl -fsSL https://raw.githubusercontent.com/sanedidi/unitedmfl/main/deploy/depl
 
 Скрипт ставит Docker (если его нет), клонирует репозиторий в `/opt/unitedmfl`, создаёт `deploy/.env` со случайными секретами и первым администратором (логин и пароль сохраняются в `deploy/FIRST_ADMIN.txt`) и поднимает контейнеры. Повторный запуск того же скрипта обновляет код и пересобирает контейнеры.
 
-По умолчанию сайт открывается на `http://IP/`, админка — на `http://IP:8081/`. Когда домены будут направлены на сервер, укажите их в `deploy/.env` и перезапустите скрипт — Caddy сам получит HTTPS-сертификаты:
+Стек работает за nginx, который уже установлен на сервере: Caddy внутри Docker слушает только порты 8120 (сайт) и 8121 (админка). Пока домены не настроены, сайт открывается на `http://IP:8120`, а админка — на `http://IP:8121`.
 
-```env
-SITE_ADDRESS=unitedmfl.com, www.unitedmfl.com
-ADMIN_ADDRESS=admin.unitedmfl.com
-PUBLIC_BASE_URL=https://unitedmfl.com
-```
+Как подключить домены:
+1. Скопируйте `deploy/nginx.conf.example` в `/etc/nginx/sites-available/unitedmfl` и впишите свои домены.
+2. Выполните `nginx -t && systemctl reload nginx`, затем `certbot --nginx -d … -d …`.
+3. В `deploy/.env` замените привязку портов на `127.0.0.1:8120` / `127.0.0.1:8121`, а `PUBLIC_BASE_URL` — на `https://домен`.
+4. Перезапустите `deploy.sh`.
 
 Резервные копии (база и загруженные файлы): `deploy/backup.sh`. Пример строки для cron есть внутри скрипта.
 

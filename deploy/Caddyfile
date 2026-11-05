@@ -1,3 +1,11 @@
+{
+	# requests arrive from the host nginx: keep the real client IP from X-Forwarded-For
+	servers {
+		trusted_proxies static private_ranges
+	}
+	auto_https off
+}
+
 (security) {
 	header {
 		X-Content-Type-Options nosniff

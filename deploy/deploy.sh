@@ -55,4 +55,5 @@ for i in $(seq 1 60); do
   sleep 2
 done
 docker compose ps
-log "Done. Site: $(grep '^SITE_ADDRESS=' .env | cut -d= -f2-)  Admin: $(grep '^ADMIN_ADDRESS=' .env | cut -d= -f2-)"
+log "Done. Site: $(grep '^SITE_BIND=' .env | cut -d= -f2-)  Admin: $(grep '^ADMIN_BIND=' .env | cut -d= -f2-)"
+[ -f "$DIR/deploy/FIRST_ADMIN.txt" ] && cat "$DIR/deploy/FIRST_ADMIN.txt" || true

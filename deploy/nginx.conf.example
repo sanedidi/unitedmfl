@@ -1,0 +1,53 @@
+# Host nginx in front of the United MFL stack.
+# 1) copy to /etc/nginx/sites-available/unitedmfl, set the domains, then
+#    ln -s /etc/nginx/sites-available/unitedmfl /etc/nginx/sites-enabled/
+# 2) nginx -t && systemctl reload nginx
+# 3) certbot --nginx -d unitedmfl.uz -d www.unitedmfl.uz -d admin.unitedmfl.uz
+
+map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name unitedmfl.uz www.unitedmfl.uz;          # <- site domain(s)
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8120;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;   # overwrite: client cannot spoof it
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+    }
+    # live match updates (Server-Sent Events): no buffering, long timeout
+    location /api/v1/live/ {
+        proxy_pass http://127.0.0.1:8120;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 1h;
+    }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name admin.unitedmfl.uz;                     # <- admin domain
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8121;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_read_timeout 1h;
+    }
+}

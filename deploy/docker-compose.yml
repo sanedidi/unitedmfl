@@ -1,4 +1,5 @@
-# United MFL — production stack: Postgres + Go API + Next.js site + Caddy (HTTPS, admin SPA)
+# United MFL — production stack: Postgres + Go API + Next.js site + Caddy (routing, admin SPA).
+# Runs behind the host nginx, which terminates HTTPS (see nginx.conf.example).
 name: unitedmfl
 
 services:
@@ -71,13 +72,14 @@ services:
       - api
       - web
     environment:
-      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
-      ADMIN_ADDRESS: ${ADMIN_ADDRESS:-:8081}
+      # plain HTTP inside the container; TLS is terminated by the host nginx
+      SITE_ADDRESS: ":80"
+      ADMIN_ADDRESS: ":81"
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-      - "8081:8081"
+      # bind to localhost: the host nginx proxies the domains here.
+      # For a quick test by IP set SITE_BIND=0.0.0.0:8120 / ADMIN_BIND=0.0.0.0:8121.
+      - "${SITE_BIND:-127.0.0.1:8120}:80"
+      - "${ADMIN_BIND:-127.0.0.1:8121}:81"
     volumes:
       - caddy_data:/data
       - caddy_config:/config
