@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { api, safe } from "@/lib/api";
 import type { Leaders, Team } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { Crest } from "@/components/Crest";
+import { playerPath } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Statistika", description: "United MFL statistikasi: gollar, bombardirlar, kartochkalar." };
+export const metadata: Metadata = pageMeta({ title: "Statistika — gollar, bombardirlar va kartochkalar", description: "United MFL 2026 statistikasi: jami gollar, o‘yin boshiga gollar, eng ko‘p gol urgan jamoalar, bombardirlar va intizom.", path: "/statistika" });
 
 export default async function StatsPage() {
   const [l, teams] = await Promise.all([safe(api<Leaders | null>("/stats/leaders"), null), safe(api<Team[]>("/teams"), [])]);
@@ -29,7 +31,7 @@ export default async function StatsPage() {
               <div className="table-wrap"><table className="table">
                 <thead><tr><th>#</th><th className="l">O‘yinchi</th><th className="l">Jamoa</th><th>Gollar</th></tr></thead>
                 <tbody>{l!.scorers!.map((s, i) => (
-                  <tr key={`${s.player_id}-${i}`}><td>{i + 1}</td><td className="l">{s.player_id ? <Link href={`/oyinchilar/${s.player_id}`}><b>{s.name}</b></Link> : s.name}</td><td className="l muted">{s.team}</td><td className="strong">{s.goals}</td></tr>
+                  <tr key={`${s.player_id}-${i}`}><td>{i + 1}</td><td className="l">{s.player_id ? <Link href={playerPath({ id: s.player_id, name: s.name })}><b>{s.name}</b></Link> : s.name}</td><td className="l muted">{s.team}</td><td className="strong">{s.goals}</td></tr>
                 ))}</tbody>
               </table></div>
             )}
@@ -40,7 +42,7 @@ export default async function StatsPage() {
               <div className="table-wrap"><table className="table">
                 <thead><tr><th>#</th><th className="l">O‘yinchi</th><th className="l">Jamoa</th><th><span className="card-y" /></th><th><span className="card-r" /></th></tr></thead>
                 <tbody>{l!.cards!.map((c, i) => (
-                  <tr key={`${c.player_id}-${i}`}><td>{i + 1}</td><td className="l">{c.player_id ? <Link href={`/oyinchilar/${c.player_id}`}><b>{c.name}</b></Link> : c.name}</td><td className="l muted">{c.team}</td><td>{c.yellow}</td><td>{c.red}</td></tr>
+                  <tr key={`${c.player_id}-${i}`}><td>{i + 1}</td><td className="l">{c.player_id ? <Link href={playerPath({ id: c.player_id, name: c.name })}><b>{c.name}</b></Link> : c.name}</td><td className="l muted">{c.team}</td><td>{c.yellow}</td><td>{c.red}</td></tr>
                 ))}</tbody>
               </table></div>
             )}

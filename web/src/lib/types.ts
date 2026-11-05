@@ -96,6 +96,8 @@ export type NewsItem = {
   body?: string;
   seo_description?: string;
   match_id?: number | null;
+  updated_at?: string;
+  author?: string | null;
 };
 
 export type MatchDetail = {
@@ -169,6 +171,8 @@ export type PlayerDetail = {
   player: { id: number; full_name: string; number: number | null; position: string; photo_url: string; instagram: string };
   team: { id: number; name: string; slug: string } | null;
   stats: { appearances: number; goals: number; yellow: number; red: number };
+  matches?: Match[];
+  updated_at?: string;
 };
 
 export type TeamDetail = {

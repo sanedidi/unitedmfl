@@ -3,13 +3,23 @@
 #    ln -s /etc/nginx/sites-available/unitedmfl /etc/nginx/sites-enabled/
 # 2) nginx -t && systemctl reload nginx
 # 3) certbot --nginx -d unitedmfl.uz -d www.unitedmfl.uz -d admin.unitedmfl.uz
+#    (certbot adds the 443 blocks and the http→https redirect)
+# 4) set PUBLIC_BASE_URL=https://unitedmfl.uz in deploy/.env and re-run deploy.sh
 
 map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+
+# one canonical host: www → apex (301)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.unitedmfl.uz;
+    return 301 https://unitedmfl.uz$request_uri;
+}
 
 server {
     listen 80;
     listen [::]:80;
-    server_name unitedmfl.uz www.unitedmfl.uz;          # <- site domain(s)
+    server_name unitedmfl.uz;                            # <- site domain
     client_max_body_size 25m;
 
     location / {

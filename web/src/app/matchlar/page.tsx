@@ -5,8 +5,17 @@ import { dayKey, fmtDate, fmtWeekday, isLive } from "@/lib/format";
 import type { Match, Season } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { ResultRow } from "@/components/Match";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Matchlar", description: "United MFL matchlari: taqvim, natijalar va jonli o‘yinlar." };
+export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
+  const sp = await searchParams;
+  return pageMeta({
+    title: "Matchlar taqvimi va natijalar",
+    description: "United MFL 2026 barcha matchlari: o‘yinlar taqvimi, yakuniy natijalar, jonli hisob, bosqichlar va match markazlari.",
+    path: "/matchlar",
+    noindex: !!(sp.bosqich || sp.holat), // filtered views point to the main list
+  });
+}
 
 type SP = Promise<{ bosqich?: string; holat?: string }>;
 

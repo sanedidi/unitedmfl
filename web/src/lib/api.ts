@@ -8,12 +8,18 @@ export class ApiError extends Error {
   }
 }
 
-/** Server-side fetch against the Go API. Every request is rendered on demand (SSR). */
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+export const API_TAG = "api";
+
+/**
+ * Server-side fetch against the Go API.
+ * Pages are rendered per request (SSR) but API responses are kept in the Next.js
+ * data cache for `revalidate` seconds; any admin change purges the whole cache
+ * at once via /internal/revalidate, so content is never stale for long.
+ */
+export async function api<T>(path: string, opts: { revalidate?: number } = {}): Promise<T> {
   const res = await fetch(`${BASE}/api/v1${path}`, {
-    ...init,
-    cache: "no-store",
-    headers: { Accept: "application/json", ...(init?.headers || {}) },
+    headers: { Accept: "application/json" },
+    next: { revalidate: opts.revalidate ?? 60, tags: [API_TAG] },
   });
   if (!res.ok) {
     throw new ApiError(res.status, `API ${res.status} ${path}`);
@@ -22,9 +28,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /** Same as api(), but returns null on 404 so pages can call notFound(). */
-export async function apiOrNull<T>(path: string): Promise<T | null> {
+export async function apiOrNull<T>(path: string, opts: { revalidate?: number } = {}): Promise<T | null> {
   try {
-    return await api<T>(path);
+    return await api<T>(path, opts);
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
     throw e;

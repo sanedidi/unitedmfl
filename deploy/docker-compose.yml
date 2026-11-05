@@ -40,6 +40,9 @@ services:
       POINTS_DRAW: ${POINTS_DRAW:-1}
       POINTS_LOSS: ${POINTS_LOSS:-0}
       OCR_LANG: ${OCR_LANG:-eng}
+      # purge the site's data cache after every admin change
+      WEB_REVALIDATE_URL: http://web:3000/internal/revalidate
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:?set REVALIDATE_SECRET in .env}
     volumes:
       - uploads:/data/uploads
 
@@ -49,6 +52,7 @@ services:
       args:
         API_INTERNAL_URL: http://api:8080
         NEXT_PUBLIC_SITE_URL: ${PUBLIC_BASE_URL:-https://unitedmfl.com}
+        NEXT_PUBLIC_GA_ID: ${GA_MEASUREMENT_ID:-}
     restart: unless-stopped
     depends_on:
       - api
@@ -60,6 +64,10 @@ services:
       SOCIAL_INSTAGRAM: ${SOCIAL_INSTAGRAM:-}
       SOCIAL_TELEGRAM: ${SOCIAL_TELEGRAM:-}
       SOCIAL_YOUTUBE: ${SOCIAL_YOUTUBE:-}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+      GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
+      YANDEX_VERIFICATION: ${YANDEX_VERIFICATION:-}
+      BING_SITE_VERIFICATION: ${BING_SITE_VERIFICATION:-}
 
   proxy:
     build:

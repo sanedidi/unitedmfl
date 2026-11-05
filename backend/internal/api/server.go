@@ -23,8 +23,10 @@ type Server struct {
 	Tokens *auth.Issuer
 	Hub    *live.Hub
 
+	web            *webNotifier
 	loginLimiter   *httpx.RateLimiter
 	contactLimiter *httpx.RateLimiter
+	viewLimiter    *httpx.RateLimiter
 }
 
 func New(db *sql.DB, cfg *config.Config) *Server {
@@ -32,8 +34,10 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 		DB: db, Cfg: cfg,
 		Tokens:         auth.NewIssuer(cfg.JWTSecret, cfg.AccessTTL),
 		Hub:            live.NewHub(),
+		web:            newWebNotifier(cfg.WebRevalidateURL, cfg.RevalidateSecret),
 		loginLimiter:   httpx.NewRateLimiter(10, 10*time.Minute),
 		contactLimiter: httpx.NewRateLimiter(5, 10*time.Minute),
+		viewLimiter:    httpx.NewRateLimiter(1, 30*time.Minute), // one view per IP per article per 30 min
 	}
 }
 
@@ -65,10 +69,12 @@ func (s *Server) Routes() http.Handler {
 		r.Get("/stats/leaders", s.publicLeaders)
 		r.Get("/news", s.publicNews)
 		r.Get("/news/{slug}", s.publicNewsItem)
+		r.Post("/news/{slug}/view", s.newsView)
 		r.Get("/banners", s.publicBanners)
 		r.Get("/videos", s.publicVideos)
 		r.Get("/products", s.publicProducts)
 		r.Get("/products/{slug}", s.publicProduct)
+		r.Get("/sitemap", s.publicSitemap)
 		r.With(s.contactLimiter.Middleware).Post("/contact", s.createContact)
 		r.Get("/live/{id}", s.liveStream)
 

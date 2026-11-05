@@ -4,6 +4,7 @@ import { ArrowRight, Calendar, Clock, Ticket } from "./Icons";
 import { LiveMinute } from "./LiveMinute";
 import { fmtDate, fmtTime, fmtWeekday, isLive, isToday, matchMinute } from "@/lib/format";
 import type { Match } from "@/lib/types";
+import { matchPath } from "@/lib/seo";
 
 export function StageBadge({ match }: { match: Match }) {
   if (isLive(match)) return <span className="badge badge-live">Jonli</span>;
@@ -65,7 +66,7 @@ export function MatchCard({ match: m, season = "United MFL 2026" }: { match: Mat
         {m.ticket_url && m.status === "scheduled" ? (
           <a className="ticket" href={m.ticket_url} target="_blank" rel="noopener noreferrer">Chipta <Ticket /></a>
         ) : (
-          <Link href={`/matchlar/${m.id}`}>Batafsil <ArrowRight /></Link>
+          <Link href={matchPath(m)}>Batafsil <ArrowRight /></Link>
         )}
       </div>
     </article>
@@ -75,7 +76,7 @@ export function MatchCard({ match: m, season = "United MFL 2026" }: { match: Mat
 export function ResultRow({ match: m }: { match: Match }) {
   const played = m.home_score != null && m.away_score != null && m.status !== "scheduled";
   return (
-    <Link href={`/matchlar/${m.id}`} className="result-row">
+    <Link href={matchPath(m)} className="result-row">
       <div className="result-meta">
         <b>{fmtDate(m.kickoff_at, false)}</b>
         {m.stage?.kind === "group" ? m.round || m.stage.name : m.stage?.name}

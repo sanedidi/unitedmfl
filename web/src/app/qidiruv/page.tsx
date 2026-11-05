@@ -5,6 +5,7 @@ import type { NewsItem, Player, Team } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { Crest } from "@/components/Crest";
 import { Search } from "@/components/Icons";
+import { playerPath } from "@/lib/seo";
 
 export const metadata: Metadata = { title: "Qidiruv", robots: { index: false } };
 
@@ -44,7 +45,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
         {players.length > 0 && (
           <section style={{ marginTop: 32 }}>
             <h2 className="h4" style={{ marginBottom: 12 }}>O‘yinchilar</h2>
-            <div className="grid grid-4" style={{ gap: 12 }}>{players.map((p) => <Link key={p.id} href={`/oyinchilar/${p.id}`} className="card card-hover player-tile"><span className="avatar">{p.full_name[0]}</span><span><b style={{ display: "block", fontSize: 14 }}>{p.full_name}</b><small className="muted">{p.team?.name}</small></span></Link>)}</div>
+            <div className="grid grid-4" style={{ gap: 12 }}>{players.map((p) => <Link key={p.id} href={playerPath(p)} className="card card-hover player-tile"><span className="avatar">{p.full_name[0]}</span><span><b style={{ display: "block", fontSize: 14 }}>{p.full_name}</b><small className="muted">{p.team?.name}</small></span></Link>)}</div>
           </section>
         )}
         {n.length > 0 && (

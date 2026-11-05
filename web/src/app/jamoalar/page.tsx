@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { api, safe } from "@/lib/api";
 import type { Team } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { Crest } from "@/components/Crest";
 
-export const metadata: Metadata = { title: "Jamoalar", description: "United MFL ishtirokchi jamoalari." };
+export const metadata: Metadata = pageMeta({ title: "Jamoalar — United MFL ishtirokchilari", description: "United MFL 2026 ishtirokchi jamoalari guruhlar bo‘yicha: tarkiblar, matchlar va natijalar.", path: "/jamoalar" });
 
 export default async function TeamsPage() {
   const teams = await safe(api<Team[]>("/teams"), []);

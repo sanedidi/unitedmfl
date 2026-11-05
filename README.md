@@ -57,3 +57,17 @@ cd admin && npm ci && API_URL=http://localhost:8080 npm run dev            # :51
 - Очки 3/1/0 и порядок тай-брейков: сейчас очки → разница мячей → забитые. Значения очков задаются в `.env`.
 - Составы групп. На сайте лиги группы не опубликованы, поэтому они помечены как предварительные.
 - Отметки «T» в колонке «A» протокола: сейчас они трактуются как удар в серии пенальти.
+
+## SEO
+
+- **Адреса страниц.** У матчей и игроков человекочитаемые адреса: `/matchlar/13-andijon-mobiuz-2026-09-15`, `/oyinchilar/5-imeda-ashortia`. Адрес матча не меняется до игры, во время и после неё. Старые и неточные адреса (`/matchlar/13`) отвечают постоянным редиректом 308 на правильный.
+- **Метаданные.** У каждой страницы уникальные `title` и `description`, canonical, Open Graph и Twitter Card (`src/lib/seo.ts`). Для главной, матчей и команд картинки соцсетей генерируются автоматически (`opengraph-image.tsx`). Страницы с фильтрами и поиск закрыты от индексации (`noindex, follow`) и указывают canonical на основной список.
+- **Структурированные данные (JSON-LD).** SportsOrganization, WebSite, SportsEvent, SportsTeam, Person, NewsArticle, Product, VideoObject и BreadcrumbList. Заполняются только реальными данными.
+- **Sitemap.** `/sitemap.xml` — индекс, ссылающийся на `/sitemaps/{pages,matches,teams,players,news,merch}.xml`. Большие разделы делятся на файлы по 10 000 адресов. Дата `lastmod` берётся из `updated_at` в базе (`GET /api/v1/sitemap`).
+- **Кэш.** Страницы рендерятся на сервере при каждом запросе, а ответы API кэшируются в Next.js (15–300 с). Любое изменение в админке сразу сбрасывает этот кэш: Go вызывает `POST /internal/revalidate` с секретом `REVALIDATE_SECRET`.
+- **Подтверждение прав и аналитика.** Задаются в `deploy/.env`: `GOOGLE_SITE_VERIFICATION`, `YANDEX_VERIFICATION`, `BING_SITE_VERIFICATION`, `GA_MEASUREMENT_ID`. Если `GA_MEASUREMENT_ID` указан, Core Web Vitals реальных посетителей отправляются в GA4.
+- **Проверка.** `cd web && BASE=http://localhost:3000 npm run test:seo` обходит весь sitemap и проверяет:
+  - коды ответов и редиректы, настоящие 404;
+  - title, description, canonical, Open Graph, `noindex`;
+  - JSON-LD, ровно один H1 на странице;
+  - внутренние ссылки, robots.txt.

@@ -115,7 +115,11 @@ func (s *Server) publicPlayer(w http.ResponseWriter, r *http.Request) {
 			'appearances', (SELECT count(DISTINCT match_id) FROM lineups WHERE player_id = p.id AND match_id IN (SELECT id FROM matches WHERE published)),
 			'goals', (SELECT count(*) FROM match_events WHERE player_id = p.id AND match_id IN (SELECT id FROM matches WHERE published) AND type IN ('goal','penalty_goal')),
 			'yellow', (SELECT count(*) FROM match_events WHERE player_id = p.id AND match_id IN (SELECT id FROM matches WHERE published) AND type IN ('yellow','second_yellow')),
-			'red', (SELECT count(*) FROM match_events WHERE player_id = p.id AND match_id IN (SELECT id FROM matches WHERE published) AND type = 'red')))
+			'red', (SELECT count(*) FROM match_events WHERE player_id = p.id AND match_id IN (SELECT id FROM matches WHERE published) AND type = 'red')),
+		'matches', (SELECT coalesce(json_agg(x ORDER BY x.kickoff_at DESC), '[]') FROM (`+matchSelect+`
+			WHERE m.published AND m.id IN (SELECT match_id FROM lineups WHERE player_id = p.id
+				UNION SELECT match_id FROM match_events WHERE player_id = p.id OR related_player_id = p.id)) x),
+		'updated_at', p.updated_at)
 		FROM players p LEFT JOIN teams t ON t.id = p.team_id WHERE p.id = $1 AND p.is_active`, id)
 }
 
@@ -326,10 +330,10 @@ func (s *Server) publicNews(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) publicNewsItem(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
-	raw, err := s.queryJSON(r.Context(), `UPDATE news SET views = views + 1
-		WHERE slug = $1 AND status IN ('published','scheduled') AND published_at <= now()
-		RETURNING json_build_object('slug', slug, 'title', title, 'category', category, 'excerpt', excerpt, 'body', body,
-			'cover_url', cover_url, 'published_at', published_at, 'tags', tags, 'seo_description', seo_description, 'match_id', match_id)`, slug)
+	raw, err := s.queryJSON(r.Context(), `SELECT json_build_object('slug', slug, 'title', title, 'category', category, 'excerpt', excerpt, 'body', body,
+			'cover_url', cover_url, 'published_at', published_at, 'tags', tags, 'seo_description', seo_description, 'match_id', match_id,
+			'updated_at', updated_at, 'author', (SELECT name FROM users WHERE id = news.author_id))
+		FROM news WHERE slug = $1 AND status IN ('published','scheduled') AND published_at <= now()`, slug)
 	if errors.Is(err, sql.ErrNoRows) {
 		httpx.Fail(w, r, httpx.ErrNotFound)
 		return
@@ -458,6 +462,8 @@ func (s *Server) liveStream(w http.ResponseWriter, r *http.Request) {
 
 // broadcastMatch pushes the current snapshot to live subscribers.
 func (s *Server) broadcastMatch(ctx context.Context, id int64) {
+	// every match change goes through here: keep updated_at honest for sitemap lastmod
+	_, _ = s.DB.ExecContext(ctx, `UPDATE matches SET updated_at = now() WHERE id = $1`, id)
 	if s.Hub.Count(id) == 0 {
 		return
 	}
@@ -481,4 +487,39 @@ func writeSSE(w io.Writer, event string, data []byte) {
 	}
 	b.WriteByte('\n')
 	_, _ = w.Write(b.Bytes())
+}
+
+// publicSitemap lists every public, indexable URL source with its real
+// modification time, so the site's sitemap.xml never invents lastmod dates.
+func (s *Server) publicSitemap(w http.ResponseWriter, r *http.Request) {
+	s.respondQuery(w, r, `SELECT json_build_object(
+		'matches', (SELECT coalesce(json_agg(x ORDER BY x.id), '[]') FROM (
+			SELECT m.id, m.kickoff_at, m.updated_at, h.name AS home, a.name AS away, st.name AS stage
+			FROM matches m LEFT JOIN teams h ON h.id = m.home_team_id LEFT JOIN teams a ON a.id = m.away_team_id
+			LEFT JOIN stages st ON st.id = m.stage_id
+			WHERE m.published) x),
+		'teams', (SELECT coalesce(json_agg(x ORDER BY x.slug), '[]') FROM (
+			SELECT t.slug, greatest(t.updated_at,
+				(SELECT max(p.updated_at) FROM players p WHERE p.team_id = t.id),
+				(SELECT max(m.updated_at) FROM matches m WHERE m.published AND t.id IN (m.home_team_id, m.away_team_id))) AS updated_at
+			FROM teams t WHERE t.is_active) x),
+		'players', (SELECT coalesce(json_agg(x ORDER BY x.id), '[]') FROM (
+			SELECT id, full_name, updated_at FROM players WHERE is_active) x),
+		'news', (SELECT coalesce(json_agg(x ORDER BY x.published_at DESC), '[]') FROM (
+			SELECT slug, published_at, updated_at FROM news WHERE status IN ('published','scheduled') AND published_at <= now()) x),
+		'products', (SELECT coalesce(json_agg(x ORDER BY x.slug), '[]') FROM (
+			SELECT slug, updated_at FROM products WHERE visible AND status <> 'hidden') x),
+		'videos_updated_at', (SELECT max(coalesce(published_at, created_at)) FROM videos WHERE status = 'published'))`)
+}
+
+// newsView counts a page view. The site caches article data, so views are
+// reported by the browser (one beacon per page load) instead of by GET.
+func (s *Server) newsView(w http.ResponseWriter, r *http.Request) {
+	if !s.viewLimiter.Allow(httpx.ClientIP(r) + "|" + chi.URLParam(r, "slug")) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	_, _ = s.DB.ExecContext(r.Context(), `UPDATE news SET views = views + 1
+		WHERE slug = $1 AND status IN ('published','scheduled') AND published_at <= now()`, chi.URLParam(r, "slug"))
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -4,8 +4,18 @@ import { api, safe } from "@/lib/api";
 import type { NewsItem } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { NewsCard } from "@/components/Cards";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Yangiliklar", description: "United MFL yangiliklari, anonslar va match sharhlari." };
+export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
+  const sp = await searchParams;
+  const page = Math.max(1, parseInt(sp.sahifa || "1", 10) || 1);
+  return pageMeta({
+    title: page > 1 ? `Yangiliklar — ${page}-sahifa` : "Yangiliklar — anonslar, natijalar va sharhlar",
+    description: "United MFL yangiliklari: match anonslari va natijalari, liga e’lonlari, homiylar va chiptalar haqida.",
+    path: page > 1 && !sp.turkum ? `/yangiliklar?sahifa=${page}` : "/yangiliklar",
+    noindex: !!sp.turkum,
+  });
+}
 
 type SP = Promise<{ turkum?: string; sahifa?: string }>;
 const LIMIT = 12;

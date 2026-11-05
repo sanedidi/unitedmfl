@@ -1,9 +1,33 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getImageProps } from "next/image";
 import { Calendar, ChevronLeft, ChevronRight, Clock, Pin, Ticket } from "./Icons";
 import type { Banner } from "@/lib/types";
 
 const INTERVAL = 5000;
+
+/** Art-directed hero image: separate mobile crop, optimized sizes, the first slide is the LCP image. */
+function HeroPicture({ desktop, mobile, alt, first }: { desktop: string; mobile: string; alt: string; first: boolean }) {
+  const common = { alt, fill: true, sizes: "100vw", priority: first, quality: 80 } as const;
+  if (!desktop.startsWith("/uploads/")) {
+    return (
+      <picture>
+        {mobile && <source media="(max-width: 720px)" srcSet={mobile} />}
+        <img src={desktop} alt={alt} fetchPriority={first ? "high" : "auto"} loading={first ? "eager" : "lazy"} decoding="async" />
+      </picture>
+    );
+  }
+  const { props: d } = getImageProps({ ...common, src: desktop });
+  const m = mobile && mobile.startsWith("/uploads/") ? getImageProps({ ...common, src: mobile }).props : null;
+  return (
+    <picture>
+      {m && <source media="(max-width: 720px)" srcSet={m.srcSet} sizes={m.sizes} />}
+      <source media={m ? "(min-width: 721px)" : "all"} srcSet={d.srcSet} sizes={d.sizes} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img {...d} alt={alt} style={{ ...d.style, objectFit: "cover" }} />
+    </picture>
+  );
+}
 
 function badgeClass(t: string) {
   if (t === "stage") return "badge badge-stage";
@@ -15,6 +39,16 @@ function badgeClass(t: string) {
 export function HeroCarousel({ banners, dates }: { banners: Banner[]; dates: Record<number, string> }) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
+  // Autoplay starts after the visitor's first interaction (scroll, touch, mouse, key).
+  // Rotating slides before that would keep repainting the largest element and push
+  // back Largest Contentful Paint; after the first input LCP is final anyway.
+  const [engaged, setEngaged] = useState(false);
+  useEffect(() => {
+    const go = () => setEngaged(true);
+    const evs = ["scroll", "pointermove", "pointerdown", "keydown", "touchstart"] as const;
+    evs.forEach((e) => window.addEventListener(e, go, { once: true, passive: true }));
+    return () => evs.forEach((e) => window.removeEventListener(e, go));
+  }, []);
   const [tick, setTick] = useState(0);
   const touch = useRef<number | null>(null);
   const n = banners.length;
@@ -25,7 +59,7 @@ export function HeroCarousel({ banners, dates }: { banners: Banner[]; dates: Rec
   }, [n]);
 
   useEffect(() => {
-    if (n < 2 || paused) return;
+    if (n < 2 || paused || !engaged) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const step = 100;
     const t = setInterval(() => {
@@ -38,7 +72,7 @@ export function HeroCarousel({ banners, dates }: { banners: Banner[]; dates: Rec
       });
     }, step);
     return () => clearInterval(t);
-  }, [n, paused]);
+  }, [n, paused, engaged]);
 
   if (n === 0) return null;
   const b = banners[i];
@@ -68,10 +102,7 @@ export function HeroCarousel({ banners, dates }: { banners: Banner[]; dates: Rec
       {banners.map((s, k) => (
         <div key={s.id} className={`hero-slide${k === i ? " active" : ""}`} aria-hidden={k !== i} role="group" aria-roledescription="slide" aria-label={`${k + 1} / ${n}`}>
           {s.image_desktop || s.image_mobile ? (
-            <picture>
-              {s.image_mobile && <source media="(max-width: 720px)" srcSet={s.image_mobile} />}
-              <img src={s.image_desktop || s.image_mobile} alt={s.title} fetchPriority={k === 0 ? "high" : "auto"} loading={k === 0 ? "eager" : "lazy"} />
-            </picture>
+            <HeroPicture desktop={s.image_desktop || s.image_mobile} mobile={s.image_mobile} alt={s.title} first={k === 0} />
           ) : (
             <div className="hero-art">
               <div>
@@ -86,10 +117,10 @@ export function HeroCarousel({ banners, dates }: { banners: Banner[]; dates: Rec
 
       <div className="hero-bar">
         <div className="hero-info" aria-live="polite">
-          <h2>
+          <div className="hero-title">
             {b.badge && <span className={badgeClass(b.badge_type)}>{b.badge}</span>}
             <span>{b.title}</span>
-          </h2>
+          </div>
           <div className="hero-meta">
             {b.event_date && <span><Calendar size={14} /> {dates[b.id]}</span>}
             {b.event_time && <span><Clock size={14} /> {b.event_time}</span>}

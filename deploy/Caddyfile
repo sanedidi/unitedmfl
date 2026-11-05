@@ -31,6 +31,8 @@
 # Public site (Next.js SSR)
 {$SITE_ADDRESS} {
 	import security
+	# cache-purge hook is called by the API inside the Docker network only
+	respond /internal/* 404
 	import api
 	handle {
 		encode zstd gzip

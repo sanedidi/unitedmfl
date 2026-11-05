@@ -76,6 +76,8 @@ func (s *Server) audit(r *http.Request, action, entity string, id int64, data an
 	if _, err := s.DB.ExecContext(r.Context(), `INSERT INTO audit_log(user_id, action, entity, entity_id, data) VALUES ($1,$2,$3,$4,$5)`, uid, action, entity, id, b); err != nil {
 		slog.Warn("audit failed", "err", err)
 	}
+	// every audited action is a content change (login is not audited)
+	s.web.notify()
 }
 
 type tokenResponse struct {

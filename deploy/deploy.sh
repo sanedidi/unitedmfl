@@ -45,6 +45,13 @@ if [ ! -f .env ]; then
   chmod 600 .env
 fi
 
+# secrets added in later versions are generated for existing installs too
+gen() { openssl rand -hex "$1" 2>/dev/null || head -c "$1" /dev/urandom | od -An -tx1 | tr -d ' \n'; }
+if ! grep -q '^REVALIDATE_SECRET=.\+' .env; then
+  sed -i '/^REVALIDATE_SECRET=/d' .env
+  echo "REVALIDATE_SECRET=$(gen 24)" >> .env
+fi
+
 log "Building and starting containers"
 docker compose up -d --build --remove-orphans
 docker image prune -f >/dev/null 2>&1 || true

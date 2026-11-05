@@ -6,6 +6,7 @@ import { Ball, Calendar, Clock, Doc, Pin, Play, Swap, Ticket, Users } from "./Ic
 import { LiveMinute } from "./LiveMinute";
 import { fmtDate, fmtTime, isLive, matchMinute, POSITION_LABEL, STATUS_LABEL, youtubeId } from "@/lib/format";
 import type { LineupRow, MatchDetail, MatchEvent } from "@/lib/types";
+import { playerPath } from "@/lib/seo";
 
 const EVENT_LABEL: Record<string, string> = {
   goal: "Gol",
@@ -105,6 +106,10 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
   return (
     <>
       <section className={`mc-top${live ? " live" : ""}`}>
+        <h1 className="sr-only">
+          {m.home?.name || "Aniqlanmagan"} — {m.away?.name || "Aniqlanmagan"}
+          {hasScore ? ` ${m.home_score}:${m.away_score}` : ""}, {m.stage?.name || "United MFL"}, {fmtDate(m.kickoff_at)}
+        </h1>
         <div className="row" style={{ justifyContent: "center", flexWrap: "wrap", gap: 8 }}>
           {live ? <span className="badge badge-live">Jonli</span> : m.stage && <span className="badge badge-muted">{m.stage.name}</span>}
           <span className="overline" style={{ color: "var(--text-2)", fontSize: 11 }}>United MFL 2026{m.round && m.stage?.kind === "group" ? ` · ${m.round}` : ""}</span>
@@ -169,14 +174,14 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
 
       <div className="tabs" role="tablist">
         {tabs.filter((t) => t.show).map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>{t.label}</button>
+          <button key={t.id} role="tab" aria-controls={`panel-${t.id}`} aria-selected={tab === t.id} onClick={() => setTab(t.id)}>{t.label}</button>
         ))}
       </div>
 
-      {tab === "overview" && (
+      <div role="tabpanel" id="panel-overview" aria-label="overview" hidden={tab !== "overview"}>
         <div className="grid" style={{ gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", alignItems: "start" }} data-mc-grid>
           <section className="card card-pad">
-            <h3 className="h4" style={{ marginBottom: 8 }}>Voqealar</h3>
+            <h2 className="h4" style={{ marginBottom: 8 }}>Voqealar</h2>
             {events.length === 0 ? (
               <p className="muted" style={{ margin: "12px 0" }}>{m.status === "scheduled" ? "Match hali boshlanmagan." : "Voqealar hali kiritilmagan."}</p>
             ) : (
@@ -198,7 +203,7 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
           </section>
           <aside className="stack">
             <section className="card card-pad">
-              <h3 className="h4" style={{ marginBottom: 16 }}>Match ma’lumotlari</h3>
+              <h2 className="h4" style={{ marginBottom: 16 }}>Match ma’lumotlari</h2>
               <dl className="kv">
                 <dt>Bosqich</dt><dd>{m.stage?.name || "—"}</dd>
                 <dt>Sana</dt><dd>{fmtDate(m.kickoff_at)}, {fmtTime(m.kickoff_at)}</dd>
@@ -211,7 +216,7 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
             </section>
             {d.news.length > 0 && (
               <section className="card card-pad">
-                <h3 className="h4" style={{ marginBottom: 12 }}>Match haqida</h3>
+                <h2 className="h4" style={{ marginBottom: 12 }}>Match haqida</h2>
                 <div className="stack" style={{ gap: 12 }}>
                   {d.news.map((n) => (
                     <Link key={n.slug} href={`/yangiliklar/${n.slug}`} style={{ fontWeight: 600 }}>{n.title}</Link>
@@ -221,16 +226,16 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
             )}
           </aside>
         </div>
-      )}
+      </div>
 
-      {tab === "lineups" && (
+      <div role="tabpanel" id="panel-lineups" aria-label="lineups" hidden={tab !== "lineups"}>
         <div className="grid grid-2">
           <Lineup title={m.home?.name || "Uy egalari"} rows={d.lineups.filter((r) => r.side === "home")} />
           <Lineup title={m.away?.name || "Mehmonlar"} rows={d.lineups.filter((r) => r.side === "away")} />
         </div>
-      )}
+      </div>
 
-      {tab === "officials" && (
+      <div role="tabpanel" id="panel-officials" aria-label="officials" hidden={tab !== "officials"}>
         <div className="grid grid-3">
           {[
             { t: "Match hakamlari", rows: d.officials.filter((o) => !o.side) },
@@ -238,16 +243,16 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
             { t: m.away?.name || "Mehmonlar", rows: d.officials.filter((o) => o.side === "away") },
           ].filter((x) => x.rows.length).map((x) => (
             <section key={x.t} className="card card-pad">
-              <h3 className="h4" style={{ marginBottom: 12 }}>{x.t}</h3>
+              <h2 className="h4" style={{ marginBottom: 12 }}>{x.t}</h2>
               <dl className="kv">
                 {x.rows.map((o) => (<Fragment key={o.id}><dt>{cap(o.role)}</dt><dd>{o.name}</dd></Fragment>))}
               </dl>
             </section>
           ))}
         </div>
-      )}
+      </div>
 
-      {tab === "video" && (
+      <div role="tabpanel" id="panel-video" aria-label="video" hidden={tab !== "video"}>
         <div className="grid grid-2">
           {[...(m.video_url ? [{ id: 0, title: "Videosharh", url: m.video_url, youtube_id: "" }] : []), ...d.videos].map((v) => {
             const yt = youtubeId(v.url, v.youtube_id);
@@ -263,7 +268,7 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
             );
           })}
         </div>
-      )}
+      </div>
     </>
   );
 }
@@ -293,14 +298,14 @@ function Lineup({ title, rows }: { title: string; rows: LineupRow[] }) {
   const item = (r: LineupRow) => (
     <li key={`${r.side}-${r.player_id}`}>
       <span className="num">{r.number ?? "–"}</span>
-      {r.player_id ? <Link href={`/oyinchilar/${r.player_id}`}>{r.player_name}</Link> : <span>{r.player_name}</span>}
+      {r.player_id ? <Link href={playerPath({ id: r.player_id, full_name: r.player_name })}>{r.player_name}</Link> : <span>{r.player_name}</span>}
       {r.is_captain && <span className="cap" title="Sardor">C</span>}
       <span className="pos-tag">{POSITION_LABEL[r.position] || r.position}</span>
     </li>
   );
   return (
     <section className="card card-pad">
-      <h3 className="h4">{title}</h3>
+      <h2 className="h4">{title}</h2>
       <div className="overline" style={{ margin: "18px 0 4px", color: "var(--text-muted)" }}>Asosiy tarkib</div>
       <ul className="lineup-list">{starters.map(item)}</ul>
       {subs.length > 0 && (

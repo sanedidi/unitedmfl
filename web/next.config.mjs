@@ -5,7 +5,17 @@ const nextConfig = {
   // Compression is done by the reverse proxy (Caddy); gzip here would buffer the live SSE stream.
   compress: false,
   reactStrictMode: true,
-  images: { unoptimized: true },
+  // fonts read at runtime by the Open Graph image routes
+  outputFileTracingIncludes: { "/**": ["./src/assets/og/**"] },
+  images: {
+    formats: ["image/avif", "image/webp"],
+    deviceSizes: [390, 640, 828, 1080, 1440, 1920],
+    imageSizes: [64, 128, 256, 384],
+    minimumCacheTTL: 2592000,
+    // uploads are served by the API under /uploads (same origin)
+    localPatterns: [{ pathname: "/uploads/**" }],
+    remotePatterns: [{ protocol: "https", hostname: "i.ytimg.com" }],
+  },
   // Resolve metadata before streaming so notFound() answers with a real 404 status.
   htmlLimitedBots: /.*/,
   async rewrites() {

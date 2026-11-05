@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { api, safe } from "@/lib/api";
 import { fmtDate, fmtTime } from "@/lib/format";
@@ -6,8 +7,9 @@ import type { Match, Standings, Team } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { StandingsTable } from "@/components/Standings";
 import { Crest } from "@/components/Crest";
+import { matchPath } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Turnir jadvali", description: "United MFL guruhlar jadvali va pley-off setkasi." };
+export const metadata: Metadata = pageMeta({ title: "Turnir jadvali — guruhlar va pley-off", description: "United MFL 2026 turnir jadvali: guruhlardagi o‘rinlar, ochkolar, g‘alaba, durang va mag‘lubiyatlar, gollar farqi hamda pley-off setkasi.", path: "/jadval" });
 
 function BracketMatch({ m }: { m: Match }) {
   const played = m.home_score != null && m.away_score != null && m.status === "finished";
@@ -15,7 +17,7 @@ function BracketMatch({ m }: { m: Match }) {
   const homeWin = played && (hs > as || (hs === as && hp > ap));
   const awayWin = played && (as > hs || (hs === as && ap > hp));
   return (
-    <Link href={`/matchlar/${m.id}`} className="card card-hover bracket-match">
+    <Link href={matchPath(m)} className="card card-hover bracket-match">
       <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>{fmtDate(m.kickoff_at)} · {fmtTime(m.kickoff_at)}</div>
       <div className={`bracket-team${homeWin ? " win" : ""}`}><Crest team={m.home} size={24} /> {m.home?.name || "Aniqlanmagan"}<span className="s">{played ? m.home_score : ""}</span></div>
       <div className={`bracket-team${awayWin ? " win" : ""}`}><Crest team={m.away} size={24} /> {m.away?.name || "Aniqlanmagan"}<span className="s">{played ? m.away_score : ""}</span></div>

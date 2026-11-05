@@ -5,8 +5,19 @@ import { POSITION_LABEL } from "@/lib/format";
 import type { Player, Team } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { Search } from "@/components/Icons";
+import { pageMeta, playerPath } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "O‘yinchilar", description: "United MFL o‘yinchilari ro‘yxati." };
+export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
+  const sp = await searchParams;
+  const page = Math.max(1, parseInt(sp.sahifa || "1", 10) || 1);
+  const filtered = !!(sp.q || sp.jamoa || sp.pozitsiya);
+  return pageMeta({
+    title: page > 1 ? `O‘yinchilar — ${page}-sahifa` : "O‘yinchilar — tarkiblar va statistika",
+    description: "United MFL o‘yinchilari: jamoa, amplua, raqam va mavsum statistikasi.",
+    path: page > 1 && !filtered ? `/oyinchilar?sahifa=${page}` : "/oyinchilar",
+    noindex: filtered,
+  });
+}
 
 type SP = Promise<{ q?: string; jamoa?: string; pozitsiya?: string; sahifa?: string }>;
 const LIMIT = 48;
@@ -54,7 +65,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: SP }
         ) : (
           <div className="grid grid-4" style={{ marginTop: 32, gap: 12 }}>
             {players.map((p) => (
-              <Link key={p.id} href={`/oyinchilar/${p.id}`} className="card card-hover player-tile">
+              <Link key={p.id} href={playerPath(p)} className="card card-hover player-tile">
                 <span className="player-num">{p.number ?? "–"}</span>
                 <span className="avatar">{p.photo_url ? <img src={p.photo_url} alt="" /> : p.full_name.slice(0, 1)}</span>
                 <span className="grow">

@@ -9,8 +9,16 @@ import { StandingsTable } from "@/components/Standings";
 import { NewsCard, ProductCard, VideoCard } from "@/components/Cards";
 import { Crest } from "@/components/Crest";
 import { ChevronRight } from "@/components/Icons";
+import { pageMeta, playerPath } from "@/lib/seo";
 
 const PARTNERS = ["realme", "Click", "Wildberries"]; // final sponsors announced on unitedmfl.com
+
+export const metadata = pageMeta({
+  title: "United MFL — media futbol ligasi: matchlar va natijalar",
+  absoluteTitle: true,
+  description: "United MFL — blogerlar, sportchilar va san’at yulduzlari jamoalari ligasi: matchlar taqvimi, jonli hisob, natijalar, turnir jadvali va yangiliklar.",
+  path: "/",
+});
 
 export default async function Home() {
   const [banners, matches, standings, leaders, news, products, videos, teams, seasons] = await Promise.all([
@@ -51,6 +59,20 @@ export default async function Home() {
         </div>
       </section>
 
+      <section className="section intro" aria-labelledby="intro-title">
+        <div className="container intro-inner">
+          <div>
+            <div className="overline">Media Football League</div>
+            <h1 id="intro-title" className="h2">United MFL — media futbol ligasi</h1>
+          </div>
+          <p className="lead">
+            United MFL{season ? ` ${season.name.replace("United MFL ", "")} mavsumida` : ""} {season?.teams_planned ?? leagueTeams.length} ta jamoa ishtirok etmoqda: blogerlar, sportchilar va san’at yulduzlari.
+            Bu yerda <Link href="/matchlar">matchlar taqvimi va natijalar</Link>, <Link href="/jadval">turnir jadvali</Link>,{" "}
+            <Link href="/jamoalar">jamoalar</Link>, <Link href="/oyinchilar">o‘yinchilar</Link> va <Link href="/yangiliklar">liga yangiliklari</Link>.
+          </p>
+        </div>
+      </section>
+
       {featured.length > 0 && (
         <section className="section">
           <div className="container">
@@ -86,7 +108,7 @@ export default async function Home() {
                   <p className="muted" style={{ fontSize: 14 }}>O‘yinchilar statistikasi hali e’lon qilinmagan.</p>
                 ) : (
                   scorers.map((s, i) => (
-                    <Link key={`${s.player_id}-${i}`} href={s.player_id ? `/oyinchilar/${s.player_id}` : "/statistika"} className={`leader${i === 0 ? " first" : ""}`}>
+                    <Link key={`${s.player_id}-${i}`} href={s.player_id ? playerPath({ id: s.player_id, name: s.name }) : "/statistika"} className={`leader${i === 0 ? " first" : ""}`}>
                       <span className="rank">{i + 1}</span>
                       <span className="avatar">{s.name.slice(0, 1)}</span>
                       <span className="grow"><b style={{ display: "block" }}>{s.name}</b><small className="muted">{s.team}</small></span>

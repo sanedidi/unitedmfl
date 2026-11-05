@@ -10,22 +10,24 @@ import (
 )
 
 type Config struct {
-	Addr           string
-	DatabaseURL    string
-	JWTSecret      []byte
-	AccessTTL      time.Duration
-	RefreshTTL     time.Duration
-	UploadDir      string
-	PublicBaseURL  string // prefix for uploaded file URLs; empty = site-relative (/uploads/...)
-	CORSOrigins    []string
-	AdminEmail     string
-	AdminPassword  string
-	AdminName      string
-	MaxUploadBytes int64
-	Env            string
-	PointsWin      int
-	PointsDraw     int
-	PointsLoss     int
+	Addr             string
+	DatabaseURL      string
+	JWTSecret        []byte
+	AccessTTL        time.Duration
+	RefreshTTL       time.Duration
+	UploadDir        string
+	WebRevalidateURL string // e.g. http://web:3000/internal/revalidate
+	RevalidateSecret string
+	PublicBaseURL    string // prefix for uploaded file URLs; empty = site-relative (/uploads/...)
+	CORSOrigins      []string
+	AdminEmail       string
+	AdminPassword    string
+	AdminName        string
+	MaxUploadBytes   int64
+	Env              string
+	PointsWin        int
+	PointsDraw       int
+	PointsLoss       int
 }
 
 func env(key, def string) string {
@@ -47,18 +49,20 @@ func envInt(key string, def int) int {
 // Load reads configuration and validates required values.
 func Load() (*Config, error) {
 	c := &Config{
-		Addr:           env("ADDR", ":8080"),
-		DatabaseURL:    env("DATABASE_URL", "postgres://unitedmfl:unitedmfl@localhost:5432/unitedmfl?sslmode=disable"),
-		JWTSecret:      []byte(env("JWT_SECRET", "")),
-		AccessTTL:      time.Duration(envInt("ACCESS_TTL_MIN", 60)) * time.Minute,
-		RefreshTTL:     time.Duration(envInt("REFRESH_TTL_DAYS", 30)) * 24 * time.Hour,
-		UploadDir:      env("UPLOAD_DIR", "./data/uploads"),
-		PublicBaseURL:  strings.TrimRight(env("UPLOAD_URL_BASE", ""), "/"),
-		AdminEmail:     env("ADMIN_EMAIL", ""),
-		AdminPassword:  env("ADMIN_PASSWORD", ""),
-		AdminName:      env("ADMIN_NAME", "Bosh admin"),
-		MaxUploadBytes: int64(envInt("MAX_UPLOAD_MB", 20)) << 20,
-		Env:            env("APP_ENV", "development"),
+		Addr:             env("ADDR", ":8080"),
+		DatabaseURL:      env("DATABASE_URL", "postgres://unitedmfl:unitedmfl@localhost:5432/unitedmfl?sslmode=disable"),
+		JWTSecret:        []byte(env("JWT_SECRET", "")),
+		AccessTTL:        time.Duration(envInt("ACCESS_TTL_MIN", 60)) * time.Minute,
+		RefreshTTL:       time.Duration(envInt("REFRESH_TTL_DAYS", 30)) * 24 * time.Hour,
+		UploadDir:        env("UPLOAD_DIR", "./data/uploads"),
+		PublicBaseURL:    strings.TrimRight(env("UPLOAD_URL_BASE", ""), "/"),
+		AdminEmail:       env("ADMIN_EMAIL", ""),
+		AdminPassword:    env("ADMIN_PASSWORD", ""),
+		AdminName:        env("ADMIN_NAME", "Bosh admin"),
+		MaxUploadBytes:   int64(envInt("MAX_UPLOAD_MB", 20)) << 20,
+		Env:              env("APP_ENV", "development"),
+		WebRevalidateURL: env("WEB_REVALIDATE_URL", ""),
+		RevalidateSecret: env("REVALIDATE_SECRET", ""),
 		// Points rules are a proposal until confirmed by the league regulations.
 		PointsWin:  envInt("POINTS_WIN", 3),
 		PointsDraw: envInt("POINTS_DRAW", 1),

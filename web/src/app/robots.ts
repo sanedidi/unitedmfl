@@ -1,6 +1,15 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://unitedmfl.com").replace(/\/$/, "");
-  return { rules: [{ userAgent: "*", allow: "/", disallow: ["/qidiruv", "/api/"] }], sitemap: `${base}/sitemap.xml` };
+  return {
+    rules: [{
+      userAgent: "*",
+      allow: ["/", "/_next/static/", "/_next/image", "/uploads/"],
+      // internal search results, API (JSON/SSE) and the cache-purge hook have no search value
+      disallow: ["/qidiruv", "/api/", "/internal/"],
+    }],
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
+  };
 }

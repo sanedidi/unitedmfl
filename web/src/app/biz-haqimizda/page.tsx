@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { api, safe } from "@/lib/api";
 import type { Season } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { ContactForm } from "@/components/ContactForm";
 
-export const metadata: Metadata = { title: "Liga haqida", description: "United MFL — media futbol ligasi. Hamkorlik va aloqa." };
+export const metadata: Metadata = pageMeta({ title: "Liga haqida — format, hamkorlik va aloqa", description: "United MFL media futbol ligasi haqida: mavsum formati, bosqichlar, hamkorlik, homiylik va jamoa ro‘yxatdan o‘tishi bo‘yicha aloqa.", path: "/biz-haqimizda" });
 
 const STATUS: Record<string, string> = { finished: "Yakunlangan", live: "Davom etmoqda", scheduled: "Rejalashtirilgan" };
 

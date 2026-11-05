@@ -4,8 +4,12 @@ import { api, safe } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { ProductCard } from "@/components/Cards";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Merch", description: "United MFL rasmiy mahsulotlari." };
+export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
+  const sp = await searchParams;
+  return pageMeta({ title: "Rasmiy merch — kiyim va aksessuarlar", description: "United MFL rasmiy mahsulotlari: futbolkalar, sharflar, kepkalar, aksessuarlar va suvenirlar narxlari bilan.", path: "/merch", noindex: !!sp.turkum });
+}
 
 type SP = Promise<{ turkum?: string }>;
 
