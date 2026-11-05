@@ -1,0 +1,20 @@
+# Go
+/backend/data/
+*.test
+*.out
+# Node
+node_modules/
+.next/
+dist/
+*.tsbuildinfo
+# env / data
+.env
+.env.*
+!.env.example
+/deploy/data/
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+# never commit real protocols
+*.pdf
