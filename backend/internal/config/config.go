@@ -29,6 +29,7 @@ type Config struct {
 	PointsWin        int
 	PointsDraw       int
 	PointsLoss       int
+	LineupBenchMax   int // substitutes allowed in a matchday squad (0 = no limit)
 }
 
 func env(key, def string) string {
@@ -69,6 +70,8 @@ func Load() (*Config, error) {
 		PointsWin:  envInt("POINTS_WIN", 3),
 		PointsDraw: envInt("POINTS_DRAW", 1),
 		PointsLoss: envInt("POINTS_LOSS", 0),
+		// Bench size is a proposal until confirmed by the league regulations.
+		LineupBenchMax: envInt("LINEUP_BENCH_MAX", 9),
 	}
 	for _, o := range strings.Split(env("CORS_ORIGINS", "*"), ",") {
 		if o = strings.TrimSpace(o); o != "" {

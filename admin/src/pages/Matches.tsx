@@ -3,13 +3,14 @@ import { Link, useNavigate, useParams } from "react-router";
 import { api, type Page } from "@/lib/api";
 import { useDebounced, useLoad } from "@/lib/hooks";
 import { activeSeason, useRefs } from "@/lib/refs";
-import { EVENT_LABEL, MATCH_STATUS, POSITIONS, fmtShort } from "@/lib/format";
-import type { LineupRow, Match, MatchDetail, Player } from "@/lib/types";
+import { EVENT_LABEL, MATCH_STATUS, fmtShort } from "@/lib/format";
+import type { Match, MatchDetail } from "@/lib/types";
 import { FormFields, useForm, type FieldSpec } from "@/components/Crud";
 import { PageHead, SITE_URL } from "@/components/Layout";
 import { Badge, Crest, Empty, ErrorBox, Loading, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
 import { useAuth } from "@/lib/auth";
+import { LineupEditor } from "./Lineups";
 
 export function StageTag({ m }: { m: Pick<Match, "stage" | "round"> }) {
   if (!m.stage) return <span className="tag">—</span>;
@@ -117,7 +118,7 @@ export function MatchEditPage() {
         </div>
       )}
       {(isNew || tab === "main" || tab === "result") && <MatchForm key={isNew ? "new" : tab} detail={d} mode={isNew ? "main" : (tab as "main" | "result")} onSaved={reload} />}
-      {!isNew && tab === "lineups" && d && <LineupsEditor detail={d} onSaved={reload} />}
+      {!isNew && tab === "lineups" && d && <LineupEditor detail={d} onSaved={reload} />}
       {!isNew && tab === "events" && d && <EventsEditor detail={d} onChanged={reload} />}
     </>
   );
@@ -221,73 +222,6 @@ function MatchForm({ detail, mode, onSaved }: { detail?: MatchDetail; mode: "mai
   );
 }
 
-/* ---------- Lineups ---------- */
-function LineupsEditor({ detail, onSaved }: { detail: MatchDetail; onSaved: () => void }) {
-  const toast = useToast();
-  const [rows, setRows] = useState<LineupRow[]>(detail.lineups);
-  const [busy, setBusy] = useState(false);
-  const m = detail.match;
-  const squads = useLoad(async () => {
-    const get = (tid?: number) => (tid ? api.get<Page<Player>>(`/admin/players?team_id=${tid}&limit=200`).then((p) => p.items) : Promise.resolve([] as Player[]));
-    const [home, away] = await Promise.all([get(m.home?.id), get(m.away?.id)]);
-    return { home, away };
-  }, [m.home?.id, m.away?.id]);
-
-  function addFromSquad(side: "home" | "away") {
-    const list = squads.data?.[side] || [];
-    const have = new Set(rows.filter((r) => r.side === side).map((r) => r.player_id));
-    const add = list.filter((p) => !have.has(p.id)).map<LineupRow>((p) => ({ side, player_id: p.id, player_name: p.full_name, number: p.number, position: p.position, is_starter: false, is_captain: false }));
-    setRows((r) => [...r, ...add]);
-  }
-  const upd = (i: number, patch: Partial<LineupRow>) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-  async function save() {
-    setBusy(true);
-    try {
-      await api.put(`/admin/matches/${m.id}/lineups`, rows);
-      toast("Tarkiblar saqlandi");
-      onSaved();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
-    } finally {
-      setBusy(false);
-    }
-  }
-  const side = (s: "home" | "away") => (
-    <div className="card">
-      <div className="card-head">
-        <h3 className="row"><Crest team={s === "home" ? m.home : m.away} /> {(s === "home" ? m.home?.name : m.away?.name) || "—"}</h3>
-        <div className="row">
-          <span className="muted small">Asosiy: {rows.filter((r) => r.side === s && r.is_starter).length}</span>
-          <button className="btn btn-sm" onClick={() => addFromSquad(s)} disabled={!squads.data}>Jamoadan qo‘shish</button>
-        </div>
-      </div>
-      <div className="table-wrap"><table className="table">
-        <thead><tr><th>№</th><th>O‘yinchi</th><th>Amplua</th><th>Asosiy</th><th>Sardor</th><th /></tr></thead>
-        <tbody>
-          {rows.map((r, i) => r.side !== s ? null : (
-            <tr key={i}>
-              <td style={{ width: 70 }}><input className="input input-sm" type="number" value={r.number ?? ""} onChange={(e) => upd(i, { number: e.target.value === "" ? null : Number(e.target.value) })} /></td>
-              <td><input className="input input-sm" value={r.player_name} onChange={(e) => upd(i, { player_name: e.target.value, player_id: null })} /></td>
-              <td><select className="select input-sm" value={r.position} onChange={(e) => upd(i, { position: e.target.value })}><option value="">—</option>{Object.entries(POSITIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></td>
-              <td><input type="checkbox" checked={r.is_starter} onChange={(e) => upd(i, { is_starter: e.target.checked })} /></td>
-              <td><input type="checkbox" checked={r.is_captain} onChange={(e) => upd(i, { is_captain: e.target.checked })} /></td>
-              <td className="actions"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => setRows((x) => x.filter((_, j) => j !== i))} aria-label="O‘chirish"><I.x size={16} /></button></td>
-            </tr>
-          ))}
-          <tr><td colSpan={6}><button className="btn btn-sm btn-ghost" onClick={() => setRows((x) => [...x, { side: s, player_id: null, player_name: "", number: null, position: "", is_starter: true, is_captain: false }])}><I.plus size={14} /> Qator qo‘shish</button></td></tr>
-        </tbody>
-      </table></div>
-    </div>
-  );
-  return (
-    <div className="stack">
-      <div className="alert info"><I.alert size={16} /> «Jamoadan qo‘shish» jamoa tarkibini yuklaydi. Qo‘lda yozilgan o‘yinchi faqat ism bilan saqlanadi — profil uchun avval uni «O‘yinchilar» bo‘limida yarating.</div>
-      <div className="grid g2" data-split>{side("home")}{side("away")}</div>
-      <div className="row" style={{ justifyContent: "flex-end" }}><button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? "Saqlanmoqda…" : "Tarkiblarni saqlash"}</button></div>
-    </div>
-  );
-}
-
 /* ---------- Events ---------- */
 const TYPES = ["goal", "own_goal", "penalty_goal", "penalty_missed", "yellow", "second_yellow", "red", "sub", "shootout_scored", "shootout_missed", "note"];
 function EventsEditor({ detail, onChanged }: { detail: MatchDetail; onChanged: () => void }) {
@@ -337,7 +271,7 @@ function EventsEditor({ detail, onChanged }: { detail: MatchDetail; onChanged: (
                   <td className="tnum b">{e.minute}{e.extra_minute ? `+${e.extra_minute}` : ""}′</td>
                   <td>{e.side === "home" ? m.home?.name : m.away?.name}</td>
                   <td>{EVENT_LABEL[e.type] || e.type}</td>
-                  <td>{e.player_name}{e.related_player_name && <span className="muted"> ↔ {e.related_player_name}</span>}</td>
+                  <td>{e.type === "formation" ? e.note : e.player_name}{e.related_player_name && <span className="muted"> ↔ {e.related_player_name}</span>}</td>
                   <td className="hide-mobile"><Badge plain>{e.source}</Badge></td>
                   <td className="actions"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => del(e.id)} aria-label="O‘chirish"><I.trash size={16} /></button></td>
                 </tr>

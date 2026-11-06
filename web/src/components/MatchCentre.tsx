@@ -4,9 +4,9 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Crest } from "./Crest";
 import { Ball, Calendar, Clock, Doc, Pin, Play, Swap, Ticket, Users } from "./Icons";
 import { LiveMinute } from "./LiveMinute";
-import { fmtDate, fmtTime, isLive, matchMinute, POSITION_LABEL, STATUS_LABEL, youtubeId } from "@/lib/format";
-import type { LineupRow, MatchDetail, MatchEvent } from "@/lib/types";
-import { playerPath } from "@/lib/seo";
+import { fmtDate, fmtTime, isLive, matchMinute, STATUS_LABEL, youtubeId } from "@/lib/format";
+import type { MatchDetail, MatchEvent } from "@/lib/types";
+import { Lineups } from "./Lineups";
 
 const EVENT_LABEL: Record<string, string> = {
   goal: "Gol",
@@ -20,6 +20,7 @@ const EVENT_LABEL: Record<string, string> = {
   shootout_scored: "Seriya: urdi",
   shootout_missed: "Seriya: o‘tkazib yubordi",
   note: "Izoh",
+  formation: "Sxema o‘zgardi",
 };
 
 function EventIcon({ type }: { type: string }) {
@@ -98,7 +99,7 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
   const ticket = m.ticket_url || ticketFallback;
   const tabs: { id: Tab; label: string; show: boolean }[] = [
     { id: "overview", label: "Umumiy", show: true },
-    { id: "lineups", label: "Tarkiblar", show: d.lineups.length > 0 },
+    { id: "lineups", label: "Tarkiblar", show: m.status !== "cancelled" },
     { id: "officials", label: "Hakamlar", show: d.officials.length > 0 },
     { id: "video", label: "Video", show: d.videos.length > 0 || !!m.video_url },
   ];
@@ -229,10 +230,7 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
       </div>
 
       <div role="tabpanel" id="panel-lineups" aria-label="lineups" hidden={tab !== "lineups"}>
-        <div className="grid grid-2">
-          <Lineup title={m.home?.name || "Uy egalari"} rows={d.lineups.filter((r) => r.side === "home")} />
-          <Lineup title={m.away?.name || "Mehmonlar"} rows={d.lineups.filter((r) => r.side === "away")} />
-        </div>
+        <Lineups d={d} live={live} serverOffset={offset.current} />
       </div>
 
       <div role="tabpanel" id="panel-officials" aria-label="officials" hidden={tab !== "officials"}>
@@ -290,30 +288,4 @@ function EventLine({ e }: { e: MatchEvent }) {
     </span>
   );
   return right ? (<>{text}<EventIcon type={e.type} /></>) : (<><EventIcon type={e.type} />{text}</>);
-}
-
-function Lineup({ title, rows }: { title: string; rows: LineupRow[] }) {
-  const starters = rows.filter((r) => r.is_starter);
-  const subs = rows.filter((r) => !r.is_starter);
-  const item = (r: LineupRow) => (
-    <li key={`${r.side}-${r.player_id}`}>
-      <span className="num">{r.number ?? "–"}</span>
-      {r.player_id ? <Link href={playerPath({ id: r.player_id, full_name: r.player_name })}>{r.player_name}</Link> : <span>{r.player_name}</span>}
-      {r.is_captain && <span className="cap" title="Sardor">C</span>}
-      <span className="pos-tag">{POSITION_LABEL[r.position] || r.position}</span>
-    </li>
-  );
-  return (
-    <section className="card card-pad">
-      <h2 className="h4">{title}</h2>
-      <div className="overline" style={{ margin: "18px 0 4px", color: "var(--text-muted)" }}>Asosiy tarkib</div>
-      <ul className="lineup-list">{starters.map(item)}</ul>
-      {subs.length > 0 && (
-        <>
-          <div className="overline" style={{ margin: "18px 0 4px", color: "var(--text-muted)" }}>Zaxira</div>
-          <ul className="lineup-list">{subs.map(item)}</ul>
-        </>
-      )}
-    </section>
-  );
 }

@@ -7,6 +7,8 @@ import type { LineupRow, Match, MatchDetail, Player } from "@/lib/types";
 import { Badge, Crest, Empty, ErrorBox, Loading, Modal, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
 import { StageTag, StatusBadge } from "./Matches";
+import { LineupPitch } from "@/components/Pitch";
+import { currentLineup, parseFormation, reassign, surnameOf, type Formation, type LPlayer } from "@/lib/lineup";
 
 /* ---------- Match picker ---------- */
 export function LivePickPage() {
@@ -102,6 +104,8 @@ export function LiveConsolePage() {
   const [, tick] = useState(0);
   const offset = useRef(0);
   const [online, setOnline] = useState(navigator.onLine);
+  const [mode, setMode] = useState<"events" | "lineup">("events");
+  const [sheet, setSheet] = useState<null | "sub" | "formation">(null);
 
   const apply = useCallback((x: MatchDetail) => {
     offset.current = new Date(x.server_time).getTime() - Date.now();
@@ -233,8 +237,12 @@ export function LiveConsolePage() {
         </div>
       </div>
 
-      {live && m.period !== "HT" && (
+      {live && (
         <>
+          <div className="seg" style={{ width: "100%" }}>
+            <button style={{ flex: 1, padding: "8px 0" }} aria-pressed={mode === "events"} onClick={() => setMode("events")}>Hodisalar</button>
+            <button style={{ flex: 1, padding: "8px 0" }} aria-pressed={mode === "lineup"} onClick={() => setMode("lineup")}>Tarkib</button>
+          </div>
           <div className="seg" style={{ width: "100%" }}>
             {(["home", "away"] as const).map((s) => (
               <button key={s} style={{ flex: 1, padding: "10px 0" }} aria-pressed={side === s} onClick={() => setSide(s)}>
@@ -242,11 +250,14 @@ export function LiveConsolePage() {
               </button>
             ))}
           </div>
-          <div className="action-grid">
-            {(pens ? SHOOTOUT : ACTIONS).map((a) => (
-              <button key={a.type} className={`action ${a.cls || ""}`} onClick={() => setAction(a)}>{a.icon}{a.label}</button>
-            ))}
-          </div>
+          {mode === "events" && m.period !== "HT" && (
+            <div className="action-grid">
+              {(pens ? SHOOTOUT : ACTIONS).map((a) => (
+                <button key={a.type} className={`action ${a.cls || ""}`} onClick={() => setAction(a)}>{a.icon}{a.label}</button>
+              ))}
+            </div>
+          )}
+          {mode === "lineup" && <LivePitch d={d} side={side} onSub={() => setSheet("sub")} onFormation={() => setSheet("formation")} />}
         </>
       )}
 
@@ -261,11 +272,19 @@ export function LiveConsolePage() {
           <div key={e.id} className="row" style={{ padding: "10px 16px", borderTop: "1px solid var(--border)" }}>
             <b className="tnum" style={{ width: 52 }}>{e.minute}{e.extra_minute ? `+${e.extra_minute}` : ""}′</b>
             <Crest team={e.side === "home" ? m.home : m.away} size={20} />
-            <span className="grow ellipsis"><b>{EVENT_LABEL[e.type] || e.type}</b> · {e.player_name || "—"}{e.related_player_name && <span className="muted"> ↔ {e.related_player_name}</span>}</span>
+            <span className="grow ellipsis"><b>{EVENT_LABEL[e.type] || e.type}</b> · {e.type === "formation" ? e.note : e.player_name || "—"}{e.related_player_name && <span className="muted"> ↔ {e.related_player_name}</span>}</span>
             <button className="btn btn-ghost btn-sm btn-icon" aria-label="Bekor qilish" onClick={() => undo(e.id, `${EVENT_LABEL[e.type]} · ${e.player_name}`)}><I.x size={16} /></button>
           </div>
         ))}
       </div>
+
+      {sheet && (() => {
+        const cur = liveLineup(d, side);
+        const team = side === "home" ? m.home?.name || "" : m.away?.name || "";
+        return sheet === "sub"
+          ? <SubSheet side={side} team={team} clock={clock} cur={cur} onClose={() => setSheet(null)} onSubmit={(b, l) => { setSheet(null); submit(b, l); }} />
+          : <FormationSheet side={side} team={team} clock={clock} cur={cur} onClose={() => setSheet(null)} onSubmit={(b, l) => { setSheet(null); submit(b, l); }} />;
+      })()}
 
       {action && (
         <EventSheet action={action} side={side} team={side === "home" ? m.home?.name || "" : m.away?.name || ""} clock={clock} lineup={lineup} squad={squad} shootout={pens}
@@ -327,6 +346,157 @@ function EventSheet({ action, side, team, clock, lineup, squad, shootout, onClos
         {(first || second) && (
           <div className="alert ok">{isSub ? <>↑ {first?.name || "—"} &nbsp; ↓ {second?.name || "tanlang"}</> : first?.name}</div>
         )}
+      </div>
+    </Modal>
+  );
+}
+
+/* ---------- Lineup mode ---------- */
+type Cur = ReturnType<typeof currentLineup> & { f: Formation | null; total: number };
+
+function liveLineup(d: MatchDetail, side: "home" | "away"): Cur {
+  const meta = d.lineup_meta?.find((x) => x.side === side);
+  const players: LPlayer[] = d.lineups.filter((l) => l.side === side).map((l) => ({
+    player_id: l.player_id, player_name: l.player_name, number: l.number, position: l.position,
+    role: l.role || "", slot: l.slot ?? null, is_starter: l.is_starter, is_captain: l.is_captain,
+  }));
+  const chrono = [...d.events].sort((a, b) => a.minute - b.minute || a.extra_minute - b.extra_minute || a.id - b.id);
+  const cur = currentLineup(meta?.formation || "", players, chrono, side);
+  return { ...cur, f: parseFormation(cur.formation), total: players.length };
+}
+
+function LivePitch({ d, side, onSub, onFormation }: { d: MatchDetail; side: "home" | "away"; onSub: () => void; onFormation: () => void }) {
+  const cur = liveLineup(d, side);
+  if (cur.total === 0) {
+    return (
+      <div className="card card-pad stack" style={{ alignItems: "center", textAlign: "center" }}>
+        <b>Tarkib kiritilmagan</b>
+        <span className="muted small">Tarkibni match sahifasida yoki protokol orqali kiriting.</span>
+        <Link to={`/matches/${d.match.id}`} className="btn btn-sm">Tarkib muharriri</Link>
+      </div>
+    );
+  }
+  const subs = cur.on.filter((p) => p.subbedIn).length;
+  return (
+    <div className="card live-lineup">
+      <div className="card-head">
+        <h3>Joriy tarkib</h3>
+        <span className="row small muted">{cur.formation || "Sxemasiz"} · {subs > 0 ? `${subs} almashtirish` : "almashtirish yo‘q"}</span>
+      </div>
+      {cur.f ? (
+        <div style={{ padding: "0 12px" }}>
+          <LineupPitch formation={cur.f} players={cur.on.filter((p) => !p.sentOff)} compact
+            badge={(p) => (cur.on.find((x) => x.player_id === p.player_id && x.player_name === p.player_name)?.subbedIn ? <i className="badge-in">↑</i> : null)} />
+        </div>
+      ) : (
+        <div className="picker" style={{ padding: "0 12px" }}>
+          {cur.on.map((p, i) => <button key={i} disabled={p.sentOff}><b>{p.number ?? "—"}</b><span>{surnameOf(p.player_name)}</span></button>)}
+        </div>
+      )}
+      {cur.on.some((p) => p.sentOff) && (
+        <div className="small" style={{ padding: "8px 16px 0" }}><span className="card-r" /> Chetlatilgan: {cur.on.filter((p) => p.sentOff).map((p) => surnameOf(p.player_name)).join(", ")}</div>
+      )}
+      <div style={{ padding: "12px 16px" }}>
+        <div className="small muted" style={{ marginBottom: 6 }}>Zaxira · {cur.bench.length}</div>
+        <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+          {cur.bench.length === 0 ? <span className="small muted">Zaxira bo‘sh</span> : cur.bench.map((p, i) => (
+            <span key={i} className="bench-chip" style={{ cursor: "default", paddingRight: 10 }}><b className="tnum">{p.number ?? "—"}</b>{surnameOf(p.player_name)}</span>
+          ))}
+        </div>
+      </div>
+      <div className="row" style={{ padding: "0 16px 16px", gap: 8 }}>
+        <button className="btn btn-lg btn-primary grow" onClick={onSub} disabled={!cur.bench.length}><I.swap size={18} /> Almashtirish</button>
+        <button className="btn btn-lg grow" onClick={onFormation}><I.grid size={18} /> Sxema</button>
+      </div>
+    </div>
+  );
+}
+
+function MinuteFields({ minute, extra, setMinute, setExtra }: { minute: string; extra: string; setMinute: (v: string) => void; setExtra: (v: string) => void }) {
+  return (
+    <div className="row">
+      <div className="field" style={{ width: 110 }}><label>Daqiqa</label><input className="input" type="number" inputMode="numeric" value={minute} onChange={(e) => setMinute(e.target.value)} /></div>
+      <div className="field" style={{ width: 110 }}><label>Qo‘shimcha</label><input className="input" type="number" inputMode="numeric" value={extra} onChange={(e) => setExtra(e.target.value)} /></div>
+    </div>
+  );
+}
+
+function SubSheet({ side, team, clock, cur, onClose, onSubmit }: {
+  side: "home" | "away"; team: string; clock: { minute: number; extra: number }; cur: Cur;
+  onClose: () => void; onSubmit: (b: Record<string, unknown>, label: string) => void;
+}) {
+  const [minute, setMinute] = useState(String(clock.minute));
+  const [extra, setExtra] = useState(String(clock.extra));
+  const [out, setOut] = useState(-1);
+  const [inn, setInn] = useState(-1);
+  const onPitch = cur.on.filter((p) => !p.sentOff).sort((a, b) => (a.slot ?? 99) - (b.slot ?? 99));
+  const o = out >= 0 ? onPitch[out] : null;
+  const n = inn >= 0 ? cur.bench[inn] : null;
+  const grid = (list: LPlayer[], sel: number, set: (i: number) => void, tone: "out" | "in") => (
+    <div className="picker">
+      {list.map((p, i) => (
+        <button key={i} aria-pressed={i === sel} onClick={() => set(i)}
+          style={i === sel ? (tone === "out" ? { borderColor: "var(--red-500)", background: "var(--red-50)", color: "var(--red-600)" } : { borderColor: "var(--green-600)", background: "var(--green-50, #ecfdf3)", color: "var(--green-600)" }) : undefined}>
+          <b>{p.number ?? "—"}</b><span>{surnameOf(p.player_name)}</span>
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <Modal title={<span className="row"><I.swap size={20} /> Almashtirish — {team}</span>} onClose={onClose} footer={<>
+      <button className="btn btn-lg" onClick={onClose}>Bekor</button>
+      <button className="btn btn-lg btn-primary" disabled={!o || !n} onClick={() => o && n && onSubmit({
+        side, type: "sub", minute: Number(minute) || 0, extra_minute: Number(extra) || 0,
+        player_id: n.player_id, player_name: n.player_name, related_player_id: o.player_id, related_player_name: o.player_name,
+      }, `Almashtirish · ${team} · ↑ ${n.player_name} ↓ ${o.player_name}`)}>Tasdiqlash</button>
+    </>}>
+      <div className="stack">
+        <MinuteFields minute={minute} extra={extra} setMinute={setMinute} setExtra={setExtra} />
+        <div className="small"><b style={{ color: "var(--red-600)" }}>↓ Chiqadi</b> — maydondagi o‘yinchi</div>
+        {grid(onPitch, out, setOut, "out")}
+        <div className="small"><b style={{ color: "var(--green-600)" }}>↑ Kiradi</b> — zaxiradan</div>
+        {grid(cur.bench, inn, setInn, "in")}
+        {(o || n) && <div className="alert ok">↑ {n?.player_name || "tanlang"} &nbsp; ↓ {o?.player_name || "tanlang"}{o?.role ? ` · ${o.role}` : ""}</div>}
+      </div>
+    </Modal>
+  );
+}
+
+function FormationSheet({ side, team, clock, cur, onClose, onSubmit }: {
+  side: "home" | "away"; team: string; clock: { minute: number; extra: number }; cur: Cur;
+  onClose: () => void; onSubmit: (b: Record<string, unknown>, label: string) => void;
+}) {
+  const cat = useLoad(() => api.get<{ items: Formation[] }>("/admin/formations"), []);
+  const [minute, setMinute] = useState(String(clock.minute));
+  const [extra, setExtra] = useState(String(clock.extra));
+  const onPitch = cur.on.filter((p) => !p.sentOff);
+  const size = onPitch.length;
+  const options = (cat.data?.items || []).filter((f) => f.size === (cur.f?.size || size) || f.size === size);
+  const [code, setCode] = useState("");
+  const to = code ? parseFormation(code) : null;
+  const preview = useMemo(() => (to ? reassign(cur.f, to, onPitch) : []), [code]); // eslint-disable-line react-hooks/exhaustive-deps
+  function send() {
+    if (!to) return;
+    const slots: Record<string, number> = {};
+    for (const p of preview) if (p.player_id != null && p.slot != null) slots[String(p.player_id)] = p.slot;
+    onSubmit({ side, type: "formation", minute: Number(minute) || 0, extra_minute: Number(extra) || 0, note: to.code, player_name: "", payload: { slots } },
+      `Sxema · ${team} · ${cur.formation || "—"} → ${to.code}`);
+  }
+  return (
+    <Modal title={<span className="row"><I.grid size={20} /> Sxemani o‘zgartirish — {team}</span>} onClose={onClose} footer={<>
+      <button className="btn btn-lg" onClick={onClose}>Bekor</button>
+      <button className="btn btn-lg btn-primary" disabled={!to || to.code === cur.formation} onClick={send}>Tasdiqlash</button>
+    </>}>
+      <div className="stack">
+        <MinuteFields minute={minute} extra={extra} setMinute={setMinute} setExtra={setExtra} />
+        <div className="small muted">Hozir: <b>{cur.formation || "sxemasiz"}</b> · maydonda {size} o‘yinchi</div>
+        {cat.loading ? <Loading /> : (
+          <div className="chips">
+            {options.map((f) => <button key={f.code} type="button" className="chip" aria-pressed={code === f.code} disabled={f.code === cur.formation} onClick={() => setCode(f.code)}>{f.code}</button>)}
+          </div>
+        )}
+        {to && <div style={{ maxWidth: 300, margin: "0 auto", width: "100%" }}><LineupPitch formation={to} players={preview} compact /></div>}
+        {to && <div className="small muted">O‘yinchilar yangi sxemada eng yaqin o‘ringa joylashtiriladi. Saytda joriy tarkib shu daqiqadan yangilanadi.</div>}
       </div>
     </Modal>
   );

@@ -8,6 +8,7 @@ import { useState } from "react";
 import { ImageInput, useToast } from "@/components/ui";
 import type { Player, Team } from "@/lib/types";
 import { SITE_URL } from "@/components/Layout";
+import { TeamExtras } from "@/components/TeamExtras";
 
 const GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H"].map((g) => ({ value: g, label: `Guruh ${g}` }));
 
@@ -35,7 +36,10 @@ export function TeamsPage() {
         { label: "Slug", render: (t) => <span className="muted">{t.slug}</span>, className: "hide-mobile" },
         { label: "Holat", render: (t) => t.is_active ? <Badge tone="ok">Faol</Badge> : <Badge>Arxiv</Badge> },
       ]}
-      extra={(t) => <a className="btn btn-sm" style={{ marginTop: 20 }} href={`${SITE_URL}/jamoalar/${t.slug}`} target="_blank" rel="noreferrer">Saytda ko‘rish</a>}
+      extra={(t) => <>
+        <a className="btn btn-sm" style={{ marginTop: 20 }} href={`${SITE_URL}/jamoalar/${t.slug}`} target="_blank" rel="noreferrer">Saytda ko‘rish</a>
+        <TeamExtras teamId={t.id} />
+      </>}
     />
   );
 }

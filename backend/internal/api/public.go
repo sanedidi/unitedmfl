@@ -147,17 +147,24 @@ func (s *Server) publicMatches(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) matchDetailJSON(ctx context.Context, id int64, adminView bool) ([]byte, error) {
 	pub, extra := "AND m.published", ""
+	// The site only shows lineups a moderator has published.
+	lineupPub := "AND EXISTS (SELECT 1 FROM lineup_meta lm WHERE lm.match_id = l.match_id AND lm.side = l.side AND lm.status = 'published')"
+	metaPub := "AND status = 'published'"
 	if adminView {
+		lineupPub, metaPub = "", ""
 		// admins also get the raw row (notes, added time, ids) for the edit form
 		pub, extra = "", ",\n\t\t'row', (SELECT row_to_json(mr) FROM matches mr WHERE mr.id = x.id)"
 	}
 	return s.queryJSON(ctx, `SELECT json_build_object(
 		'match', row_to_json(x),
 		'events', (SELECT coalesce(json_agg(e ORDER BY e.minute, e.extra_minute, e.id), '[]') FROM
-			(SELECT id, side, type, minute, extra_minute, player_id, player_name, related_player_id, related_player_name, note, source
+			(SELECT id, side, type, minute, extra_minute, player_id, player_name, related_player_id, related_player_name, note, source, payload
 			 FROM match_events WHERE match_id = x.id) e),
-		'lineups', (SELECT coalesce(json_agg(l ORDER BY l.side, NOT l.is_starter, l.number NULLS LAST), '[]') FROM
-			(SELECT side, player_id, player_name, number, position, is_starter, is_captain FROM lineups WHERE match_id = x.id) l),
+		'lineups', (SELECT coalesce(json_agg(l ORDER BY l.side, NOT l.is_starter, l.slot NULLS LAST, l.number NULLS LAST), '[]') FROM
+			(SELECT l.side, l.player_id, l.player_name, l.number, l.position, l.role, l.slot, l.is_starter, l.is_captain, coalesce(p.photo_url, '') AS photo_url
+			 FROM lineups l LEFT JOIN players p ON p.id = l.player_id WHERE l.match_id = x.id `+lineupPub+`) l),
+		'lineup_meta', (SELECT coalesce(json_agg(lm ORDER BY lm.side), '[]') FROM
+			(SELECT side, formation, status, coach, assistant, published_at, updated_at FROM lineup_meta lm WHERE match_id = x.id `+metaPub+`) lm),
 		'officials', (SELECT coalesce(json_agg(o ORDER BY o.id), '[]') FROM (SELECT id, side, role, name FROM match_officials WHERE match_id = x.id) o),
 		'videos', (SELECT coalesce(json_agg(v), '[]') FROM (SELECT id, title, url, youtube_id, kind, thumbnail_url FROM videos WHERE match_id = x.id AND status='published') v),
 		'news', (SELECT coalesce(json_agg(n), '[]') FROM (SELECT slug, title, cover_url, published_at FROM news WHERE match_id = x.id AND status='published' ORDER BY published_at DESC LIMIT 5) n),

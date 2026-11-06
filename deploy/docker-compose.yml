@@ -39,6 +39,7 @@ services:
       POINTS_WIN: ${POINTS_WIN:-3}
       POINTS_DRAW: ${POINTS_DRAW:-1}
       POINTS_LOSS: ${POINTS_LOSS:-0}
+      LINEUP_BENCH_MAX: ${LINEUP_BENCH_MAX:-9}
       OCR_LANG: ${OCR_LANG:-eng}
       # purge the site's data cache after every admin change
       WEB_REVALIDATE_URL: http://web:3000/internal/revalidate

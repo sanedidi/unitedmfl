@@ -42,7 +42,7 @@ export const MATCH_STATUS: Record<string, { label: string; tone: string }> = {
 export const EVENT_LABEL: Record<string, string> = {
   goal: "Gol", own_goal: "Avtogol", penalty_goal: "Penalti (gol)", penalty_missed: "Penalti (o‘tmadi)",
   yellow: "Sariq", second_yellow: "Ikkinchi sariq", red: "Qizil", sub: "Almashtirish",
-  shootout_scored: "Seriya: gol", shootout_missed: "Seriya: o‘tmadi", note: "Izoh", period: "Davr",
+  shootout_scored: "Seriya: gol", shootout_missed: "Seriya: o‘tmadi", note: "Izoh", period: "Davr", formation: "Sxema",
 };
 
 export const POSITIONS: Record<string, string> = { GK: "Darvozabon", DF: "Himoyachi", MF: "Yarim himoyachi", FW: "Hujumchi" };

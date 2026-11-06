@@ -434,6 +434,13 @@ func (s *Server) applyTx(ctx context.Context, protocolID, matchID int64, ex *pro
 		}
 		summary["lineups"]++
 	}
+	// Lineups confirmed through the protocol review go straight to the site.
+	if _, err := tx.ExecContext(ctx, `INSERT INTO lineup_meta(match_id, side, status, source, published_at, updated_at)
+		SELECT $1, s, 'published', 'protocol', now(), now() FROM unnest(ARRAY['home','away']) s
+		WHERE EXISTS (SELECT 1 FROM lineups WHERE match_id=$1 AND side=s)
+		ON CONFLICT (match_id, side) DO UPDATE SET status='published', source='protocol', published_at=now(), updated_at=now(), version=lineup_meta.version+1`, matchID); err != nil {
+		return nil, err
+	}
 	pidFor := func(side string, num int) any {
 		if id, ok := playerIDs[side+"#"+strconv.Itoa(num)]; ok {
 			return id

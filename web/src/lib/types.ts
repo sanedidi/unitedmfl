@@ -58,6 +58,7 @@ export type MatchEvent = {
   related_player_id: number | null;
   related_player_name: string;
   note: string;
+  payload?: { slots?: Record<string, number> } | null;
 };
 
 export type LineupRow = {
@@ -66,9 +67,14 @@ export type LineupRow = {
   player_name: string;
   number: number | null;
   position: string;
+  role?: string;
+  slot?: number | null;
+  photo_url?: string;
   is_starter: boolean;
   is_captain: boolean;
 };
+
+export type LineupMeta = { side: "home" | "away"; formation: string; status: string; coach: string; assistant: string; published_at: string | null; updated_at: string };
 
 export type Official = { id: number; side: string; role: string; name: string };
 
@@ -104,6 +110,7 @@ export type MatchDetail = {
   match: Match;
   events: MatchEvent[];
   lineups: LineupRow[];
+  lineup_meta?: LineupMeta[];
   officials: Official[];
   videos: Video[];
   news: NewsItem[];

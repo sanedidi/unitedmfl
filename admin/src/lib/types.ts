@@ -43,14 +43,17 @@ export type MatchEvent = {
   related_player_name: string;
   note: string;
   source?: string;
+  payload?: { slots?: Record<string, number> } | null;
 };
 
-export type LineupRow = { side: "home" | "away"; player_id: number | null; player_name: string; number: number | null; position: string; is_starter: boolean; is_captain: boolean };
+export type LineupRow = { side: "home" | "away"; player_id: number | null; player_name: string; number: number | null; position: string; role?: string; slot?: number | null; photo_url?: string; is_starter: boolean; is_captain: boolean };
+export type LineupMetaRow = { side: "home" | "away"; formation: string; status: "draft" | "published"; coach: string; assistant: string; published_at: string | null; updated_at: string };
 
 export type MatchDetail = {
   match: Match;
   events: MatchEvent[];
   lineups: LineupRow[];
+  lineup_meta?: LineupMetaRow[];
   officials: { id: number; side: string; role: string; name: string }[];
   protocol_pdf: string | null;
   server_time: string;

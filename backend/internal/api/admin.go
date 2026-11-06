@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/sanedidi/unitedmfl/backend/internal/httpx"
+	"github.com/sanedidi/unitedmfl/backend/internal/lineup"
 )
 
 func (s *Server) adminMatches(w http.ResponseWriter, r *http.Request) {
@@ -100,19 +102,20 @@ func (s *Server) setPeriod(w http.ResponseWriter, r *http.Request) {
 }
 
 type eventInput struct {
-	Side              string  `json:"side"`
-	Type              string  `json:"type"`
-	Minute            int     `json:"minute"`
-	ExtraMinute       int     `json:"extra_minute"`
-	PlayerID          *int64  `json:"player_id"`
-	PlayerName        string  `json:"player_name"`
-	RelatedPlayerID   *int64  `json:"related_player_id"`
-	RelatedPlayerName string  `json:"related_player_name"`
-	Note              string  `json:"note"`
-	Source            *string `json:"source"`
+	Side              string          `json:"side"`
+	Type              string          `json:"type"`
+	Minute            int             `json:"minute"`
+	ExtraMinute       int             `json:"extra_minute"`
+	PlayerID          *int64          `json:"player_id"`
+	PlayerName        string          `json:"player_name"`
+	RelatedPlayerID   *int64          `json:"related_player_id"`
+	RelatedPlayerName string          `json:"related_player_name"`
+	Note              string          `json:"note"`
+	Source            *string         `json:"source"`
+	Payload           json.RawMessage `json:"payload"`
 }
 
-var eventTypes = []string{"goal", "own_goal", "penalty_goal", "penalty_missed", "yellow", "second_yellow", "red", "sub", "shootout_scored", "shootout_missed", "note"}
+var eventTypes = []string{"goal", "own_goal", "penalty_goal", "penalty_missed", "yellow", "second_yellow", "red", "sub", "shootout_scored", "shootout_missed", "note", "formation"}
 
 func (in *eventInput) validate() error {
 	errs := map[string]any{}
@@ -124,6 +127,15 @@ func (in *eventInput) validate() error {
 	}
 	if in.Minute < 0 || in.Minute > 130 || in.ExtraMinute < 0 || in.ExtraMinute > 30 {
 		errs["minute"] = "daqiqa 0–130, qo‘shimcha 0–30"
+	}
+	if in.Type == "formation" {
+		// note carries the new formation; payload maps player ids to slots: {"slots": {"12": 3, ...}}
+		if _, err := lineup.Parse(in.Note); err != nil {
+			errs["note"] = err.Error()
+		}
+	}
+	if len(in.Payload) > 0 && (len(in.Payload) > 4096 || !json.Valid(in.Payload)) {
+		errs["payload"] = "JSON noto‘g‘ri"
 	}
 	if len(errs) > 0 {
 		return httpx.Validation(errs)
@@ -167,13 +179,17 @@ func (s *Server) addEvent(w http.ResponseWriter, r *http.Request) {
 	in.PlayerName = s.resolvePlayerName(r.Context(), in.PlayerID, in.PlayerName)
 	in.RelatedPlayerName = s.resolvePlayerName(r.Context(), in.RelatedPlayerID, in.RelatedPlayerName)
 	var eventID int64
+	var payload any
+	if len(in.Payload) > 0 && string(in.Payload) != "null" {
+		payload = []byte(in.Payload)
+	}
 	err = s.DB.QueryRowContext(r.Context(), `INSERT INTO match_events(match_id, team_id, side, type, minute, extra_minute, player_id, player_name,
-			related_player_id, related_player_name, note, source, created_by, idempotency_key)
-		SELECT m.id, CASE WHEN $2='home' THEN m.home_team_id ELSE m.away_team_id END, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+			related_player_id, related_player_name, note, source, created_by, idempotency_key, payload)
+		SELECT m.id, CASE WHEN $2='home' THEN m.home_team_id ELSE m.away_team_id END, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb
 		FROM matches m WHERE m.id=$1
 		ON CONFLICT (match_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO UPDATE SET note = match_events.note
 		RETURNING id`, id, in.Side, in.Type, in.Minute, in.ExtraMinute, in.PlayerID, in.PlayerName, in.RelatedPlayerID, in.RelatedPlayerName,
-		in.Note, src, claimsFrom(r.Context()).UserID, idem).Scan(&eventID)
+		in.Note, src, claimsFrom(r.Context()).UserID, idem, payload).Scan(&eventID)
 	if errors.Is(err, sql.ErrNoRows) {
 		httpx.Fail(w, r, httpx.ErrNotFound)
 		return
