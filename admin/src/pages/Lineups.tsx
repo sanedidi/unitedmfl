@@ -49,6 +49,8 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
   const [dropSlot, setDropSlot] = useState<number | null>(null);
   const [dropBench, setDropBench] = useState(false);
   const drag = useRef<string | null>(null);
+  const [added, setAdded] = useState<Record<Side, Player[]>>({ home: [], away: [] });
+  const [picker, setPicker] = useState<number | null>(null);
 
   useEffect(() => {
     if (!load.data) return;
@@ -60,7 +62,7 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
   const d = drafts?.[side];
   const team = side === "home" ? m.home : m.away;
   const formation = useMemo(() => (d?.formation ? parseFormation(d.formation) : null), [d?.formation]);
-  const squad = load.data?.squads[side] || [];
+  const squad = useMemo(() => [...(load.data?.squads[side] || []), ...added[side]], [load.data, added, side]);
   const suspended = load.data?.lineups[side].suspended || [];
   const benchMax = load.data?.benchMax ?? 9;
 
@@ -94,9 +96,9 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
   function rowFor(key: string): LPlayer | undefined {
     return rows.find((r) => r.key === key)?.p;
   }
-  function placeAt(slot: number, key: string) {
+  function placeAt(slot: number, key: string, given?: LPlayer) {
     if (!formation) return;
-    const incoming = rowFor(key);
+    const incoming = given || rowFor(key);
     if (!incoming) return;
     setPlayers((ps) => {
       let out = ps.map((p) => ({ ...p }));
@@ -167,6 +169,19 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
     const occ = d?.players.find((p) => p.is_starter && p.slot === slot);
     if (sel?.kind === "player" && (!occ || keyOf(occ) !== sel.key) && rows.find((r) => r.key === sel.key)?.status !== "pitch") return placeAt(slot, sel.key);
     setSel(occ ? { kind: "player", key: keyOf(occ) } : { kind: "slot", slot });
+    if (!occ) setPicker(slot);
+  }
+  async function createAndPlace(slot: number, v: { number: string; name: string; position: string }) {
+    if (!team) return;
+    try {
+      const p = await api.post<Player>("/admin/players", { team_id: team.id, full_name: v.name.trim(), number: v.number ? Number(v.number) : null, position: v.position || null, is_active: true });
+      setAdded((a) => ({ ...a, [side]: [...a[side], p] }));
+      placeAt(slot, `id${p.id}`, fromSquad(p));
+      setPicker(null);
+      toast(`${p.full_name} jamoa ro‘yxatiga qo‘shildi`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Xato", "error");
+    }
   }
   function clickRow(key: string) {
     if (sel?.kind === "slot") return placeAt(sel.slot, key);
@@ -450,6 +465,11 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
         {!published && <button className="btn btn-primary" onClick={() => setPublishOpen(true)} disabled={busy || hasErrors(checksFor("home")) && hasErrors(checksFor("away"))}>E’lon qilish</button>}
       </div>
 
+      {picker != null && formation && formation.slots[picker] && (
+        <SlotPicker slot={picker} role={formation.slots[picker].role} team={team?.name || ""} rows={rows.filter((r) => r.status !== "pitch")}
+          onPick={(key) => { placeAt(picker, key); setPicker(null); }} onCreate={(v) => createAndPlace(picker, v)} onClose={() => setPicker(null)} />
+      )}
+
       {publishOpen && (
         <Modal title="Tarkiblarni e’lon qilish" onClose={() => setPublishOpen(false)}
           footer={<><button className="btn btn-ghost" onClick={() => setPublishOpen(false)}>Bekor qilish</button><button className="btn btn-primary" onClick={publish} disabled={busy || (["home", "away"] as Side[]).some((s) => drafts[s].players.length && hasErrors(checksFor(s)))}>E’lon qilish</button></>}>
@@ -473,5 +493,55 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
         </Modal>
       )}
     </div>
+  );
+}
+
+const ROLE_POS: Record<string, string> = { GK: "GK", LB: "DF", CB: "DF", RB: "DF", LWB: "DF", RWB: "DF", DM: "MF", CM: "MF", AM: "MF", LM: "MF", RM: "MF", MF: "MF", LW: "FW", RW: "FW", ST: "FW" };
+
+/** Opens on an empty pitch slot: pick a squad player, or add a new one right here. */
+function SlotPicker({ slot, role, team, rows, onPick, onCreate, onClose }: {
+  slot: number; role: string; team: string;
+  rows: { key: string; p: LPlayer; status: "pitch" | "bench" | "free" }[];
+  onPick: (key: string) => void; onCreate: (v: { number: string; name: string; position: string }) => void; onClose: () => void;
+}) {
+  const want = ROLE_POS[role] || "";
+  const [q, setQ] = useState("");
+  const [nf, setNf] = useState({ number: "", name: "", position: want });
+  const [busy, setBusy] = useState(false);
+  const list = rows
+    .filter((r) => !q || `${r.p.number ?? ""} ${r.p.player_name}`.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => Number(b.p.position === want) - Number(a.p.position === want) || (a.p.number ?? 999) - (b.p.number ?? 999));
+  return (
+    <Modal title={<span>{role} · {ROLE_LABEL[role] || role} <span className="muted small">— {team}</span></span>} onClose={onClose}>
+      <div className="stack" key={slot}>
+        {rows.length > 0 && (
+          <>
+            <div className="search"><I.search size={16} /><input className="input input-sm" autoFocus placeholder="Ism yoki raqam" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+            <div className="picker-list">
+              {list.map((r) => (
+                <button key={r.key} type="button" className="squad-row" onClick={() => onPick(r.key)}>
+                  <b className="num tnum">{r.p.number ?? "–"}</b>
+                  <span className="grow" style={{ textAlign: "left" }}><b className="ellipsis" style={{ display: "block" }}>{r.p.player_name}</b><small className="muted">{POSITIONS[r.p.position] || "—"}</small></span>
+                  {r.status === "bench" ? <span className="pill pill-bench">Zaxira</span> : r.p.position === want ? <span className="pill pill-pitch">{role}</span> : null}
+                </button>
+              ))}
+              {list.length === 0 && <div className="muted small" style={{ padding: 8 }}>Topilmadi</div>}
+            </div>
+          </>
+        )}
+        <form className="stack" style={{ gap: 8, borderTop: rows.length ? "1px solid var(--border)" : 0, paddingTop: rows.length ? 12 : 0 }}
+          onSubmit={async (e) => { e.preventDefault(); if (!nf.name.trim()) return; setBusy(true); await onCreate(nf); setBusy(false); }}>
+          <b className="small">{rows.length ? "Ro‘yxatda yo‘qmi? Yangi o‘yinchi qo‘shing" : `${team} ro‘yxati bo‘sh — o‘yinchini shu yerda qo‘shing`}</b>
+          <div className="row" style={{ gap: 8 }}>
+            <input className="input input-sm" style={{ width: 70 }} inputMode="numeric" placeholder="№" value={nf.number} onChange={(e) => setNf({ ...nf, number: e.target.value.replace(/\D/g, "").slice(0, 3) })} />
+            <input className="input input-sm grow" placeholder="Ism familiya" value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} autoFocus={!rows.length} />
+            <select className="select input-sm" style={{ width: "auto" }} value={nf.position} onChange={(e) => setNf({ ...nf, position: e.target.value })}>
+              {Object.entries(POSITIONS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <button className="btn btn-primary btn-sm" style={{ alignSelf: "flex-end" }} disabled={busy || !nf.name.trim()}><I.plus size={15} /> Qo‘shish va joylash</button>
+        </form>
+      </div>
+    </Modal>
   );
 }

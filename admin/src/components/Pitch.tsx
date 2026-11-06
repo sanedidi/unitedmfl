@@ -57,7 +57,7 @@ export function LineupPitch({ formation, players, selected, dropSlot, flagged, c
       {formation.slots.map((s, i) => {
         const p = bySlot.get(i);
         const pt = slotPoint(formation, i, "full");
-        const cls = ["slot", p ? "filled" : "empty", selected === i ? "selected" : "", dropSlot === i ? "drop" : "", flagged?.has(i) ? "error" : "", p && dim?.(p) ? "dim" : ""].filter(Boolean).join(" ");
+        const cls = ["slot", p ? "filled" : "vacant", selected === i ? "selected" : "", dropSlot === i ? "drop" : "", flagged?.has(i) ? "error" : "", p && dim?.(p) ? "dim" : ""].filter(Boolean).join(" ");
         return (
           <button
             key={i}
