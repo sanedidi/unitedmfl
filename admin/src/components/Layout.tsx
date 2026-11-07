@@ -57,7 +57,7 @@ export function Layout() {
       {open && <div className="sb-scrim" onClick={() => setOpen(false)} />}
       <aside className={`sidebar${open ? " open" : ""}`}>
         <div className="sb-brand">
-          <Logo compact />
+          <Logo size={36} />
           <span className="tagline">Admin</span>
         </div>
         {NAV.map((g, i) => {
@@ -84,7 +84,7 @@ export function Layout() {
       <div className="main">
         <header className="topbar">
           <button className="btn btn-ghost btn-icon menu-toggle" aria-label="Menyu" onClick={() => setOpen(true)}><I.menu /></button>
-          <Logo compact size={18} className="mobile-brand" />
+          <Logo size={30} className="mobile-brand" />
           <div className="grow" />
           <span className="env hide-mobile">Mavsum 2026</span>
           <a className="btn btn-sm" href={SITE_URL} target="_blank" rel="noopener noreferrer"><I.globe size={16} /> <span className="hide-mobile">Saytni ochish</span></a>

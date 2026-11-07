@@ -89,6 +89,13 @@ button { font: inherit; color: inherit; }
 .header-inner { height: var(--header-h); display: flex; align-items: center; gap: 40px; }
 .brand { display: flex; align-items: center; flex-shrink: 0; color: var(--text); }
 .brand svg { display: block; }
+.logo-lockup { display: inline-flex; align-items: center; gap: 10px; line-height: 1; }
+.logo-badge { display: block; flex: none; }
+.logo-text { display: flex; flex-direction: column; gap: 3px; }
+.logo-text b { font: 700 18px/1 var(--font-ui); letter-spacing: -.02em; white-space: nowrap; }
+.logo-text small { font: 600 10px/1 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+.footer .logo-text small { color: rgba(255, 255, 255, .6); }
+@media (max-width: 720px) { .header .logo-text small { display: none; } .header .logo-badge { width: 38px !important; height: 38px !important; } }
 .nav { display: flex; gap: 28px; flex: 1; align-self: stretch; }
 .nav a { display: flex; align-items: center; font-size: 14px; font-weight: 500; color: var(--text-2); position: relative; white-space: nowrap; }
 .nav a:hover { color: var(--text); }

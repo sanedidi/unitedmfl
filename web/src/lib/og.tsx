@@ -31,28 +31,23 @@ function Crest({ team, size }: { team: Team; size: number }) {
   );
 }
 
-function Mark({ size, color }: { size: number; color: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill={color}>
-      <path d="M0 0H37V14.3A38 38 0 0 0 14.3 37H0Z" />
-      <path d="M100 0H63V14.3A38 38 0 0 1 85.7 37H100Z" />
-      <path d="M0 100H37V85.7A38 38 0 0 1 14.3 63H0Z" />
-      <path d="M100 100H63V85.7A38 38 0 0 0 85.7 63H100Z" />
-      <path fillRule="evenodd" d="M50 21.5a28.5 28.5 0 1 1 0 57 28.5 28.5 0 0 1 0-57Zm0 13a15.5 15.5 0 1 0 0 31 15.5 15.5 0 0 0 0-31Z" />
-    </svg>
-  );
+let logo: Promise<string> | null = null;
+function loadLogo() {
+  if (!logo) logo = readFile(join(process.cwd(), "src/assets/og/logo.png")).then((b) => `data:image/png;base64,${b.toString("base64")}`);
+  return logo;
 }
 
 /** Branded 1200×630 social preview: white card on graphite, one lime accent. */
 export async function ogImage(p: { kicker: string; title: string; subtitle?: string; home?: Team; away?: Team; center?: string }) {
   const versus = p.home !== undefined || p.away !== undefined;
+  const badge = await loadLogo();
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 64, color: "#fff", fontFamily: "Inter", background: INK }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ fontFamily: "Inter", fontSize: 34, letterSpacing: -1 }}>United</div>
-          <Mark size={36} color="#fff" />
-          <div style={{ fontFamily: "Inter", fontSize: 34, letterSpacing: -1 }}>MFL</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={badge} width={72} height={72} alt="" />
+          <div style={{ fontFamily: "Inter", fontSize: 34, letterSpacing: -1 }}>United MFL</div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14, fontSize: 22, letterSpacing: 3, color: "#fff" }}>
             <div style={{ width: 32, height: 3, background: LIME }} />
             {p.kicker.toUpperCase()}

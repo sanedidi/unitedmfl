@@ -16,7 +16,7 @@ export function Footer() {
       <div className="container">
         <div className="footer-grid">
           <div>
-            <Link href="/" className="brand" aria-label="United MFL — bosh sahifa"><Logo size={30} /></Link>
+            <Link href="/" className="brand" aria-label="United MFL — bosh sahifa"><Logo size={52} /></Link>
             <p style={{ maxWidth: 360, margin: "16px 0 0" }}>Media-futbol ligasi: blogerlar, sportchilar va san’at yulduzlari jamoalari. Rasmiy natijalar, jadval va statistika.</p>
             {socials.length > 0 && (
               <div className="socials">

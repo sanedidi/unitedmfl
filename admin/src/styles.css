@@ -43,7 +43,8 @@ h1, h2, h3, h4 { margin: 0; letter-spacing: -.01em; }
 .shell { display: grid; grid-template-columns: var(--sidebar) minmax(0, 1fr); min-height: 100%; }
 .sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; background: var(--bg-surface); border-right: 1px solid var(--border); padding: 0 12px 12px; display: flex; flex-direction: column; gap: 2px; }
 .sb-brand { display: flex; gap: 10px; align-items: center; height: 64px; padding: 0 8px; margin: 0 -12px 8px; padding-left: 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.sb-brand .logo { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 18px; letter-spacing: -.03em; line-height: 1; }
+.sb-brand .logo { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; letter-spacing: -.02em; line-height: 1; white-space: nowrap; }
+.logo-badge { display: block; flex: none; }
 .sb-brand .tagline { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); padding: 3px 6px; border: 1px solid var(--border); border-radius: var(--r-xs); }
 .sb-group { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); padding: 16px 10px 6px; }
 .sb-link { position: relative; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 10px; border-radius: var(--r-sm); color: var(--text-2); font-weight: 500; }
@@ -268,12 +269,12 @@ tr.flag-error td { background: #fff5f6; }
 /* Login: graphite brand panel + form */
 .login { min-height: 100%; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); background: var(--bg-surface); }
 .login-art { position: relative; background: var(--n-900); color: #fff; padding: 48px; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; overflow: hidden; }
-.login-art .logo { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 24px; letter-spacing: -.03em; line-height: 1; }
+.login-art .logo { display: inline-flex; align-items: center; gap: 14px; font-weight: 700; font-size: 24px; letter-spacing: -.03em; line-height: 1; }
 .login-art .kicker { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--n-300); margin-bottom: 20px; }
 .login-art .kicker::before { content: ""; width: 24px; height: 2px; background: var(--accent); }
 .login-art h2 { font-family: var(--font-display); font-weight: 800; font-size: 48px; line-height: 1.02; letter-spacing: -.03em; max-width: 9em; }
 .login-art p { color: var(--n-400); margin: 16px 0 0; max-width: 28em; line-height: 1.55; }
-.login-art .mark-bg { position: absolute; right: -90px; bottom: -90px; color: rgba(255, 255, 255, .04); pointer-events: none; }
+.login-art .mark-bg { position: absolute; right: -90px; bottom: -90px; pointer-events: none; filter: brightness(0) invert(1); opacity: .05; }
 .login-art small { color: var(--n-500); font-size: 12px; }
 .login-form { display: grid; place-items: center; padding: 32px; }
 .login-form form { width: min(380px, 100%); }
