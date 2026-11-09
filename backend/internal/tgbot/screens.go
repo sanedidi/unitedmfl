@@ -122,7 +122,7 @@ func consoleScreen(d *matchDetail, side string, now func() time.Time) (string, *
 	return sb.String(), &inlineKeyboard{Rows: rows}
 }
 
-func pickerScreen(d *matchDetail, p *pending) (string, *inlineKeyboard) {
+func pickerScreen(d *matchDetail, p *pending, now time.Time) (string, *inlineKeyboard) {
 	m := &d.Match
 	prompt := p.kind.prompt
 	if p.kind.typ == "sub" && p.out != nil {
@@ -131,7 +131,9 @@ func pickerScreen(d *matchDetail, p *pending) (string, *inlineKeyboard) {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("%s · <b>%s</b>", p.kind.label, esc(m.teamName(p.side))))
 	if p.kind.typ != "shootout_scored" && p.kind.typ != "shootout_missed" {
-		sb.WriteString(" · " + minuteLabel(p.minute, p.extra))
+		if _, _, c := clock(m, now); c != "" {
+			sb.WriteString(" · " + c)
+		}
 	}
 	sb.WriteString("\n")
 	if p.out != nil {
@@ -142,7 +144,10 @@ func pickerScreen(d *matchDetail, p *pending) (string, *inlineKeyboard) {
 	}
 	sb.WriteString("\n" + prompt)
 	if len(p.people) == 0 {
-		sb.WriteString("\n\n<i>Tarkib va jamoa ro‘yxati bo‘sh.</i>")
+		sb.WriteString("\n\n<i>Jamoada o‘yinchilar yo‘q — admin panelda tarkib yoki o‘yinchilarni qo‘shing.</i>")
+	}
+	if p.kind.typ != "shootout_scored" && p.kind.typ != "shootout_missed" {
+		sb.WriteString("\n\n<i>Daqiqa match soati bo‘yicha avtomatik yoziladi.</i>")
 	}
 
 	rows := [][]button{}
@@ -155,9 +160,6 @@ func pickerScreen(d *matchDetail, p *pending) (string, *inlineKeyboard) {
 	}
 	if p.kind.typ != "sub" {
 		rows = append(rows, []button{{Text: "👤 O‘yinchi ko‘rsatilmasin", Data: "P:-1"}})
-	}
-	if p.kind.typ != "shootout_scored" && p.kind.typ != "shootout_missed" {
-		rows = append(rows, []button{{Text: "⏱ Daqiqa: " + minuteLabel(p.minute, p.extra) + " — o‘zgartirish", Data: fmt.Sprintf("T:%d", p.matchID)}})
 	}
 	rows = append(rows, []button{{Text: "✖️ Bekor qilish", Data: fmt.Sprintf("M:%d", p.matchID)}})
 	return sb.String(), &inlineKeyboard{Rows: rows}

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/sanedidi/unitedmfl/backend/internal/api"
 	"github.com/sanedidi/unitedmfl/backend/internal/auth"
@@ -33,14 +34,6 @@ func TestNormalizePhone(t *testing.T) {
 		}
 		if !ok || got != want {
 			t.Errorf("%q: got %q %v, want %q", in, got, ok, want)
-		}
-	}
-}
-
-func TestMinuteRe(t *testing.T) {
-	for in, want := range map[string]bool{"74": true, "90+3": true, "90 + 3": true, "x": false, "1000": false} {
-		if got := minuteRe.MatchString(in); got != want {
-			t.Errorf("%q: %v", in, got)
 		}
 	}
 }
@@ -230,14 +223,15 @@ func TestOperatorFlow(t *testing.T) {
 	if !strings.Contains(kb, "10 · B. Away Ten") {
 		t.Fatalf("away picker from roster: %s", kb)
 	}
-	cb(opTG, "T:"+mid)
-	calls = msg(opTG, "44+2", nil)
-	txt, kb = lastText(t, calls, "sendMessage")
-	if !strings.Contains(txt, "44+2′") {
-		t.Fatalf("minute: %s", txt)
+	if strings.Contains(kb, `"T:`) {
+		t.Fatalf("no manual minute button: %s", kb)
 	}
-	lastMsg = 1000 + fake.next // id of the new picker message
-	cb(opTG, "P:0")
+	// the operator picks the player 46 minutes later: the minute is taken at that moment
+	b.now = func() time.Time { return time.Now().Add(46 * time.Minute) }
+	if a := answers(cb(opTG, "P:0")); !strings.Contains(a, "45+2′") {
+		t.Fatalf("toast with automatic minute: %s", a)
+	}
+	b.now = time.Now
 
 	// --- home substitution: off #1, on #12 ---
 	cb(opTG, "S:"+mid+":h")
@@ -264,8 +258,8 @@ func TestOperatorFlow(t *testing.T) {
 		t.Fatalf("sub in=%q out=%q", subIn, subOut)
 	}
 	_ = conn.QueryRowContext(ctx, `SELECT minute, extra_minute FROM match_events WHERE match_id=$1 AND side='away'`, matchID).Scan(&minute, &extra)
-	if minute != 44 || extra != 2 {
-		t.Fatalf("typed minute %d+%d", minute, extra)
+	if minute != 45 || extra != 2 {
+		t.Fatalf("automatic minute %d+%d, want 45+2", minute, extra)
 	}
 	var createdBy sql.NullInt64
 	_ = conn.QueryRowContext(ctx, `SELECT created_by FROM match_events WHERE match_id=$1 LIMIT 1`, matchID).Scan(&createdBy)

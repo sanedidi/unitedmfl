@@ -53,15 +53,13 @@ type session struct {
 
 // pending is an event being assembled in the player picker.
 type pending struct {
-	matchID       int64
-	side          string
-	kind          kind
-	minute, extra int
-	people        []person
-	out           *person // substitution: the player leaving, chosen first
-	key           string  // Idempotency-Key: a double tap records the event once
-	msgID         int     // the picker message
-	awaitMinute   bool
+	matchID int64
+	side    string
+	kind    kind
+	people  []person
+	out     *person // substitution: the player leaving, chosen first
+	key     string  // Idempotency-Key: a double tap records the event once
+	msgID   int     // the picker message
 }
 
 type operator struct {

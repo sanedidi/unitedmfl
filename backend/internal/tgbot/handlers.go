@@ -7,7 +7,6 @@ import (
 	"html"
 	"log/slog"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -66,8 +65,6 @@ func (b *Bot) onMessage(ctx context.Context, m *tgMessage) {
 		b.unlink(ctx, m.From.ID)
 		b.dropSession(chatID)
 		b.sendText(ctx, chatID, "Siz botdan chiqdingiz. Qayta kirish uchun /start ni bosing.", removeKeyboard)
-	case s.pending != nil && s.pending.awaitMinute && !strings.HasPrefix(text, "/") && text != btnMatches:
-		b.onMinute(ctx, op, chatID, s, text)
 	default: // /start, /matches, «📋 Matchlar» or anything else: the match list
 		if s.pending != nil {
 			s.pending = nil
@@ -97,41 +94,6 @@ func (b *Bot) onContact(ctx context.Context, m *tgMessage) {
 	slog.Info("telegram bot: operator linked", "user_id", op.UserID, "tg_user_id", m.From.ID)
 	b.sendText(ctx, chatID, fmt.Sprintf("✅ Xush kelibsiz, <b>%s</b>!\n\nMatchni tanlang — hisob, voqealar va taymlar shu yerdan boshqariladi. Sayt darhol yangilanadi.", html.EscapeString(op.Name)), menuKeyboard)
 	b.showList(ctx, op, chatID, 0)
-}
-
-var minuteRe = regexp.MustCompile(`^(\d{1,3})\s*(?:\+\s*(\d{1,2}))?$`)
-
-func (b *Bot) onMinute(ctx context.Context, op *operator, chatID int64, s *session, text string) {
-	p := s.pending
-	mm := minuteRe.FindStringSubmatch(strings.TrimSuffix(strings.TrimSpace(text), "′"))
-	if mm == nil {
-		b.sendText(ctx, chatID, "Daqiqani raqam bilan yozing: masalan <b>74</b> yoki <b>90+3</b>.", nil)
-		return
-	}
-	minute, _ := strconv.Atoi(mm[1])
-	extra := 0
-	if mm[2] != "" {
-		extra, _ = strconv.Atoi(mm[2])
-	}
-	if minute > 130 || extra > 30 {
-		b.sendText(ctx, chatID, "Daqiqa 0–130, qo‘shimcha 0–30 bo‘lishi kerak.", nil)
-		return
-	}
-	p.minute, p.extra, p.awaitMinute = minute, extra, false
-	d, err := b.loadMatch(ctx, op, p.matchID)
-	if err != nil {
-		b.sendText(ctx, chatID, html.EscapeString(err.Error()), nil)
-		return
-	}
-	// move the picker below the operator's message
-	_ = b.tg.deleteMessage(ctx, chatID, p.msgID)
-	text2, kb := pickerScreen(d, p)
-	id, err := b.tg.send(ctx, chatID, text2, kb)
-	if err != nil {
-		slog.Warn("telegram send", "err", err)
-		return
-	}
-	p.msgID = id
 }
 
 // ---------- callbacks ----------
@@ -204,14 +166,8 @@ func (b *Bot) dispatch(ctx context.Context, op *operator, chatID int64, msgID in
 	case "P":
 		return b.pickPlayer(ctx, op, chatID, msgID, s, arg(1))
 
-	case "T":
-		p := s.pending
-		if p == nil || p.msgID != msgID {
-			return "Bu tugma eskirgan", true, nil
-		}
-		p.awaitMinute = true
-		_, err := b.tg.send(ctx, chatID, "⏱ Daqiqani yozing: masalan <b>74</b> yoki <b>90+3</b>.", nil)
-		return "", false, err
+	case "T": // minute button of older bot versions: the minute is automatic now
+		return "Daqiqa avtomatik — match soati bo‘yicha", false, nil
 
 	case "R":
 		return b.period(ctx, op, chatID, msgID, s, id, arg(2))
@@ -280,11 +236,7 @@ func (b *Bot) startEvent(ctx context.Context, op *operator, chatID int64, msgID 
 	if side == "" {
 		side = "home"
 	}
-	minute, extra, _ := clock(m, b.now())
-	if shootout {
-		minute, extra = 120, 0
-	}
-	p := &pending{matchID: id, side: side, kind: k, minute: minute, extra: extra, key: newKey(), msgID: msgID}
+	p := &pending{matchID: id, side: side, kind: k, key: newKey(), msgID: msgID}
 	on, bench := currentLineup(d, side)
 	if len(on)+len(bench) == 0 {
 		t := m.Home
@@ -301,7 +253,7 @@ func (b *Bot) startEvent(ctx context.Context, op *operator, chatID int64, msgID 
 		p.people = append(append([]person(nil), on...), bench...)
 	}
 	s.pending = p
-	text, kb := pickerScreen(d, p)
+	text, kb := pickerScreen(d, p, b.now())
 	return "", false, b.tg.edit(ctx, chatID, msgID, text, kb)
 }
 
@@ -341,15 +293,27 @@ func (b *Bot) pickPlayer(ctx context.Context, op *operator, chatID int64, msgID 
 			bench = rest
 		}
 		p.people = bench
-		text, kb := pickerScreen(d, p)
+		text, kb := pickerScreen(d, p, b.now())
 		return "", false, b.tg.edit(ctx, chatID, msgID, text, kb)
 	}
 	if p.kind.typ == "sub" && chosen == nil {
 		return "Kim kirishini tanlang", true, nil
 	}
 
+	// the minute comes from the match clock at the moment the event is recorded
+	m := &d.Match
+	shootout := p.kind.typ == "shootout_scored" || p.kind.typ == "shootout_missed"
+	if !isLive(m) || m.Period == "HT" || shootout != (m.Period == "PEN") {
+		s.pending = nil
+		_ = b.showConsole(ctx, op, chatID, msgID, p.matchID, d)
+		return "Hozir bu hodisani kiritib bo‘lmaydi — pult yangilandi", true, nil
+	}
+	minute, extra, _ := clock(m, b.now())
+	if shootout {
+		minute, extra = 120, 0
+	}
 	body := map[string]any{
-		"side": p.side, "type": p.kind.typ, "minute": p.minute, "extra_minute": p.extra,
+		"side": p.side, "type": p.kind.typ, "minute": minute, "extra_minute": extra,
 		"player_id": nil, "player_name": "", "related_player_id": nil, "related_player_name": "", "source": "live",
 	}
 	if chosen != nil {
@@ -362,7 +326,7 @@ func (b *Bot) pickPlayer(ctx context.Context, op *operator, chatID int64, msgID 
 		return "", false, err
 	}
 	s.pending = nil
-	toast := fmt.Sprintf("✅ %s · %s", eventLabel[p.kind.typ], d.Match.teamName(p.side))
+	toast := fmt.Sprintf("✅ %s · %s · %s", minuteLabel(minute, extra), eventLabel[p.kind.typ], d.Match.teamName(p.side))
 	if chosen != nil {
 		toast += " · " + chosen.Name
 	}
