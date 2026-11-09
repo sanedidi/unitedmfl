@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -76,6 +77,29 @@ func PermissionsFor(role string) []string {
 			PermStandings, PermSeasons, PermNews, PermBanners, PermVideos, PermMerch, PermRequests, PermUsers, PermUploads}
 	}
 	return append([]string(nil), rolePerms[role]...)
+}
+
+// NormalizePhone keeps digits only. A local Uzbek number (9 digits) gets the 998
+// country code, so «+998 90 123-45-67», «998901234567» and «90 123 45 67» match.
+// It returns "" for an empty input and ok=false for something that is not a phone.
+func NormalizePhone(s string) (phone string, ok bool) {
+	var b []byte
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			b = append(b, byte(r))
+		}
+	}
+	d := string(b)
+	if d == "" {
+		return "", strings.TrimSpace(s) == ""
+	}
+	if len(d) == 9 {
+		d = "998" + d
+	}
+	if len(d) < 10 || len(d) > 15 {
+		return "", false
+	}
+	return d, true
 }
 
 // HashPassword hashes a password with bcrypt.

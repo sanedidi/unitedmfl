@@ -289,6 +289,9 @@ func dbError(err error) error {
 	if errors.As(err, &pqErr) {
 		switch pqErr.Code {
 		case "23505":
+			if pqErr.Constraint == "users_phone_key" {
+				return httpx.Validation(map[string]any{"phone": "bu raqam boshqa foydalanuvchiga biriktirilgan"})
+			}
 			return httpx.NewError(http.StatusConflict, "duplicate", "Bunday qiymat allaqachon mavjud: "+pqErr.Constraint)
 		case "23503":
 			return httpx.NewError(http.StatusConflict, "reference", "Bog‘liq yozuv topilmadi yoki ishlatilmoqda")

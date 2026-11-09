@@ -14,6 +14,7 @@ import (
 	"github.com/sanedidi/unitedmfl/backend/internal/api"
 	"github.com/sanedidi/unitedmfl/backend/internal/config"
 	"github.com/sanedidi/unitedmfl/backend/internal/db"
+	"github.com/sanedidi/unitedmfl/backend/internal/tgbot"
 )
 
 func main() {
@@ -48,9 +49,18 @@ func run() error {
 	// copy hero images from the old site into /uploads (no-op once done)
 	go server.MirrorRemoteImages(ctx)
 
+	handler := server.Routes()
+	// Telegram Live-pult: runs inside the API and calls the same handlers in-process
+	if cfg.TelegramToken != "" {
+		bot := tgbot.New(tgbot.Options{Token: cfg.TelegramToken, APIURL: cfg.TelegramAPIURL, DB: conn, Tokens: server.Tokens, API: handler})
+		go bot.Run(ctx)
+	} else {
+		slog.Info("telegram bot disabled: TELEGRAM_BOT_TOKEN is empty")
+	}
+
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           server.Routes(),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		IdleTimeout:       120 * time.Second,

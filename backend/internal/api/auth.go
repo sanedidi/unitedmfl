@@ -229,7 +229,9 @@ func EnsureAdmin(ctx context.Context, db *sql.DB, name, email, password string) 
 func (s *Server) listUsers(w http.ResponseWriter, r *http.Request) {
 	var raw []byte
 	err := s.DB.QueryRowContext(r.Context(), `SELECT coalesce(json_agg(u ORDER BY u.id), '[]') FROM
-		(SELECT id, name, email, role, status, last_login_at, created_at FROM users) u`).Scan(&raw)
+		(SELECT u.id, u.name, u.email, coalesce(u.phone, '') AS phone, u.role, u.status, u.last_login_at, u.created_at,
+		 EXISTS (SELECT 1 FROM telegram_links t WHERE t.user_id = u.id AND t.phone = u.phone) AS telegram_linked
+		 FROM users u) u`).Scan(&raw)
 	if err != nil {
 		httpx.Fail(w, r, err)
 		return
@@ -243,6 +245,22 @@ type userInput struct {
 	Password *string `json:"password"`
 	Role     *string `json:"role"`
 	Status   *string `json:"status"`
+	Phone    *string `json:"phone"` // Telegram Live-pult access; "" clears it
+}
+
+// phoneArg validates the optional phone and returns the value for the users.phone column.
+func phoneArg(p *string) (any, error) {
+	if p == nil {
+		return nil, nil
+	}
+	d, ok := auth.NormalizePhone(*p)
+	if !ok {
+		return nil, httpx.Validation(map[string]any{"phone": "telefon raqam noto‘g‘ri, masalan +998 90 123 45 67"})
+	}
+	if d == "" {
+		return nil, nil
+	}
+	return d, nil
 }
 
 func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
@@ -270,14 +288,19 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, r, httpx.Validation(errs))
 		return
 	}
+	phone, err := phoneArg(in.Phone)
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
 	hash, err := auth.HashPassword(*in.Password)
 	if err != nil {
 		httpx.Fail(w, r, httpx.Validation(map[string]any{"password": err.Error()}))
 		return
 	}
 	var id int64
-	err = s.DB.QueryRowContext(r.Context(), `INSERT INTO users(name, email, password_hash, role) VALUES ($1, lower($2), $3, $4) RETURNING id`,
-		strings.TrimSpace(*in.Name), strings.TrimSpace(*in.Email), hash, *in.Role).Scan(&id)
+	err = s.DB.QueryRowContext(r.Context(), `INSERT INTO users(name, email, password_hash, role, phone) VALUES ($1, lower($2), $3, $4, $5) RETURNING id`,
+		strings.TrimSpace(*in.Name), strings.TrimSpace(*in.Email), hash, *in.Role, phone).Scan(&id)
 	if err != nil {
 		httpx.Fail(w, r, dbError(err))
 		return
@@ -328,6 +351,14 @@ func (s *Server) patchUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		add("status", *in.Status)
+	}
+	if in.Phone != nil {
+		phone, err := phoneArg(in.Phone)
+		if err != nil {
+			httpx.Fail(w, r, err)
+			return
+		}
+		add("phone", phone)
 	}
 	if in.Password != nil {
 		hash, err := auth.HashPassword(*in.Password)

@@ -29,7 +29,9 @@ type Config struct {
 	PointsWin        int
 	PointsDraw       int
 	PointsLoss       int
-	LineupBenchMax   int // substitutes allowed in a matchday squad (0 = no limit)
+	LineupBenchMax   int    // substitutes allowed in a matchday squad (0 = no limit)
+	TelegramToken    string // Live-pult bot token from @BotFather; empty = bot disabled
+	TelegramAPIURL   string // Bot API base URL (override only for tests or a local Bot API server)
 }
 
 func env(key, def string) string {
@@ -72,6 +74,8 @@ func Load() (*Config, error) {
 		PointsLoss: envInt("POINTS_LOSS", 0),
 		// Bench size is a proposal until confirmed by the league regulations.
 		LineupBenchMax: envInt("LINEUP_BENCH_MAX", 9),
+		TelegramToken:  env("TELEGRAM_BOT_TOKEN", ""),
+		TelegramAPIURL: strings.TrimRight(env("TELEGRAM_API_URL", "https://api.telegram.org"), "/"),
 	}
 	for _, o := range strings.Split(env("CORS_ORIGINS", "*"), ",") {
 		if o = strings.TrimSpace(o); o != "" {

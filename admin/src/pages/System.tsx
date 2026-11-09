@@ -8,7 +8,10 @@ import { FormFields, useForm, type FieldSpec } from "@/components/Crud";
 import { Badge, Drawer, ErrorBox, Loading, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
 
-type U = { id: number; name: string; email: string; role: string; status: string; last_login_at: string | null; created_at: string };
+type U = { id: number; name: string; email: string; phone: string; telegram_linked: boolean; role: string; status: string; last_login_at: string | null; created_at: string };
+
+// 998901234567 → +998 90 123 45 67
+const fmtPhone = (p: string) => (p.length === 12 ? `+${p.slice(0, 3)} ${p.slice(3, 5)} ${p.slice(5, 8)} ${p.slice(8, 10)} ${p.slice(10)}` : `+${p}`);
 const ROLES = Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }));
 
 export function UsersPage() {
@@ -30,7 +33,7 @@ export function UsersPage() {
             <thead><tr><th>Foydalanuvchi</th><th>Rol</th><th>Holat</th><th className="hide-mobile">Oxirgi kirish</th><th /></tr></thead>
             <tbody>{data.map((u) => (
               <tr key={u.id} className="clickable" onClick={() => setEdit(u)}>
-                <td><span className="row"><span className="avatar">{u.name.slice(0, 2).toUpperCase()}</span><span><b>{u.name}</b>{u.id === user?.id && <span className="muted small"> (siz)</span>}<div className="muted small">{u.email}</div></span></span></td>
+                <td><span className="row"><span className="avatar">{u.name.slice(0, 2).toUpperCase()}</span><span><b>{u.name}</b>{u.id === user?.id && <span className="muted small"> (siz)</span>}<div className="muted small">{u.email}</div>{u.phone && <div className="muted small row" style={{ gap: 6 }}>{fmtPhone(u.phone)}{u.telegram_linked && <Badge tone="ok">Telegram</Badge>}</div>}</span></span></td>
                 <td>{ROLE_LABEL[u.role] || u.role}</td>
                 <td>{u.status === "active" ? <Badge tone="ok">Faol</Badge> : <Badge tone="danger">Bloklangan</Badge>}</td>
                 <td className="hide-mobile nowrap">{u.last_login_at ? fmtDateTime(u.last_login_at) : "—"}</td>
@@ -51,9 +54,10 @@ function UserDrawer({ item, onClose, onSaved }: { item: U | null; onClose: () =>
     { name: "email", label: "Email", required: true, full: true },
     { name: "role", label: "Rol", type: "select", options: ROLES },
     { name: "status", label: "Holat", type: "select", options: [{ value: "active", label: "Faol" }, { value: "blocked", label: "Bloklangan" }] },
+    { name: "phone", label: "Telefon (Telegram Live-pult)", full: true, placeholder: "+998 90 123 45 67", hint: "Shu raqamli Telegram akkaunti Live-pult botiga kira oladi (operator va administrator). Bo‘sh qoldirilsa — botga kirish yo‘q." },
     { name: "password", label: item ? "Yangi parol (ixtiyoriy)" : "Parol", required: !item, full: true, hint: "Kamida 8 belgi" },
   ];
-  const form = useForm(fields, item ? { ...item, password: "" } : null, { role: "editor", status: "active" });
+  const form = useForm(fields, item ? { ...item, phone: item.phone ? fmtPhone(item.phone) : "", password: "" } : null, { role: "editor", status: "active", phone: "" });
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   async function save() {
