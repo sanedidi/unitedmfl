@@ -35,9 +35,9 @@ export function Intro() {
       return;
     }
     const q = <T extends Element>(s: string) => el.querySelector<T>(s);
-    const curtain = q<HTMLElement>(".intro-curtain")!;
-    const lockup = q<HTMLElement>(".intro-lockup")!;
-    const badge = q<HTMLElement>(".intro-badge")!;
+    const curtain = q<HTMLElement>(".kick-curtain")!;
+    const lockup = q<HTMLElement>(".kick-lockup")!;
+    const badge = q<HTMLElement>(".kick-badge")!;
     const main = document.getElementById("main");
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const anims: Animation[] = [];
@@ -98,8 +98,8 @@ export function Intro() {
       anims.push(fly);
       // The name turns from white to the header's ink colour just before landing.
       const ink = getComputedStyle(document.documentElement);
-      const name = q<HTMLElement>(".intro-text b");
-      const sub = q<HTMLElement>(".intro-text small");
+      const name = q<HTMLElement>(".kick-text b");
+      const sub = q<HTMLElement>(".kick-text small");
       if (name) anims.push(name.animate([{ color: "#fff" }, { color: ink.getPropertyValue("--text").trim() || "#15181c" }], { duration: 60, delay: 400, fill: "forwards" }));
       if (sub) anims.push(sub.animate([{ color: "rgba(255,255,255,.6)" }, { color: ink.getPropertyValue("--text-muted").trim() || "#6e7581" }], { duration: 60, delay: 400, fill: "forwards" }));
       fly.finished.then(finish, () => {});
@@ -128,17 +128,17 @@ export function Intro() {
 
   if (gone) return null;
   return (
-    <div className="intro" ref={root} aria-hidden="true">
-      <div className="intro-curtain" />
-      <div className="intro-stage">
-        <div className="intro-lockup">
-          <span className="intro-text">
-            <span className="intro-text-in">
+    <div className="kick" ref={root} aria-hidden="true">
+      <div className="kick-curtain" />
+      <div className="kick-stage">
+        <div className="kick-lockup">
+          <span className="kick-text">
+            <span className="kick-text-in">
               <b>United MFL</b>
               <small>Media Football League</small>
             </span>
           </span>
-          <span className="intro-badge">
+          <span className="kick-badge">
             <Emblem />
           </span>
         </div>

@@ -15,64 +15,64 @@
 .emblem .em-ring { stroke-dasharray: 1.01 1; stroke-dashoffset: 0; }
 
 /* ───── Intro ───── */
-.intro { display: none; }
-html[data-intro="on"] .intro {
+.kick { display: none; }
+html[data-intro="on"] .kick {
   display: block; position: fixed; inset: 0; z-index: 200; overflow: hidden;
   /* fail-safe: even if JavaScript never runs, the overlay is gone after the timeline */
-  animation: intro-end 0s linear 2150ms forwards;
+  animation: kick-end 0s linear 2150ms forwards;
 }
-html[data-intro="on"] .header .brand { animation: intro-brand-hidden 2150ms step-end; }
-@keyframes intro-end { to { visibility: hidden; pointer-events: none; } }
-@keyframes intro-brand-hidden { from, to { visibility: hidden; } }
+html[data-intro="on"] .header .brand { animation: kick-brand-hidden 2150ms step-end; }
+@keyframes kick-end { to { visibility: hidden; pointer-events: none; } }
+@keyframes kick-brand-hidden { from, to { visibility: hidden; } }
 
-.intro-curtain {
+.kick-curtain {
   position: absolute; left: 0; right: 0; top: 0; height: calc(100% + var(--edge));
   --edge: 8px;
   background: linear-gradient(to bottom, var(--n-900) calc(100% - var(--edge)), var(--lime-500) 0);
-  animation: intro-curtain 500ms var(--ease-emph) 1600ms both;
+  animation: kick-curtain 500ms var(--ease-emph) 1600ms both;
 }
-@keyframes intro-curtain { from { transform: none; } to { transform: translateY(-100%); } }
+@keyframes kick-curtain { from { transform: none; } to { transform: translateY(-100%); } }
 
-.intro-stage { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.kick-stage { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
 
 /* The lockup is the header lockup scaled by --k, so it can land on it exactly. */
-.intro-lockup {
+.kick-lockup {
   --k: 2.318; --badge: 44px; --solo: 200px;
   display: inline-flex; flex-direction: row-reverse; align-items: center;
   gap: calc(10px * var(--k)); line-height: 1; color: #fff;
-  animation: intro-fade 300ms ease-in 1600ms forwards;
+  animation: kick-fade 300ms ease-in 1600ms forwards;
 }
-.intro.js-dock .intro-lockup { animation: none; }
-@keyframes intro-fade { to { opacity: 0; } }
+.kick.js-dock .kick-lockup { animation: none; }
+@keyframes kick-fade { to { opacity: 0; } }
 
-.intro-badge {
+.kick-badge {
   position: relative; z-index: 1; flex: none;
   width: calc(var(--badge) * var(--k)); height: calc(var(--badge) * var(--k));
   /* solo: centred on screen and bigger, then moves into the lockup */
   --dx: calc((10px + 143px) * var(--k) / 2);
-  animation: intro-badge 350ms var(--ease-emph) 1100ms both;
+  animation: kick-badge 350ms var(--ease-emph) 1100ms both;
 }
-@keyframes intro-badge {
+@keyframes kick-badge {
   from { transform: translateX(var(--dx)) scale(calc(var(--solo) / (var(--badge) * var(--k)))); }
   to { transform: none; }
 }
 
-.intro-text { overflow: hidden; display: block; }
-.intro-text-in {
+.kick-text { overflow: hidden; display: block; }
+.kick-text-in {
   display: flex; flex-direction: column; gap: calc(3px * var(--k));
-  animation: intro-text 250ms var(--ease-out) 1250ms both;
+  animation: kick-text 250ms var(--ease-out) 1250ms both;
 }
-@keyframes intro-text { from { opacity: 0; transform: translateX(-60px); } to { opacity: 1; transform: none; } }
-.intro-text b { font: 700 calc(18px * var(--k))/1 var(--font-ui); letter-spacing: -.02em; white-space: nowrap; }
-.intro-text small { font: 600 calc(10px * var(--k))/1 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .6); white-space: nowrap; }
+@keyframes kick-text { from { opacity: 0; transform: translateX(-60px); } to { opacity: 1; transform: none; } }
+.kick-text b { font: 700 calc(18px * var(--k))/1 var(--font-ui); letter-spacing: -.02em; white-space: nowrap; }
+.kick-text small { font: 600 calc(10px * var(--k))/1 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .6); white-space: nowrap; }
 
 /* emblem assembly, 0–1000 ms */
-.intro .em-centre { animation: em-pop 240ms var(--ease-back) both, em-in 80ms linear both; }
-.intro .em-ring-outer { animation: em-draw 480ms ease-in-out 160ms both; }
-.intro .em-ring-inner { animation: em-draw 480ms ease-in-out 240ms both; }
-.intro .em-arc { animation: em-in 200ms linear 600ms both; }
-.intro .em-disc { animation: em-disc 320ms var(--ease-out) 480ms both; }
-.intro .em-lettering { animation: em-letters 400ms var(--ease-out) 600ms both; }
+.kick .em-centre { animation: em-pop 240ms var(--ease-back) both, em-in 80ms linear both; }
+.kick .em-ring-outer { animation: em-draw 480ms ease-in-out 160ms both; }
+.kick .em-ring-inner { animation: em-draw 480ms ease-in-out 240ms both; }
+.kick .em-arc { animation: em-in 200ms linear 600ms both; }
+.kick .em-disc { animation: em-disc 320ms var(--ease-out) 480ms both; }
+.kick .em-lettering { animation: em-letters 400ms var(--ease-out) 600ms both; }
 @keyframes em-pop { from { transform: scale(.01); } to { transform: none; } }
 @keyframes em-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes em-draw { from { stroke-dashoffset: 1.01; } to { stroke-dashoffset: 0; } }
@@ -80,18 +80,18 @@ html[data-intro="on"] .header .brand { animation: intro-brand-hidden 2150ms step
 @keyframes em-letters { from { opacity: 0; transform: rotate(60deg); } 75% { opacity: 1; } to { opacity: 1; transform: none; } }
 
 @media (max-width: 720px) {
-  .intro-curtain { --edge: 6px; }
-  .intro-lockup { --k: 1.368; --badge: 38px; --solo: 140px; }
-  .intro-badge { --dx: calc((10px + 95px) * var(--k) / 2); }
-  .intro-text small { display: none; }
+  .kick-curtain { --edge: 6px; }
+  .kick-lockup { --k: 1.368; --badge: 38px; --solo: 140px; }
+  .kick-badge { --dx: calc((10px + 95px) * var(--k) / 2); }
+  .kick-text small { display: none; }
 }
 
 /* Reduced motion: static logo for 400 ms, then a 200 ms dissolve. */
 @media (prefers-reduced-motion: reduce) {
-  html[data-intro="on"] .intro { animation: intro-rm 600ms linear both; }
+  html[data-intro="on"] .kick { animation: kick-rm 600ms linear both; }
   html[data-intro="on"] .header .brand { animation: none; }
-  .intro *, .intro *::before { animation: none !important; }
-  @keyframes intro-rm { 0%, 66% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+  .kick *, .kick *::before { animation: none !important; }
+  @keyframes kick-rm { 0%, 66% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
 }
 
 /* ───── Page transitions ───── */
