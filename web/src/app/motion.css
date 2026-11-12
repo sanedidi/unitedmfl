@@ -1,0 +1,136 @@
+/* ───────── Motion: intro «Kick-off» and page transitions ─────────
+   Design: Figma «United MFL — Intro & Page Transitions».
+   Only transform and opacity are animated (plus stroke-dashoffset for the rings). */
+
+:root {
+  --ease-emph: cubic-bezier(.76, 0, .24, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-back: cubic-bezier(.34, 1.56, .64, 1);
+}
+
+/* Emblem layers */
+.emblem { display: block; width: 100%; height: 100%; overflow: visible; }
+.emblem .em-disc, .emblem .em-centre, .emblem .em-lettering, .emblem .em-arc { transform-box: fill-box; transform-origin: 50% 50%; }
+.emblem .em-lettering { transform-box: view-box; transform-origin: 500px 500px; }
+.emblem .em-ring { stroke-dasharray: 1.01 1; stroke-dashoffset: 0; }
+
+/* ───── Intro ───── */
+.intro { display: none; }
+html[data-intro="on"] .intro {
+  display: block; position: fixed; inset: 0; z-index: 200; overflow: hidden;
+  /* fail-safe: even if JavaScript never runs, the overlay is gone after the timeline */
+  animation: intro-end 0s linear 2150ms forwards;
+}
+html[data-intro="on"] .header .brand { animation: intro-brand-hidden 2150ms step-end; }
+@keyframes intro-end { to { visibility: hidden; pointer-events: none; } }
+@keyframes intro-brand-hidden { from, to { visibility: hidden; } }
+
+.intro-curtain {
+  position: absolute; left: 0; right: 0; top: 0; height: calc(100% + var(--edge));
+  --edge: 8px;
+  background: linear-gradient(to bottom, var(--n-900) calc(100% - var(--edge)), var(--lime-500) 0);
+  animation: intro-curtain 500ms var(--ease-emph) 1600ms both;
+}
+@keyframes intro-curtain { from { transform: none; } to { transform: translateY(-100%); } }
+
+.intro-stage { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+
+/* The lockup is the header lockup scaled by --k, so it can land on it exactly. */
+.intro-lockup {
+  --k: 2.318; --badge: 44px; --solo: 200px;
+  display: inline-flex; flex-direction: row-reverse; align-items: center;
+  gap: calc(10px * var(--k)); line-height: 1; color: #fff;
+  animation: intro-fade 300ms ease-in 1600ms forwards;
+}
+.intro.js-dock .intro-lockup { animation: none; }
+@keyframes intro-fade { to { opacity: 0; } }
+
+.intro-badge {
+  position: relative; z-index: 1; flex: none;
+  width: calc(var(--badge) * var(--k)); height: calc(var(--badge) * var(--k));
+  /* solo: centred on screen and bigger, then moves into the lockup */
+  --dx: calc((10px + 143px) * var(--k) / 2);
+  animation: intro-badge 350ms var(--ease-emph) 1100ms both;
+}
+@keyframes intro-badge {
+  from { transform: translateX(var(--dx)) scale(calc(var(--solo) / (var(--badge) * var(--k)))); }
+  to { transform: none; }
+}
+
+.intro-text { overflow: hidden; display: block; }
+.intro-text-in {
+  display: flex; flex-direction: column; gap: calc(3px * var(--k));
+  animation: intro-text 250ms var(--ease-out) 1250ms both;
+}
+@keyframes intro-text { from { opacity: 0; transform: translateX(-60px); } to { opacity: 1; transform: none; } }
+.intro-text b { font: 700 calc(18px * var(--k))/1 var(--font-ui); letter-spacing: -.02em; white-space: nowrap; }
+.intro-text small { font: 600 calc(10px * var(--k))/1 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .6); white-space: nowrap; }
+
+/* emblem assembly, 0–1000 ms */
+.intro .em-centre { animation: em-pop 240ms var(--ease-back) both, em-in 80ms linear both; }
+.intro .em-ring-outer { animation: em-draw 480ms ease-in-out 160ms both; }
+.intro .em-ring-inner { animation: em-draw 480ms ease-in-out 240ms both; }
+.intro .em-arc { animation: em-in 200ms linear 600ms both; }
+.intro .em-disc { animation: em-disc 320ms var(--ease-out) 480ms both; }
+.intro .em-lettering { animation: em-letters 400ms var(--ease-out) 600ms both; }
+@keyframes em-pop { from { transform: scale(.01); } to { transform: none; } }
+@keyframes em-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes em-draw { from { stroke-dashoffset: 1.01; } to { stroke-dashoffset: 0; } }
+@keyframes em-disc { from { opacity: 0; transform: scale(.2); } 37% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes em-letters { from { opacity: 0; transform: rotate(60deg); } 75% { opacity: 1; } to { opacity: 1; transform: none; } }
+
+@media (max-width: 720px) {
+  .intro-curtain { --edge: 6px; }
+  .intro-lockup { --k: 1.368; --badge: 38px; --solo: 140px; }
+  .intro-badge { --dx: calc((10px + 95px) * var(--k) / 2); }
+  .intro-text small { display: none; }
+}
+
+/* Reduced motion: static logo for 400 ms, then a 200 ms dissolve. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-intro="on"] .intro { animation: intro-rm 600ms linear both; }
+  html[data-intro="on"] .header .brand { animation: none; }
+  .intro *, .intro *::before { animation: none !important; }
+  @keyframes intro-rm { 0%, 66% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+}
+
+/* ───── Page transitions ───── */
+.pt { --d: 180px; --s: 16px; position: fixed; inset: 0; z-index: 190; pointer-events: none; visibility: hidden; }
+.pt[data-active="true"] { visibility: visible; }
+.pt[data-active="true"][data-kind="stinger"] { pointer-events: auto; }
+
+/* Stinger panel: graphite plane with slanted sides and lime edges, wider than the
+   viewport by --d on each side. At rest (transform: none) it fully covers the screen. */
+.pt-panel {
+  position: absolute; top: 0; bottom: 0; left: calc(-1 * var(--d)); width: calc(100% + 2 * var(--d));
+  transform: translateX(200vw); will-change: transform;
+}
+.pt-panel::before {
+  content: ""; position: absolute; inset: 0; background: var(--n-900);
+  clip-path: polygon(var(--d) 0, 100% 0, calc(100% - var(--d)) 100%, 0 100%);
+}
+.pt-edge { position: absolute; inset: 0; background: var(--lime-500); }
+.pt-edge-lead { clip-path: polygon(var(--d) 0, calc(var(--d) + var(--s)) 0, var(--s) 100%, 0 100%); }
+.pt-edge-trail { clip-path: polygon(calc(100% - var(--s)) 0, 100% 0, calc(100% - var(--d)) 100%, calc(100% - var(--d) - var(--s)) 100%); }
+.pt:not([data-kind="stinger"]) .pt-panel, .pt:not([data-kind="stinger"]) .pt-centre { display: none; }
+
+.pt-centre { position: absolute; inset: 0; display: grid; place-items: center; }
+.pt-badge { width: 160px; height: 160px; opacity: 0; }
+@media (max-width: 720px) { .pt-badge { width: 112px; height: 112px; } }
+/* Page still loading: the outer ring turns into a spinner. */
+.pt.is-waiting .em-ring-outer {
+  stroke-width: 16; stroke-dasharray: .7 .3; transform-box: view-box; transform-origin: 500px 500px;
+  animation: em-spin 1.2s linear infinite;
+}
+@keyframes em-spin { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+
+/* Pass: lime line under the header */
+.pt-line {
+  position: absolute; left: 0; right: 0; top: var(--top, 0); height: 2px; background: var(--lime-500);
+  transform: scaleX(0); transform-origin: 0 50%; opacity: 0;
+}
+.pt:not([data-kind="pass"]) .pt-line { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pt-panel, .pt-centre, .pt-line { display: none !important; }
+}

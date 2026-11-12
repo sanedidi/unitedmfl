@@ -2,10 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { JsonLd } from "@/components/JsonLd";
+import { Intro, INTRO_BOOT } from "@/components/motion/Intro";
+import { PageTransition } from "@/components/motion/PageTransition";
 import nextDynamic from "next/dynamic";
 import { archivo, inter } from "@/lib/fonts";
 import { DEFAULT_OG, ORG_ID, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
+import "./motion.css";
 
 // Pages are server-rendered per request (fresh scores); API data itself is cached
 // in the Next.js data cache and purged on every admin change (see lib/api.ts).
@@ -46,12 +49,16 @@ const siteLd = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const ticketUrl = process.env.TICKETS_URL || "/matchlar";
   return (
-    <html lang="uz" className={`${inter.variable} ${archivo.variable}`}>
+    // suppressHydrationWarning: the intro boot script sets data-intro on <html> before hydration.
+    <html lang="uz" className={`${inter.variable} ${archivo.variable}`} suppressHydrationWarning>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: INTRO_BOOT }} />
+        <Intro />
         <a href="#main" className="sr-only">Asosiy kontentga o‘tish</a>
         <Header ticketUrl={ticketUrl} />
         <main id="main">{children}</main>
         <Footer />
+        <PageTransition />
         <JsonLd data={siteLd} />
         <Analytics />
       </body>
