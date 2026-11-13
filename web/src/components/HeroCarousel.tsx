@@ -7,15 +7,26 @@ import type { Banner } from "@/lib/types";
 
 const INTERVAL = 6000;
 
-/** Approved poster in its native ~2:1 frame; the first slide is the LCP image. */
-function HeroPicture({ src, alt, first }: { src: string; alt: string; first: boolean }) {
-  if (!src.startsWith("/uploads/")) {
+/**
+ * Full-bleed slide photo. Desktop image fills the whole hero; an optional
+ * portrait image replaces it on phones. The first slide is the LCP image.
+ */
+function HeroPicture({ desktop, mobile, alt, first }: { desktop: string; mobile: string; alt: string; first: boolean }) {
+  const main = desktop || mobile;
+  const local = (u: string) => u.startsWith("/uploads/");
+  const common = { alt, fill: true, sizes: "100vw", priority: first, quality: 80 } as const;
+  const img = local(main)
+    ? (() => { const { props } = getImageProps({ ...common, src: main }); return <img {...props} alt={alt} style={{ ...props.style, objectFit: "cover" }} />; })()
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt} fetchPriority={first ? "high" : "auto"} loading={first ? "eager" : "lazy"} decoding="async" />;
-  }
-  const { props } = getImageProps({ src, alt, fill: true, sizes: "(max-width: 1024px) 100vw, 760px", priority: first, quality: 82 });
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img {...props} alt={alt} style={{ ...props.style, objectFit: "cover" }} />;
+    : <img src={main} alt={alt} fetchPriority={first ? "high" : "auto"} loading={first ? "eager" : "lazy"} decoding="async" />;
+  if (!mobile || mobile === main) return img;
+  const srcSet = local(mobile) ? getImageProps({ ...common, src: mobile }).props.srcSet : mobile;
+  return (
+    <picture>
+      <source media="(max-width: 720px)" srcSet={srcSet} sizes="100vw" />
+      {img}
+    </picture>
+  );
 }
 
 export function HeroCarousel({ banners, dates, season = "United MFL 2026" }: { banners: Banner[]; dates: Record<number, string>; season?: string }) {
@@ -61,7 +72,7 @@ export function HeroCarousel({ banners, dates, season = "United MFL 2026" }: { b
 
   return (
     <section
-      className="hero on-dark"
+      className="hero hero-full on-dark"
       aria-roledescription="carousel"
       aria-label="Asosiy e’lonlar"
       onMouseEnter={() => setPaused(true)}
@@ -73,52 +84,44 @@ export function HeroCarousel({ banners, dates, season = "United MFL 2026" }: { b
         if (e.key === "ArrowLeft") go(i - 1);
       }}
     >
-      <div className="container">
-        <div className="hero-grid">
-          <div className="hero-copy" aria-live="polite">
-            <div>
-              <div className="hero-kicker">{season}{b.badge ? ` · ${b.badge}` : ""}</div>
-              <div className="display" role="heading" aria-level={2}>{b.title}</div>
-              <div className="hero-meta">
-                {b.event_date && <span><Calendar size={16} /> {dates[b.id]}</span>}
-                {b.event_time && <span><Clock size={16} /> {b.event_time}</span>}
-                {b.venue && <span><Pin size={16} /> {b.venue}</span>}
-              </div>
-            </div>
-            <div className="hero-ctas">
-              {b.cta_url && (
-                <a className="btn btn-primary btn-lg" href={b.cta_url} {...(ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-                  {b.cta_label || "Batafsil"}
-                </a>
-              )}
-              <Link className="btn btn-ghost btn-lg" href="/matchlar">Matchlar taqvimi</Link>
+      <div
+        className="hero-bg"
+        onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
+        onTouchEnd={(e) => {
+          if (touch.current == null) return;
+          const dx = e.changedTouches[0].clientX - touch.current;
+          if (Math.abs(dx) > 50) go(i + (dx < 0 ? 1 : -1));
+          touch.current = null;
+        }}
+      >
+        {banners.map((s, k) => (
+          <div key={s.id} className={`hero-slide${k === i ? " active" : ""}`} aria-hidden={k !== i} role="group" aria-roledescription="slide" aria-label={`${k + 1} / ${n}`}>
+            {s.image_desktop || s.image_mobile
+              ? <HeroPicture desktop={s.image_desktop} mobile={s.image_mobile} alt={s.title} first={k === 0} />
+              : <div className="hero-art" />}
+          </div>
+        ))}
+        <div className="hero-shade" aria-hidden />
+      </div>
+
+      <div className="container hero-inner">
+        <div className="hero-copy" aria-live="polite">
+          <div>
+            <div className="hero-kicker">{season}{b.badge ? ` · ${b.badge}` : ""}</div>
+            <div className="display" role="heading" aria-level={2}>{b.title}</div>
+            <div className="hero-meta">
+              {b.event_date && <span><Calendar size={16} /> {dates[b.id]}</span>}
+              {b.event_time && <span><Clock size={16} /> {b.event_time}</span>}
+              {b.venue && <span><Pin size={16} /> {b.venue}</span>}
             </div>
           </div>
-
-          <div
-            className="hero-media"
-            onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
-            onTouchEnd={(e) => {
-              if (touch.current == null) return;
-              const dx = e.changedTouches[0].clientX - touch.current;
-              if (Math.abs(dx) > 50) go(i + (dx < 0 ? 1 : -1));
-              touch.current = null;
-            }}
-          >
-            {banners.map((s, k) => (
-              <div key={s.id} className={`hero-slide${k === i ? " active" : ""}`} aria-hidden={k !== i} role="group" aria-roledescription="slide" aria-label={`${k + 1} / ${n}`}>
-                {s.image_desktop || s.image_mobile ? (
-                  <HeroPicture src={s.image_desktop || s.image_mobile} alt={s.title} first={k === 0} />
-                ) : (
-                  <div className="hero-art">
-                    <div>
-                      <div className="kicker">UNITED MFL · {s.badge || "2026"}</div>
-                      <div className="title">{s.title}</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="hero-ctas">
+            {b.cta_url && (
+              <a className="btn btn-primary btn-lg" href={b.cta_url} {...(ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+                {b.cta_label || "Batafsil"}
+              </a>
+            )}
+            <Link className="btn btn-ghost btn-lg" href="/matchlar">Matchlar taqvimi</Link>
           </div>
         </div>
 
