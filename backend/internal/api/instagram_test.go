@@ -38,7 +38,7 @@ func TestInstagramSync(t *testing.T) {
 	}
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("access_token") != "" && r.URL.Query().Get("access_token") != "good-token-1234567890" {
+		if r.URL.Query().Get("access_token") != "" && r.URL.Query().Get("access_token") != "IGgood-token-1234567890" {
 			w.WriteHeader(400)
 			_, _ = w.Write([]byte(`{"error":{"message":"Invalid OAuth access token","code":190}}`))
 			return
@@ -69,13 +69,13 @@ func TestInstagramSync(t *testing.T) {
 	defer srv.Close()
 
 	dir := t.TempDir()
-	cfg := &config.Config{UploadDir: dir, MaxUploadBytes: 1 << 20, InstagramAPIURL: srv.URL, InstagramSyncEvery: time.Hour}
+	cfg := &config.Config{UploadDir: dir, MaxUploadBytes: 1 << 20, InstagramAPIURL: srv.URL, FacebookGraphURL: srv.URL, InstagramSyncEvery: time.Hour}
 	s := &Server{DB: conn, Cfg: cfg}
 
-	if err := s.igConnect(ctx, "bad-token-1234567890"); err == nil {
+	if err := s.igConnect(ctx, "IGbad-token-1234567890", ""); err == nil {
 		t.Fatal("bad token accepted")
 	}
-	if err := s.igConnect(ctx, "good-token-1234567890"); err != nil {
+	if err := s.igConnect(ctx, "IGgood-token-1234567890", ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.igSync(ctx); err != nil {
@@ -113,5 +113,38 @@ func TestInstagramSync(t *testing.T) {
 	_ = conn.QueryRow(`SELECT count(*) FROM instagram_posts`).Scan(&n)
 	if n != 1 {
 		t.Fatalf("posts = %d, want 1", n)
+	}
+
+	// Facebook Graph (system-user) token: account found via /me/accounts, media via /{ig-id}/media
+	fbToken := "EAAfb-token-1234567890"
+	fbSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("access_token") != fbToken {
+			w.WriteHeader(400)
+			return
+		}
+		switch r.URL.Path {
+		case "/v23.0/me/accounts":
+			_, _ = w.Write([]byte(`{"data":[{"id":"p1"},{"id":"p2","instagram_business_account":{"id":"17841478267171657","username":"unitedmfl"}}]}`))
+		case "/v23.0/17841478267171657":
+			_, _ = w.Write([]byte(`{"id":"17841478267171657","username":"unitedmfl"}`))
+		case "/v23.0/17841478267171657/media":
+			_, _ = w.Write([]byte(`{"data":[{"id":"333","caption":"FB","media_type":"IMAGE","media_url":"` + srv.URL + `/IMG/333","permalink":"https://www.instagram.com/p/CCC/","timestamp":"2026-11-12T10:00:00+0000"}]}`))
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer fbSrv.Close()
+	s.Cfg.FacebookGraphURL = fbSrv.URL
+	if err := s.igConnect(ctx, fbToken, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.igSync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var api, ids string
+	_ = conn.QueryRow(`SELECT api FROM instagram_account`).Scan(&api)
+	_ = conn.QueryRow(`SELECT string_agg(id, ',') FROM instagram_posts`).Scan(&ids)
+	if api != "facebook" || ids != "333" {
+		t.Fatalf("facebook flow: api=%s posts=%s", api, ids)
 	}
 }

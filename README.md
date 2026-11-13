@@ -76,9 +76,13 @@ cd admin && npm ci && API_URL=http://localhost:8080 npm run dev            # :51
 
 **Как устроено.** Go API раз в 30 минут (`INSTAGRAM_SYNC_MIN`) забирает последние 24 поста, копирует картинки в `/uploads/images/ig-<id>.*` и при изменениях сбрасывает кэш сайта. Ссылки Instagram CDN временные, поэтому сайт показывает только свои копии. Посты, удалённые в Instagram, пропадают и с сайта. Долгоживущий токен (60 дней) API продлевает сам, когда до конца срока остаётся меньше 20 дней. Код: `backend/internal/api/instagram.go`, блок сайта — `web/src/components/InstagramFeed.tsx`.
 
-**Подключение.**
-1. Instagram-аккаунт должен быть профессиональным (Business или Creator).
-2. developers.facebook.com → Create app → продукт Instagram → «API setup with Instagram login» → «Generate access tokens» → добавить аккаунт → скопировать токен.
+**Токены.** Принимаются два вида:
+- `IGAA…` — токен Instagram User (graph.instagram.com, 60 дней, продлевается автоматически);
+- `EAA…` — токен Facebook Graph (graph.facebook.com). Новые приложения Meta получают его через «API setup with Unified login» как бессрочный токен системного пользователя. Instagram-аккаунт находится сам через страницы токена, или его ID указывают вручную.
+
+**Подключение (текущее приложение Meta «United MFL Site», ID 1828147875097772, портфолио «United mfl»).**
+1. Instagram-аккаунт должен быть профессиональным (Business или Creator) и иметь роль «Тестировщик Instagram» в приложении (Роли в приложении).
+2. Сценарии использования → Instagram API → «API setup with Unified login» → шаг 1: конфигурация; шаг 2: «Сгенерировать маркер» у аккаунта → скопировать токен.
 3. Админка → «Instagram» → вставить токен → «Ulash». Там же можно скрыть отдельные посты, обновить ленту вручную или отключить Instagram.
 
 Тест синхронизации (нужен Postgres): `TEST_DATABASE_URL=postgres://… go test -mod=vendor -run Instagram ./internal/api/`.

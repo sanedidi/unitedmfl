@@ -7,13 +7,14 @@ import { Badge, Empty, ErrorBox, Field, Loading, useConfirm, useToast } from "@/
 import { I } from "@/components/Icons";
 
 type Post = { id: string; caption: string; media_type: string; is_reel: boolean; image_url: string; permalink: string; posted_at: string; is_hidden: boolean };
-type State = { connected: boolean; username: string; token_expires_at: string | null; last_sync_at: string | null; last_error: string; posts: Post[] };
+type State = { connected: boolean; api: string; username: string; token_expires_at: string | null; last_sync_at: string | null; last_error: string; posts: Post[] };
 
 const kind = (p: Post) => (p.is_reel ? "Reels" : p.media_type === "VIDEO" ? "Video" : p.media_type === "CAROUSEL_ALBUM" ? "Albom" : "Rasm");
 
 export function InstagramPage() {
   const { data, error, loading, reload, setData } = useLoad(() => api.get<State>("/admin/instagram"), []);
   const [token, setToken] = useState("");
+  const [igId, setIgId] = useState("");
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
@@ -21,8 +22,9 @@ export function InstagramPage() {
   async function connect() {
     setBusy(true);
     try {
-      setData(await api.put<State>("/admin/instagram", { access_token: token.trim() }));
+      setData(await api.put<State>("/admin/instagram", { access_token: token.trim(), ig_user_id: igId.trim() }));
       setToken("");
+      setIgId("");
       toast("Instagram ulandi");
     } catch (e) {
       toast(e instanceof Error ? e.message : "Xato", "error");
@@ -56,9 +58,14 @@ export function InstagramPage() {
 
   const tokenForm = (
     <div className="stack">
-      <Field label="Access token" hint="Meta for Developers → ilova → Instagram → API setup with Instagram login → Generate access tokens. Token faqat serverda saqlanadi va 60 kunda avtomatik yangilanadi.">
-        <input className="input" value={token} onChange={(e) => setToken(e.target.value)} placeholder="IGAA…" autoComplete="off" spellCheck={false} />
+      <Field label="Access token" hint="Meta for Developers → ilova → Instagram API → «Generate access tokens». IGAA… va EAA… tokenlar qabul qilinadi. Token faqat serverda saqlanadi; IGAA… tokeni 60 kunda avtomatik yangilanadi.">
+        <input className="input" value={token} onChange={(e) => setToken(e.target.value)} placeholder="IGAA… yoki EAA…" autoComplete="off" spellCheck={false} />
       </Field>
+      {token.trim().startsWith("EAA") && (
+        <Field label="Instagram akkaunt ID (ixtiyoriy)" hint="Bo‘sh qoldirsangiz, avtomatik topiladi. Meta → Instagram API → 2-qadamda akkaunt nomi ostidagi raqam.">
+          <input className="input" value={igId} onChange={(e) => setIgId(e.target.value.replace(/\D/g, ""))} placeholder="17841…" inputMode="numeric" />
+        </Field>
+      )}
       <div className="row">
         <button className="btn btn-primary" disabled={busy || token.trim().length < 20} onClick={connect}>{busy ? "Tekshirilmoqda…" : data?.connected ? "Tokenni almashtirish" : "Ulash"}</button>
       </div>
@@ -87,7 +94,7 @@ export function InstagramPage() {
                 <div className="form-grid">
                   <div><div className="label">Akkaunt</div><a href={`https://www.instagram.com/${data.username}/`} target="_blank" rel="noopener noreferrer">@{data.username}</a></div>
                   <div><div className="label">Oxirgi yangilanish</div>{fmtDateTime(data.last_sync_at)}</div>
-                  <div><div className="label">Token amal qiladi</div>{fmtDate(data.token_expires_at)} gacha (avtomatik uzaytiriladi)</div>
+                  <div><div className="label">Token amal qiladi</div>{data.token_expires_at ? <>{fmtDate(data.token_expires_at)} gacha (avtomatik uzaytiriladi)</> : "Muddatsiz"}</div>
                   <div><div className="label">Postlar</div>{data.posts.length} ta, saytda {data.posts.filter((p) => !p.is_hidden).slice(0, 12).length} ta</div>
                 </div>
               )}

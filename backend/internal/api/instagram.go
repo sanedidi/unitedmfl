@@ -24,9 +24,12 @@ import (
 
 // Instagram feed (Instagram API with Instagram Login, graph.instagram.com).
 //
-// The admin pastes a long-lived user access token of the league's professional
-// (Business/Creator) account. The API then:
-//   - refreshes the token before its 60-day expiry,
+// The admin pastes an access token of the league's professional (Business/Creator)
+// account. Two kinds are accepted:
+//   - Instagram User token (IGAA…, graph.instagram.com, 60 days) — refreshed automatically;
+//   - Facebook Graph token (EAA…, graph.facebook.com), e.g. the never-expiring system-user
+//     token that "API setup with unified login" issues for new Meta apps.
+// The API then:
 //   - pulls the latest posts every InstagramSyncEvery,
 //   - copies each post's image into /uploads (Instagram CDN URLs expire),
 //   - tells the site to drop its cache when the feed changes.
@@ -63,8 +66,8 @@ var igIDRe = regexp.MustCompile(`^[0-9]{1,40}$`)
 func (s *Server) igClient() *http.Client { return &http.Client{Timeout: 30 * time.Second} }
 
 // igGet calls the Graph API and decodes the JSON answer into out.
-func (s *Server) igGet(ctx context.Context, path string, q url.Values, out any) error {
-	u := s.Cfg.InstagramAPIURL + path + "?" + q.Encode()
+func (s *Server) igGet(ctx context.Context, base, path string, q url.Values, out any) error {
+	u := base + path + "?" + q.Encode()
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	res, err := s.igClient().Do(req)
 	if err != nil {
@@ -86,6 +89,7 @@ func (s *Server) igGet(ctx context.Context, path string, q url.Values, out any) 
 }
 
 type igAccount struct {
+	API       string // instagram | facebook
 	Token     string
 	UserID    string
 	Username  string
@@ -95,8 +99,8 @@ type igAccount struct {
 
 func (s *Server) igLoadAccount(ctx context.Context) (igAccount, error) {
 	var a igAccount
-	err := s.DB.QueryRowContext(ctx, `SELECT access_token, ig_user_id, username, token_expires_at, token_set_at FROM instagram_account WHERE id = 1`).
-		Scan(&a.Token, &a.UserID, &a.Username, &a.ExpiresAt, &a.SetAt)
+	err := s.DB.QueryRowContext(ctx, `SELECT api, access_token, ig_user_id, username, token_expires_at, token_set_at FROM instagram_account WHERE id = 1`).
+		Scan(&a.API, &a.Token, &a.UserID, &a.Username, &a.ExpiresAt, &a.SetAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return a, nil
 	}
@@ -107,32 +111,103 @@ func (s *Server) igSetError(ctx context.Context, msg string) {
 	_, _ = s.DB.ExecContext(ctx, `UPDATE instagram_account SET last_error = $1, updated_at = now() WHERE id = 1`, msg)
 }
 
-// igConnect validates a token against /me and stores it.
-func (s *Server) igConnect(ctx context.Context, token string) error {
-	var me struct {
-		UserID   string `json:"user_id"`
-		ID       string `json:"id"`
-		Username string `json:"username"`
+// igTokenAPI tells which Graph API a token belongs to.
+func igTokenAPI(token string) string {
+	if strings.HasPrefix(token, "IG") {
+		return "instagram"
 	}
-	if err := s.igGet(ctx, igVersion+"/me", url.Values{"fields": {"user_id,username"}, "access_token": {token}}, &me); err != nil {
-		return err
+	return "facebook"
+}
+
+// igBase returns the Graph API host for an account kind.
+func (s *Server) igBase(api string) string {
+	if api == "facebook" {
+		return s.Cfg.FacebookGraphURL
 	}
-	uid := me.UserID
-	if uid == "" {
-		uid = me.ID
+	return s.Cfg.InstagramAPIURL
+}
+
+// igMediaPath is the media edge of the connected account.
+func igMediaPath(a igAccount) string {
+	if a.API == "facebook" {
+		return igVersion + "/" + a.UserID + "/media"
 	}
-	// A long-lived token lives 60 days; the exact expiry is learnt on the first refresh.
-	_, err := s.DB.ExecContext(ctx, `INSERT INTO instagram_account (id, access_token, ig_user_id, username, token_expires_at, token_set_at, last_error, updated_at)
-		VALUES (1, $1, $2, $3, now() + interval '60 days', now(), '', now())
-		ON CONFLICT (id) DO UPDATE SET access_token = EXCLUDED.access_token, ig_user_id = EXCLUDED.ig_user_id,
+	return igVersion + "/me/media"
+}
+
+// igConnect validates a token (and, for Facebook Graph tokens, finds the
+// Instagram business account) and stores it.
+func (s *Server) igConnect(ctx context.Context, token, igUserID string) error {
+	api := igTokenAPI(token)
+	base := s.igBase(api)
+	var uid, username string
+	if api == "instagram" {
+		var me struct {
+			UserID   string `json:"user_id"`
+			ID       string `json:"id"`
+			Username string `json:"username"`
+		}
+		if err := s.igGet(ctx, base, igVersion+"/me", url.Values{"fields": {"user_id,username"}, "access_token": {token}}, &me); err != nil {
+			return err
+		}
+		uid, username = me.UserID, me.Username
+		if uid == "" {
+			uid = me.ID
+		}
+	} else {
+		if igUserID == "" {
+			// Pages the token can see → their linked Instagram business accounts.
+			var pages struct {
+				Data []struct {
+					IG *struct {
+						ID       string `json:"id"`
+						Username string `json:"username"`
+					} `json:"instagram_business_account"`
+				} `json:"data"`
+			}
+			if err := s.igGet(ctx, base, igVersion+"/me/accounts", url.Values{"fields": {"instagram_business_account{id,username}"}, "limit": {"100"}, "access_token": {token}}, &pages); err == nil {
+				for _, p := range pages.Data {
+					if p.IG != nil && p.IG.ID != "" {
+						igUserID = p.IG.ID
+						break
+					}
+				}
+			}
+			if igUserID == "" {
+				return errors.New("Instagram akkaunt ID topilmadi — uni qo‘lda kiriting (Meta → ilova → Instagram API → 2-qadam, akkaunt nomi ostidagi raqam)")
+			}
+		}
+		if !igIDRe.MatchString(igUserID) {
+			return errors.New("Instagram akkaunt ID noto‘g‘ri")
+		}
+		var acc struct {
+			ID       string `json:"id"`
+			Username string `json:"username"`
+		}
+		if err := s.igGet(ctx, base, igVersion+"/"+igUserID, url.Values{"fields": {"id,username"}, "access_token": {token}}, &acc); err != nil {
+			return err
+		}
+		uid, username = acc.ID, acc.Username
+	}
+	if uid == "" || username == "" {
+		return errors.New("instagram: akkaunt ma’lumotlari olinmadi")
+	}
+	// Instagram User tokens live 60 days (the exact expiry is learnt on the first
+	// refresh); Facebook Graph tokens are stored without an expiry.
+	_, err := s.DB.ExecContext(ctx, `INSERT INTO instagram_account (id, api, access_token, ig_user_id, username, token_expires_at, token_set_at, last_error, updated_at)
+		VALUES (1, $1, $2, $3, $4, CASE WHEN $1 = 'instagram' THEN now() + interval '60 days' END, now(), '', now())
+		ON CONFLICT (id) DO UPDATE SET api = EXCLUDED.api, access_token = EXCLUDED.access_token, ig_user_id = EXCLUDED.ig_user_id,
 			username = EXCLUDED.username, token_expires_at = EXCLUDED.token_expires_at, token_set_at = now(), last_error = '', updated_at = now()`,
-		token, uid, me.Username)
+		api, token, uid, username)
 	return err
 }
 
 // igRefreshToken extends a long-lived token when it is older than a day and
 // expires within 20 days (Instagram refuses to refresh tokens younger than 24h).
 func (s *Server) igRefreshToken(ctx context.Context, a igAccount) error {
+	if a.API != "instagram" {
+		return nil
+	}
 	if a.SetAt.Valid && time.Since(a.SetAt.Time) < 25*time.Hour {
 		return nil
 	}
@@ -143,7 +218,7 @@ func (s *Server) igRefreshToken(ctx context.Context, a igAccount) error {
 		AccessToken string `json:"access_token"`
 		ExpiresIn   int64  `json:"expires_in"`
 	}
-	if err := s.igGet(ctx, "/refresh_access_token", url.Values{"grant_type": {"ig_refresh_token"}, "access_token": {a.Token}}, &out); err != nil {
+	if err := s.igGet(ctx, s.Cfg.InstagramAPIURL, "/refresh_access_token", url.Values{"grant_type": {"ig_refresh_token"}, "access_token": {a.Token}}, &out); err != nil {
 		return err
 	}
 	if out.AccessToken == "" {
@@ -183,7 +258,7 @@ func (s *Server) igSync(ctx context.Context) error {
 		"limit":        {fmt.Sprint(igFeedSize)},
 		"access_token": {a.Token},
 	}
-	if err := s.igGet(ctx, igVersion+"/me/media", q, &page); err != nil {
+	if err := s.igGet(ctx, s.igBase(a.API), igMediaPath(a), q, &page); err != nil {
 		s.igSetError(ctx, err.Error())
 		return err
 	}
@@ -310,7 +385,7 @@ func (s *Server) igRemoveFile(img string) {
 func (s *Server) RunInstagramSync(ctx context.Context) {
 	if s.Cfg.InstagramToken != "" {
 		if a, err := s.igLoadAccount(ctx); err == nil && a.Token == "" {
-			if err := s.igConnect(ctx, s.Cfg.InstagramToken); err != nil {
+			if err := s.igConnect(ctx, s.Cfg.InstagramToken, ""); err != nil {
 				slog.Warn("instagram: INSTAGRAM_ACCESS_TOKEN rejected", "err", err)
 			}
 		}
@@ -350,6 +425,7 @@ func (s *Server) publicInstagram(w http.ResponseWriter, r *http.Request) {
 func (s *Server) adminInstagram(w http.ResponseWriter, r *http.Request) {
 	s.respondQuery(w, r, `SELECT json_build_object(
 		'connected', coalesce(a.access_token <> '', false),
+		'api', coalesce(a.api, ''),
 		'username', coalesce(a.username, ''),
 		'token_expires_at', a.token_expires_at,
 		'last_sync_at', a.last_sync_at,
@@ -362,6 +438,7 @@ func (s *Server) adminInstagram(w http.ResponseWriter, r *http.Request) {
 func (s *Server) connectInstagram(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		AccessToken string `json:"access_token"`
+		IGUserID    string `json:"ig_user_id"`
 	}
 	if err := httpx.Decode(r, &in); err != nil {
 		httpx.Fail(w, r, err)
@@ -373,7 +450,7 @@ func (s *Server) connectInstagram(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	igMu.Lock()
-	err := s.igConnect(r.Context(), token)
+	err := s.igConnect(r.Context(), token, strings.TrimSpace(in.IGUserID))
 	igMu.Unlock()
 	if err != nil {
 		httpx.Fail(w, r, httpx.BadRequest("Instagram tokenni qabul qilmadi: "+err.Error()))

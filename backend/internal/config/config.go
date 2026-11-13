@@ -10,30 +10,31 @@ import (
 )
 
 type Config struct {
-	Addr             string
-	DatabaseURL      string
-	JWTSecret        []byte
-	AccessTTL        time.Duration
-	RefreshTTL       time.Duration
-	UploadDir        string
-	WebRevalidateURL string // e.g. http://web:3000/internal/revalidate
-	RevalidateSecret string
-	MirrorImageHosts string // external hosts whose banner images are copied into /uploads
-	PublicBaseURL    string // prefix for uploaded file URLs; empty = site-relative (/uploads/...)
-	CORSOrigins      []string
-	AdminEmail       string
-	AdminPassword    string
-	AdminName        string
-	MaxUploadBytes   int64
-	Env              string
-	PointsWin        int
-	PointsDraw       int
-	PointsLoss       int
-	LineupBenchMax   int    // substitutes allowed in a matchday squad (0 = no limit)
-	TelegramToken    string // Live-pult bot token from @BotFather; empty = bot disabled
-	TelegramAPIURL   string // Bot API base URL (override only for tests or a local Bot API server)
+	Addr               string
+	DatabaseURL        string
+	JWTSecret          []byte
+	AccessTTL          time.Duration
+	RefreshTTL         time.Duration
+	UploadDir          string
+	WebRevalidateURL   string // e.g. http://web:3000/internal/revalidate
+	RevalidateSecret   string
+	MirrorImageHosts   string // external hosts whose banner images are copied into /uploads
+	PublicBaseURL      string // prefix for uploaded file URLs; empty = site-relative (/uploads/...)
+	CORSOrigins        []string
+	AdminEmail         string
+	AdminPassword      string
+	AdminName          string
+	MaxUploadBytes     int64
+	Env                string
+	PointsWin          int
+	PointsDraw         int
+	PointsLoss         int
+	LineupBenchMax     int           // substitutes allowed in a matchday squad (0 = no limit)
+	TelegramToken      string        // Live-pult bot token from @BotFather; empty = bot disabled
+	TelegramAPIURL     string        // Bot API base URL (override only for tests or a local Bot API server)
 	InstagramToken     string        // optional: long-lived token to connect on first start (normally set in the admin)
 	InstagramAPIURL    string        // Instagram Graph API host (override only for tests)
+	FacebookGraphURL   string        // Facebook Graph API host (override only for tests)
 	InstagramSyncEvery time.Duration // how often the feed is pulled
 }
 
@@ -76,11 +77,12 @@ func Load() (*Config, error) {
 		PointsDraw: envInt("POINTS_DRAW", 1),
 		PointsLoss: envInt("POINTS_LOSS", 0),
 		// Bench size is a proposal until confirmed by the league regulations.
-		LineupBenchMax: envInt("LINEUP_BENCH_MAX", 9),
-		TelegramToken:  env("TELEGRAM_BOT_TOKEN", ""),
-		TelegramAPIURL: strings.TrimRight(env("TELEGRAM_API_URL", "https://api.telegram.org"), "/"),
+		LineupBenchMax:     envInt("LINEUP_BENCH_MAX", 9),
+		TelegramToken:      env("TELEGRAM_BOT_TOKEN", ""),
+		TelegramAPIURL:     strings.TrimRight(env("TELEGRAM_API_URL", "https://api.telegram.org"), "/"),
 		InstagramToken:     env("INSTAGRAM_ACCESS_TOKEN", ""),
 		InstagramAPIURL:    strings.TrimRight(env("INSTAGRAM_API_URL", "https://graph.instagram.com"), "/"),
+		FacebookGraphURL:   strings.TrimRight(env("FACEBOOK_GRAPH_URL", "https://graph.facebook.com"), "/"),
 		InstagramSyncEvery: time.Duration(max(envInt("INSTAGRAM_SYNC_MIN", 30), 5)) * time.Minute,
 	}
 	for _, o := range strings.Split(env("CORS_ORIGINS", "*"), ",") {
