@@ -354,7 +354,7 @@ func (s *Server) publicNewsItem(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) publicBanners(w http.ResponseWriter, r *http.Request) {
 	s.respondQuery(w, r, `SELECT coalesce(json_agg(b ORDER BY b.ord, b.id), '[]') FROM (
-		SELECT id, title, badge, badge_type, event_date, event_time, venue, cta_label, cta_url, image_desktop, image_mobile, ord
+		SELECT id, title, badge, badge_type, event_date, event_time, venue, cta_label, cta_url, image_desktop, image_mobile, layout, ord
 		FROM banners WHERE is_active AND status = 'published'
 		  AND (show_from IS NULL OR show_from <= now()) AND (show_until IS NULL OR show_until >= now())) b`)
 }

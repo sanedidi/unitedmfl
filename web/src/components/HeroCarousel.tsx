@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getImageProps } from "next/image";
 import Link from "next/link";
 import { Calendar, Clock, Pin } from "./Icons";
-import type { Banner } from "@/lib/types";
+import { HERO_LAYOUTS, type Banner, type HeroLayout } from "@/lib/types";
 
 const INTERVAL = 6000;
 
@@ -29,7 +29,15 @@ function HeroPicture({ desktop, mobile, alt, first }: { desktop: string; mobile:
   );
 }
 
-export function HeroCarousel({ banners, dates, season = "United MFL 2026" }: { banners: Banner[]; dates: Record<number, string>; season?: string }) {
+/**
+ * Home hero. Each banner picks how its copy sits over the photo (`layout`):
+ * shade, panel, glass, split or poster — every one puts a solid or dark
+ * translucent surface under the text, so it stays readable on any photo.
+ * `layout` overrides the banner's own choice (used by /internal/hero).
+ */
+export function HeroCarousel({ banners, dates, season = "United MFL 2026", layout: force, label = "Asosiy e’lonlar" }: {
+  banners: Banner[]; dates: Record<number, string>; season?: string; layout?: HeroLayout; label?: string;
+}) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   // Autoplay starts after the visitor's first interaction: rotating slides before
@@ -69,12 +77,14 @@ export function HeroCarousel({ banners, dates, season = "United MFL 2026" }: { b
   if (n === 0) return null;
   const b = banners[i];
   const ext = /^https?:/.test(b.cta_url);
+  const want = force || b.layout;
+  const layout: HeroLayout = want && HERO_LAYOUTS.includes(want) ? want : "shade";
 
   return (
     <section
-      className="hero hero-full on-dark"
+      className={`hero hero-full hero--${layout} on-dark`}
       aria-roledescription="carousel"
-      aria-label="Asosiy e’lonlar"
+      aria-label={label}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -104,44 +114,46 @@ export function HeroCarousel({ banners, dates, season = "United MFL 2026" }: { b
         <div className="hero-shade" aria-hidden />
       </div>
 
-      <div className="container hero-inner">
-        <div className="hero-copy" aria-live="polite">
-          <div>
-            <div className="hero-kicker">{season}{b.badge ? ` · ${b.badge}` : ""}</div>
-            <div className="display" role="heading" aria-level={2}>{b.title}</div>
-            <div className="hero-meta">
-              {b.event_date && <span><Calendar size={16} /> {dates[b.id]}</span>}
-              {b.event_time && <span><Clock size={16} /> {b.event_time}</span>}
-              {b.venue && <span><Pin size={16} /> {b.venue}</span>}
+      <div className="hero-stage">
+        <div className="container hero-inner">
+          <div className="hero-copy" aria-live="polite">
+            <div className="hero-text">
+              <div className="hero-kicker">{season}{b.badge ? ` · ${b.badge}` : ""}</div>
+              <div className="display" role="heading" aria-level={2}>{b.title}</div>
+              <div className="hero-meta">
+                {b.event_date && <span><Calendar size={16} /> {dates[b.id]}</span>}
+                {b.event_time && <span><Clock size={16} /> {b.event_time}</span>}
+                {b.venue && <span><Pin size={16} /> {b.venue}</span>}
+              </div>
+            </div>
+            <div className="hero-ctas">
+              {b.cta_url && (
+                <a className="btn btn-primary btn-lg" href={b.cta_url} {...(ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+                  {b.cta_label || "Batafsil"}
+                </a>
+              )}
+              <Link className="btn btn-ghost btn-lg" href="/matchlar">Matchlar taqvimi</Link>
             </div>
           </div>
-          <div className="hero-ctas">
-            {b.cta_url && (
-              <a className="btn btn-primary btn-lg" href={b.cta_url} {...(ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-                {b.cta_label || "Batafsil"}
-              </a>
-            )}
-            <Link className="btn btn-ghost btn-lg" href="/matchlar">Matchlar taqvimi</Link>
-          </div>
-        </div>
 
-        {n > 1 && (
-          <>
-            <div className="hero-tabs" role="tablist" aria-label="Slaydlar" style={{ ["--n" as string]: Math.min(n, 4) }}>
-              {banners.slice(0, 4).map((s, k) => (
-                <button key={s.id} role="tab" aria-selected={k === i} className={`hero-tab${k === i ? " active" : ""}`} onClick={() => go(k)}>
-                  {k === i && <span className="progress" style={{ width: engaged && !paused ? `${(tick / INTERVAL) * 100}%` : "100%" }} />}
-                  <b><small>{String(k + 1).padStart(2, "0")}</small>{s.title}</b>
-                  <span>{[dates[s.id], s.event_time].filter(Boolean).join(" · ") || s.badge}</span>
-                </button>
-              ))}
-            </div>
-            <div className="hero-dots" aria-hidden>
-              {banners.map((s, k) => <button key={s.id} tabIndex={-1} className={k === i ? "active" : ""} onClick={() => go(k)} />)}
-              <span>{String(i + 1).padStart(2, "0")} / {String(n).padStart(2, "0")}</span>
-            </div>
-          </>
-        )}
+          {n > 1 && (
+            <>
+              <div className="hero-tabs" role="tablist" aria-label="Slaydlar" style={{ ["--n" as string]: Math.min(n, 4) }}>
+                {banners.slice(0, 4).map((s, k) => (
+                  <button key={s.id} role="tab" aria-selected={k === i} className={`hero-tab${k === i ? " active" : ""}`} onClick={() => go(k)}>
+                    {k === i && <span className="progress" style={{ width: engaged && !paused ? `${(tick / INTERVAL) * 100}%` : "100%" }} />}
+                    <b><small>{String(k + 1).padStart(2, "0")}</small>{s.title}</b>
+                    <span>{[dates[s.id], s.event_time].filter(Boolean).join(" · ") || s.badge}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="hero-dots" aria-hidden>
+                {banners.map((s, k) => <button key={s.id} tabIndex={-1} className={k === i ? "active" : ""} onClick={() => go(k)} />)}
+                <span>{String(i + 1).padStart(2, "0")} / {String(n).padStart(2, "0")}</span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </section>
   );

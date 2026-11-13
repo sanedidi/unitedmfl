@@ -7,6 +7,15 @@ import { PageHead } from "@/components/Layout";
 import { Badge, Empty, ErrorBox, Loading, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
 
+// Same values as the `layout` column; every layout keeps the text readable on any photo.
+const LAYOUTS = [
+  { value: "shade", label: "Chapdagi soya — matn chapda pastda (standart)" },
+  { value: "panel", label: "Pastki panel — matn pastdagi to‘q panelda" },
+  { value: "glass", label: "Shisha karta — xira fonli karta" },
+  { value: "split", label: "Diagonal — chapda qiya to‘q tekislik" },
+  { value: "poster", label: "Afisha — matn markazda (final, maxsus voqea)" },
+];
+
 const FIELDS: FieldSpec[] = [
   { name: "title", label: "Sarlavha", required: true, full: true },
   { name: "badge", label: "Belgi", placeholder: "FINAL, YARIM FINAL…" },
@@ -20,6 +29,7 @@ const FIELDS: FieldSpec[] = [
   { name: "cta_url", label: "Tugma havolasi", type: "url" },
   { name: "image_desktop", label: "Fon rasmi — desktop (2400×1100, muhim qismi markazda)", type: "image" },
   { name: "image_mobile", label: "Fon rasmi — mobil, ixtiyoriy (1080×1920, vertikal)", type: "image" },
+  { name: "layout", label: "Matn joylashuvi (rasm ustida)", type: "select", full: true, options: LAYOUTS, hint: "Hamma ko‘rinishlarni saytdagi /internal/hero sahifasida solishtirish mumkin." },
   { name: "show_from", label: "Ko‘rsatish boshlanishi", type: "datetime" },
   { name: "show_until", label: "Ko‘rsatish tugashi", type: "datetime" },
   { name: "status", label: "Holat", type: "select", options: [{ value: "published", label: "Nashr etilgan" }, { value: "draft", label: "Qoralama" }] },
@@ -84,7 +94,7 @@ export function BannersPage() {
         )}
       </div>
       {edit !== undefined && (
-        <CrudDrawer title="Banner" resource="/admin/banners" fields={FIELDS} item={edit} defaults={{ badge_type: "accent", status: "draft", is_active: true }}
+        <CrudDrawer title="Banner" resource="/admin/banners" fields={FIELDS} item={edit} defaults={{ badge_type: "accent", layout: "shade", status: "draft", is_active: true }}
           onClose={() => setEdit(undefined)} onSaved={() => { setEdit(undefined); reload(); }} />
       )}
     </>

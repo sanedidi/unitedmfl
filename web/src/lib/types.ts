@@ -162,8 +162,13 @@ export type Banner = {
   cta_url: string;
   image_desktop: string;
   image_mobile: string;
+  /** How the copy sits over the photo; older API responses may omit it. */
+  layout?: HeroLayout;
   ord: number;
 };
+
+export type HeroLayout = "shade" | "panel" | "glass" | "split" | "poster";
+export const HERO_LAYOUTS: HeroLayout[] = ["shade", "panel", "glass", "split", "poster"];
 
 export type Player = {
   id: number;

@@ -442,7 +442,7 @@ var newsRes = &resource{table: "news", entity: "news", touch: true, order: "coal
 var bannersRes = &resource{table: "banners", entity: "banner", touch: true, order: "ord, id",
 	fields: map[string]field{"title": reqTxt(120), "badge": txt(30), "badge_type": enum("accent", "stage", "category", "live", "demo"),
 		"event_date": optDate, "event_time": txt(10), "venue": txt(160), "cta_label": txt(40), "cta_url": txt(500),
-		"image_desktop": txt(500), "image_mobile": txt(500), "show_from": optTime, "show_until": optTime,
+		"image_desktop": txt(500), "image_mobile": txt(500), "layout": enum("shade", "panel", "glass", "split", "poster"), "show_from": optTime, "show_until": optTime,
 		"is_active": boolean, "status": enum("draft", "published"), "ord": {kind: kInt}, "note": txt(500)}}
 
 var videosRes = &resource{table: "videos", entity: "video", order: "coalesce(published_at, created_at) DESC",
