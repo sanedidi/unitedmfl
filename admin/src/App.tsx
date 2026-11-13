@@ -9,6 +9,7 @@ import { LiveConsolePage, LivePickPage } from "@/pages/Live";
 import { ProtocolReviewPage, ProtocolsPage } from "@/pages/Protocols";
 import { NewsPage, PlayersPage, ProductsPage, RequestsPage, SeasonsPage, TeamsPage, VideosPage } from "@/pages/Content";
 import { BannersPage } from "@/pages/Banners";
+import { InstagramPage } from "@/pages/Instagram";
 import { StandingsPage } from "@/pages/Standings";
 import { AuditPage, RolesPage, UsersPage } from "@/pages/System";
 
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="news" element={<Guard perm="news"><NewsPage /></Guard>} />
         <Route path="banners" element={<Guard perm="banners"><BannersPage /></Guard>} />
         <Route path="videos" element={<Guard perm="videos"><VideosPage /></Guard>} />
+        <Route path="instagram" element={<Guard perm="videos"><InstagramPage /></Guard>} />
         <Route path="products" element={<Guard perm="merch"><ProductsPage /></Guard>} />
         <Route path="requests" element={<Guard perm="requests"><RequestsPage /></Guard>} />
         <Route path="users" element={<Guard perm="users"><UsersPage /></Guard>} />

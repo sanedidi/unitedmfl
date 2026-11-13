@@ -73,6 +73,7 @@ func (s *Server) Routes() http.Handler {
 		r.Post("/news/{slug}/view", s.newsView)
 		r.Get("/banners", s.publicBanners)
 		r.Get("/videos", s.publicVideos)
+		r.Get("/instagram", s.publicInstagram)
 		r.Get("/products", s.publicProducts)
 		r.Get("/products/{slug}", s.publicProduct)
 		r.Get("/sitemap", s.publicSitemap)
@@ -146,6 +147,14 @@ func (s *Server) Routes() http.Handler {
 			s.mountCRUD(r, auth.PermBanners, "/banners", bannersRes)
 			r.With(s.can(auth.PermBanners)).Put("/banners/order", s.reorderBanners)
 			s.mountCRUD(r, auth.PermVideos, "/videos", videosRes)
+			r.Group(func(r chi.Router) {
+				r.Use(s.can(auth.PermVideos))
+				r.Get("/instagram", s.adminInstagram)
+				r.Put("/instagram", s.connectInstagram)
+				r.Delete("/instagram", s.disconnectInstagram)
+				r.Post("/instagram/sync", s.syncInstagram)
+				r.Patch("/instagram/posts/{id}", s.patchInstagramPost)
+			})
 			s.mountCRUD(r, auth.PermMerch, "/products", productsRes)
 			s.mountCRUD(r, auth.PermMerch, "/product-variants", variantsRes)
 			r.Group(func(r chi.Router) {

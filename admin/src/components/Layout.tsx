@@ -22,6 +22,7 @@ const NAV: { group?: string; items: Item[] }[] = [
     { to: "/news", label: "Yangiliklar", icon: <I.news />, perm: "news" },
     { to: "/banners", label: "Hero-bannerlar", icon: <I.image />, perm: "banners" },
     { to: "/videos", label: "Videolar", icon: <I.play />, perm: "videos" },
+    { to: "/instagram", label: "Instagram", icon: <I.camera />, perm: "videos" },
   ] },
   { group: "Do‘kon va aloqa", items: [
     { to: "/products", label: "Merch", icon: <I.bag />, perm: "merch" },

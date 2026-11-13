@@ -32,6 +32,9 @@ type Config struct {
 	LineupBenchMax   int    // substitutes allowed in a matchday squad (0 = no limit)
 	TelegramToken    string // Live-pult bot token from @BotFather; empty = bot disabled
 	TelegramAPIURL   string // Bot API base URL (override only for tests or a local Bot API server)
+	InstagramToken     string        // optional: long-lived token to connect on first start (normally set in the admin)
+	InstagramAPIURL    string        // Instagram Graph API host (override only for tests)
+	InstagramSyncEvery time.Duration // how often the feed is pulled
 }
 
 func env(key, def string) string {
@@ -76,6 +79,9 @@ func Load() (*Config, error) {
 		LineupBenchMax: envInt("LINEUP_BENCH_MAX", 9),
 		TelegramToken:  env("TELEGRAM_BOT_TOKEN", ""),
 		TelegramAPIURL: strings.TrimRight(env("TELEGRAM_API_URL", "https://api.telegram.org"), "/"),
+		InstagramToken:     env("INSTAGRAM_ACCESS_TOKEN", ""),
+		InstagramAPIURL:    strings.TrimRight(env("INSTAGRAM_API_URL", "https://graph.instagram.com"), "/"),
+		InstagramSyncEvery: time.Duration(max(envInt("INSTAGRAM_SYNC_MIN", 30), 5)) * time.Minute,
 	}
 	for _, o := range strings.Split(env("CORS_ORIGINS", "*"), ",") {
 		if o = strings.TrimSpace(o); o != "" {

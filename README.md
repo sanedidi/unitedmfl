@@ -70,6 +70,19 @@ cd admin && npm ci && API_URL=http://localhost:8080 npm run dev            # :51
 
 Тест сценария целиком (нужен Postgres): `TEST_DATABASE_URL=postgres://… go test -mod=vendor ./internal/tgbot/`.
 
+## Instagram на странице Media
+
+Страница `/media` показывает 12 последних постов Instagram-аккаунта лиги (на телефоне — 8). Используется официальный Instagram API with Instagram Login (`graph.instagram.com`).
+
+**Как устроено.** Go API раз в 30 минут (`INSTAGRAM_SYNC_MIN`) забирает последние 24 поста, копирует картинки в `/uploads/images/ig-<id>.*` и при изменениях сбрасывает кэш сайта. Ссылки Instagram CDN временные, поэтому сайт показывает только свои копии. Посты, удалённые в Instagram, пропадают и с сайта. Долгоживущий токен (60 дней) API продлевает сам, когда до конца срока остаётся меньше 20 дней. Код: `backend/internal/api/instagram.go`, блок сайта — `web/src/components/InstagramFeed.tsx`.
+
+**Подключение.**
+1. Instagram-аккаунт должен быть профессиональным (Business или Creator).
+2. developers.facebook.com → Create app → продукт Instagram → «API setup with Instagram login» → «Generate access tokens» → добавить аккаунт → скопировать токен.
+3. Админка → «Instagram» → вставить токен → «Ulash». Там же можно скрыть отдельные посты, обновить ленту вручную или отключить Instagram.
+
+Тест синхронизации (нужен Postgres): `TEST_DATABASE_URL=postgres://… go test -mod=vendor -run Instagram ./internal/api/`.
+
 ## Дизайн
 
 Сайт и админка следуют макету Figma «United MFL — Pro Design System (Site + Admin)»: светлые нейтральные поверхности, графитовые hero и подвал, один лаймовый акцент `#91DA27`, радиусы 2–8 px, прямоугольные бейджи. Шрифты Archivo (заголовки, счёт) и Inter (интерфейс, таблицы) лежат в репозитории и отдаются со своего сервера, без Google Fonts. Токены сайта — в `web/src/app/globals.css`, админки — в `admin/src/styles.css`.

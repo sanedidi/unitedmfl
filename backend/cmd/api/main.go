@@ -48,6 +48,8 @@ func run() error {
 	server := api.New(conn, cfg)
 	// copy hero images from the old site into /uploads (no-op once done)
 	go server.MirrorRemoteImages(ctx)
+	// Instagram feed for /media (no-op until a token is connected in the admin)
+	go server.RunInstagramSync(ctx)
 
 	handler := server.Routes()
 	// Telegram Live-pult: runs inside the API and calls the same handlers in-process

@@ -213,3 +213,15 @@ export type Season = {
   matches_planned: number;
   stages: { id: number; name: string; kind: string; ord: number; status: string; note: string }[];
 };
+
+export type InstagramPost = {
+  id: string;
+  caption: string;
+  media_type: "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM" | string;
+  is_reel: boolean;
+  image_url: string;
+  permalink: string;
+  posted_at: string;
+};
+
+export type InstagramFeed = { username: string; posts: InstagramPost[] };
