@@ -1,7 +1,8 @@
 import { api } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
 import { useRefs, activeSeason } from "@/lib/refs";
-import { CrudPage } from "@/components/Crud";
+import { Route, Routes } from "react-router";
+import { CrudEditPage, CrudPage, type CrudProps, type Rec } from "@/components/Crud";
 import { PageHead } from "@/components/Layout";
 import { Badge, Crest, ErrorBox, Loading } from "@/components/ui";
 
@@ -9,10 +10,48 @@ type Row = { position: number; team_id: number; team: string; played: number; wo
 type St = { groups: Record<string, Row[]>; groups_provisional: boolean; rules: { win: number; draw: number; loss: number } };
 
 export function StandingsPage() {
-  const { data, error, loading, reload } = useLoad(() => api.get<St>("/admin/standings"), []);
+  return (
+    <Routes>
+      <Route index element={<StandingsOverview />} />
+      <Route path="adjustments/new" element={<AdjustmentEdit />} />
+      <Route path="adjustments/:id" element={<AdjustmentEdit />} />
+    </Routes>
+  );
+}
+
+function useAdjustmentProps(onChanged?: () => void): CrudProps<Rec> & { base: string } {
   const { teams, seasons } = useRefs();
   const byId = new Map(teams.map((t) => [t.id, t]));
   const season = activeSeason(seasons);
+  return {
+    title: "Ochko tuzatishlari", sub: "Texnik mag‘lubiyat, jarima va boshqa qarorlar", resource: "/admin/standing-adjustments", singular: "Tuzatish",
+    base: "/standings/adjustments", listPath: "/standings", titleField: "reason", reloadKey: teams.length,
+    defaults: { season_id: String(season?.id || "") },
+    onChanged,
+    fields: [
+      { name: "season_id", label: "Mavsum", type: "select", numeric: true, required: true, options: seasons.map((s) => ({ value: String(s.id), label: s.name })) },
+      { name: "team_id", label: "Jamoa", type: "select", numeric: true, required: true, options: teams.map((t) => ({ value: String(t.id), label: t.name })) },
+      { name: "points", label: "Ochko (+/−)", type: "number", required: true, hint: "Manfiy — jarima, musbat — qaytarish" },
+      { name: "reason", label: "Sabab (saytdagi izohda ko‘rinadi)", type: "textarea", required: true },
+    ],
+    columns: [
+      { label: "Jamoa", render: (a) => byId.get(a.team_id)?.name || a.team_id },
+      { label: "Ochko", render: (a) => <b>{a.points > 0 ? `+${a.points}` : a.points}</b> },
+      { label: "Sabab", render: (a) => a.reason },
+    ],
+  };
+}
+
+function AdjustmentEdit() {
+  const p = useAdjustmentProps();
+  return <CrudEditPage {...p} />;
+}
+
+function StandingsOverview() {
+  const { data, error, loading, reload } = useLoad(() => api.get<St>("/admin/standings"), []);
+  const { teams } = useRefs();
+  const byId = new Map(teams.map((t) => [t.id, t]));
+  const adj = useAdjustmentProps(reload);
   return (
     <div className="stack" style={{ gap: 32 }}>
       <div>
@@ -39,21 +78,7 @@ export function StandingsPage() {
           </div>
         )}
       </div>
-      <CrudPage title="Ochko tuzatishlari" sub="Texnik mag‘lubiyat, jarima va boshqa qarorlar" resource="/admin/standing-adjustments" singular="Tuzatish" reloadKey={teams.length}
-        defaults={{ season_id: String(season?.id || "") }}
-        onChanged={reload}
-        fields={[
-          { name: "season_id", label: "Mavsum", type: "select", numeric: true, required: true, options: seasons.map((s) => ({ value: String(s.id), label: s.name })) },
-          { name: "team_id", label: "Jamoa", type: "select", numeric: true, required: true, options: teams.map((t) => ({ value: String(t.id), label: t.name })) },
-          { name: "points", label: "Ochko (+/−)", type: "number", required: true },
-          { name: "reason", label: "Sabab", type: "textarea", required: true },
-        ]}
-        columns={[
-          { label: "Jamoa", render: (a) => byId.get(a.team_id)?.name || a.team_id },
-          { label: "Ochko", render: (a) => <b>{a.points > 0 ? `+${a.points}` : a.points}</b> },
-          { label: "Sabab", render: (a) => a.reason },
-        ]}
-      />
+      <CrudPage {...adj} />
     </div>
   );
 }

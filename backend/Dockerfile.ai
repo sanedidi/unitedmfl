@@ -1,0 +1,17 @@
+# AI service: OpenAI / Gemini connections and image generation (internal only).
+FROM golang:1.24-alpine AS build
+WORKDIR /src
+# dependencies are vendored: the build needs no module proxy access
+COPY . .
+RUN CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags="-s -w" -o /out/ai ./cmd/ai
+
+# cwebp encodes the WebP output; without it pictures are saved as JPEG
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates tzdata libwebp-tools \
+ && addgroup -S app && adduser -S app -G app
+ENV TZ=Asia/Tashkent AI_ADDR=:8090 CWEBP=cwebp
+COPY --from=build /out/ai /usr/local/bin/ai
+USER app
+EXPOSE 8090
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:8090/healthz || exit 1
+ENTRYPOINT ["/usr/local/bin/ai"]

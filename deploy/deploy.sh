@@ -47,10 +47,12 @@ fi
 
 # secrets added in later versions are generated for existing installs too
 gen() { openssl rand -hex "$1" 2>/dev/null || head -c "$1" /dev/urandom | od -An -tx1 | tr -d ' \n'; }
-if ! grep -q '^REVALIDATE_SECRET=.\+' .env; then
-  sed -i '/^REVALIDATE_SECRET=/d' .env
-  echo "REVALIDATE_SECRET=$(gen 24)" >> .env
-fi
+for key in REVALIDATE_SECRET AI_MASTER_KEY AI_INTERNAL_TOKEN; do
+  if ! grep -q "^$key=.\+" .env; then
+    sed -i "/^$key=/d" .env
+    echo "$key=$(gen 32)" >> .env
+  fi
+done
 
 log "Building and starting containers"
 docker compose up -d --build --remove-orphans

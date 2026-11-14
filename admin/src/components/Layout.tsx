@@ -29,6 +29,7 @@ const NAV: { group?: string; items: Item[] }[] = [
     { to: "/requests", label: "Murojaatlar", icon: <I.inbox />, perm: "requests", count: "requests" },
   ] },
   { group: "Tizim", items: [
+    { to: "/ai", label: "AI-servis", icon: <I.sparkles />, perm: "users" },
     { to: "/users", label: "Foydalanuvchilar", icon: <I.users />, perm: "users" },
     { to: "/roles", label: "Rollar va huquqlar", icon: <I.lock />, perm: "users" },
     { to: "/audit", label: "Audit jurnali", icon: <I.log />, perm: "users" },

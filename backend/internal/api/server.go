@@ -27,6 +27,7 @@ type Server struct {
 	loginLimiter   *httpx.RateLimiter
 	contactLimiter *httpx.RateLimiter
 	viewLimiter    *httpx.RateLimiter
+	ai             aiJobs
 }
 
 func New(db *sql.DB, cfg *config.Config) *Server {
@@ -91,6 +92,7 @@ func (s *Server) Routes() http.Handler {
 			r.Get("/me", s.me)
 			r.With(s.can(auth.PermDashboard)).Get("/dashboard", s.dashboard)
 			r.With(s.can(auth.PermUploads)).Post("/uploads", s.uploadImage)
+			s.mountAI(r) // any signed-in user may generate; connections and settings need PermUsers
 
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermMatchesRead))

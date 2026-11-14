@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Route, Routes, useNavigate, useParams } from "react-router";
 import { api, ApiError, type Page } from "@/lib/api";
 import { useDebounced, useLoad } from "@/lib/hooks";
 import { fromLocalInput, slugify, toLocalInput } from "@/lib/format";
@@ -21,6 +22,7 @@ export type FieldSpec = {
   slugFrom?: string;
   placeholder?: string;
   show?: (v: Rec) => boolean;
+  side?: boolean; // on the edit page: shown in the right-hand «Holat» column
 };
 export type Rec = Record<string, any>;
 export type Col<T> = { label: string; render: (r: T) => ReactNode; className?: string };
@@ -174,6 +176,14 @@ export type CrudProps<T extends Rec> = {
   emptyText?: string;
   reloadKey?: unknown;
   onChanged?: () => void;
+  /** Route of the list (e.g. "/players"). Create and edit open as pages at base/new and base/:id. */
+  base?: string;
+  /** Where «Bekor qilish» returns to (defaults to base). */
+  listPath?: string;
+  /** "drawer" keeps the old side panel (Mavsumlar, Bosqichlar). */
+  edit?: "page" | "drawer";
+  /** Field used as the page title on the edit page. */
+  titleField?: string;
 };
 
 export function CrudPage<T extends Rec>(p: CrudProps<T>) {
@@ -181,7 +191,11 @@ export function CrudPage<T extends Rec>(p: CrudProps<T>) {
   const [q, setQ] = useState("");
   const dq = useDebounced(q);
   const [flt, setFlt] = useState<Record<string, string>>({});
-  const [edit, setEdit] = useState<Rec | null | undefined>(undefined);
+  const [drawerItem, setDrawerItem] = useState<Rec | null | undefined>(undefined);
+  const navigate = useNavigate();
+  const asPage = p.edit !== "drawer" && !!p.base;
+  // page mode: create / edit open on their own route; drawer mode keeps the side panel
+  const setEdit = (r: Rec | null) => (asPage ? navigate(r ? `${p.base}/${r.id}` : `${p.base}/new`) : setDrawerItem(r));
   const toast = useToast();
   const confirm = useConfirm();
   const limit = p.limit || 25;
@@ -248,10 +262,114 @@ export function CrudPage<T extends Rec>(p: CrudProps<T>) {
         )}
         {data && <Pager page={page} total={data.total} limit={limit} onPage={setPage} />}
       </div>
-      {edit !== undefined && (
-        <CrudDrawer title={p.singular} resource={p.resource} fields={p.fields} item={edit} defaults={p.defaults} extra={p.extra}
-          onClose={() => setEdit(undefined)} onSaved={() => { setEdit(undefined); p.onChanged?.(); reload(); }} />
+      {!asPage && drawerItem !== undefined && (
+        <CrudDrawer title={p.singular} resource={p.resource} fields={p.fields} item={drawerItem} defaults={p.defaults} extra={p.extra}
+          onClose={() => setDrawerItem(undefined)} onSaved={() => { setDrawerItem(undefined); p.onChanged?.(); reload(); }} />
       )}
     </>
+  );
+}
+
+/** List at base, create at base/new, edit at base/:id (mount the route as "base/*"). */
+export function CrudSection<T extends Rec>(p: CrudProps<T> & { base: string }) {
+  return (
+    <Routes>
+      <Route index element={<CrudPage<T> {...p} />} />
+      <Route path="new" element={<CrudEditPage {...p} />} />
+      <Route path=":id" element={<CrudEditPage {...p} />} />
+    </Routes>
+  );
+}
+
+/** Full-page create / edit form: fields on the left, status fields and delete on the right. */
+export function CrudEditPage<T extends Rec>(p: CrudProps<T> & { base: string }) {
+  const { id } = useParams();
+  const isNew = !id || id === "new";
+  const { data, error, loading, reload } = useLoad(() => (isNew ? Promise.resolve(null) : api.get<Rec>(`${p.resource}/${id}`)), [id, p.resource]);
+  if (error) return <ErrorBox error={error} retry={reload} />;
+  if (loading && !isNew) return <Loading />;
+  return <CrudEditForm key={String(data?.id ?? "new")} p={p} item={data ?? null} />;
+}
+
+function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: string }; item: Rec | null }) {
+  const form = useForm(p.fields, item, p.defaults);
+  const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(() => JSON.stringify(form.values));
+  const dirty = JSON.stringify(form.values) !== saved;
+  const back = p.listPath || p.base;
+  useEffect(() => {
+    if (!dirty) return;
+    const h = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [dirty]);
+  const titleField = p.titleField || p.fields.find((f) => !f.type || f.type === "text")?.name;
+  const title = item ? String(form.values[titleField || ""] || item[titleField || ""] || p.singular) : `Yangi: ${p.singular.toLowerCase()}`;
+  const main = p.fields.filter((f) => !f.side);
+  const side = p.fields.filter((f) => f.side);
+
+  async function save(e?: React.FormEvent) {
+    e?.preventDefault();
+    setBusy(true);
+    try {
+      const body = form.payload();
+      const r = item ? await api.patch<Rec>(`${p.resource}/${item.id}`, body) : await api.post<Rec>(p.resource, body);
+      toast("Saqlandi");
+      p.onChanged?.();
+      setSaved(JSON.stringify(form.values));
+      if (!item) navigate(`${p.base}/${r.id}`, { replace: true });
+    } catch (err) {
+      form.fail(err);
+      toast(err instanceof Error ? err.message : "Xato", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function cancel() {
+    if (dirty && !(await confirm({ title: "O‘zgarishlar saqlanmagan", text: "Sahifadan chiqsangiz, o‘zgarishlar yo‘qoladi.", ok: "Chiqish", danger: true }))) return;
+    navigate(back);
+  }
+  async function remove() {
+    if (!item || !(await confirm({ title: `${p.singular}ni o‘chirish`, text: "Bu amalni qaytarib bo‘lmaydi.", ok: "O‘chirish", danger: true }))) return;
+    try {
+      await api.del(`${p.resource}/${item.id}`);
+      toast("O‘chirildi");
+      p.onChanged?.();
+      navigate(back, { replace: true });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Xato", "error");
+    }
+  }
+  return (
+    <form onSubmit={save}>
+      <PageHead title={title} sub={<span className="crumbs"><a href={back} onClick={(e) => { e.preventDefault(); cancel(); }}>{p.title}</a> / <b>{item ? "Tahrirlash" : "Yangi"}</b>{dirty && <span className="muted small"> · saqlanmagan o‘zgarishlar</span>}</span>}
+        actions={<>
+          <button type="button" className="btn btn-ghost" onClick={cancel}>Bekor qilish</button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
+        </>} />
+      <div className="edit-layout">
+        <div className="stack" style={{ gap: 24 }}>
+          {main.length > 0 && (
+            <div className="card">
+              <div className="card-head"><h3>Asosiy ma’lumotlar</h3></div>
+              <div className="card-pad"><FormFields fields={main} values={form.values} set={form.set} errors={form.errors} /></div>
+            </div>
+          )}
+          {item && p.extra && <div className="card"><div className="card-pad">{p.extra(item)}</div></div>}
+        </div>
+        <aside className="stack" style={{ gap: 24 }}>
+          {side.length > 0 && (
+            <div className="card">
+              <div className="card-head"><h3>Holat</h3></div>
+              <div className="card-pad side-fields"><FormFields fields={side} values={form.values} set={form.set} errors={form.errors} /></div>
+            </div>
+          )}
+          {item && p.canDelete !== false && <button type="button" className="btn btn-ghost danger-text" style={{ alignSelf: "flex-start" }} onClick={remove}><I.trash size={16} /> {p.singular}ni o‘chirish</button>}
+        </aside>
+      </div>
+    </form>
   );
 }

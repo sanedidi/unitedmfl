@@ -12,6 +12,7 @@ import { BannersPage } from "@/pages/Banners";
 import { InstagramPage } from "@/pages/Instagram";
 import { StandingsPage } from "@/pages/Standings";
 import { AuditPage, RolesPage, UsersPage } from "@/pages/System";
+import { AiPage } from "@/pages/Ai";
 
 function Guard({ perm, children }: { perm: string; children: React.ReactNode }) {
   const { can } = useAuth();
@@ -40,16 +41,17 @@ export default function App() {
         <Route path="live/:id" element={<Guard perm="live"><LiveConsolePage /></Guard>} />
         <Route path="protocols" element={<Guard perm="protocols"><ProtocolsPage /></Guard>} />
         <Route path="protocols/:id" element={<Guard perm="protocols"><ProtocolReviewPage /></Guard>} />
-        <Route path="teams" element={<Guard perm="teams"><TeamsPage /></Guard>} />
-        <Route path="players" element={<Guard perm="teams"><PlayersPage /></Guard>} />
-        <Route path="standings" element={<Guard perm="standings"><StandingsPage /></Guard>} />
+        <Route path="teams/*" element={<Guard perm="teams"><TeamsPage /></Guard>} />
+        <Route path="players/*" element={<Guard perm="teams"><PlayersPage /></Guard>} />
+        <Route path="standings/*" element={<Guard perm="standings"><StandingsPage /></Guard>} />
         <Route path="seasons" element={<Guard perm="seasons"><SeasonsPage /></Guard>} />
-        <Route path="news" element={<Guard perm="news"><NewsPage /></Guard>} />
-        <Route path="banners" element={<Guard perm="banners"><BannersPage /></Guard>} />
-        <Route path="videos" element={<Guard perm="videos"><VideosPage /></Guard>} />
+        <Route path="news/*" element={<Guard perm="news"><NewsPage /></Guard>} />
+        <Route path="banners/*" element={<Guard perm="banners"><BannersPage /></Guard>} />
+        <Route path="videos/*" element={<Guard perm="videos"><VideosPage /></Guard>} />
         <Route path="instagram" element={<Guard perm="videos"><InstagramPage /></Guard>} />
-        <Route path="products" element={<Guard perm="merch"><ProductsPage /></Guard>} />
-        <Route path="requests" element={<Guard perm="requests"><RequestsPage /></Guard>} />
+        <Route path="products/*" element={<Guard perm="merch"><ProductsPage /></Guard>} />
+        <Route path="requests/*" element={<Guard perm="requests"><RequestsPage /></Guard>} />
+        <Route path="ai/*" element={<Guard perm="users"><AiPage /></Guard>} />
         <Route path="users" element={<Guard perm="users"><UsersPage /></Guard>} />
         <Route path="roles" element={<Guard perm="users"><RolesPage /></Guard>} />
         <Route path="audit" element={<Guard perm="users"><AuditPage /></Guard>} />

@@ -36,6 +36,9 @@ type Config struct {
 	InstagramAPIURL    string        // Instagram Graph API host (override only for tests)
 	FacebookGraphURL   string        // Facebook Graph API host (override only for tests)
 	InstagramSyncEvery time.Duration // how often the feed is pulled
+	AIServiceURL       string        // internal AI service (OpenAI / Gemini); empty = AI features off
+	AIInternalToken    string        // shared secret sent to the AI service
+	WebInternalURL     string        // the site container, for brand assets (logo) sent to the AI service
 }
 
 func env(key, def string) string {
@@ -84,6 +87,9 @@ func Load() (*Config, error) {
 		InstagramAPIURL:    strings.TrimRight(env("INSTAGRAM_API_URL", "https://graph.instagram.com"), "/"),
 		FacebookGraphURL:   strings.TrimRight(env("FACEBOOK_GRAPH_URL", "https://graph.facebook.com"), "/"),
 		InstagramSyncEvery: time.Duration(max(envInt("INSTAGRAM_SYNC_MIN", 30), 5)) * time.Minute,
+		AIServiceURL:       strings.TrimRight(env("AI_SERVICE_URL", ""), "/"),
+		AIInternalToken:    env("AI_INTERNAL_TOKEN", ""),
+		WebInternalURL:     strings.TrimRight(env("WEB_INTERNAL_URL", "http://web:3000"), "/"),
 	}
 	for _, o := range strings.Split(env("CORS_ORIGINS", "*"), ",") {
 		if o = strings.TrimSpace(o); o != "" {

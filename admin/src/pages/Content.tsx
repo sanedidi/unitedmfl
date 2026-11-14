@@ -1,4 +1,4 @@
-import { CrudPage, type FieldSpec } from "@/components/Crud";
+import { CrudPage, CrudSection, type FieldSpec } from "@/components/Crud";
 import { Badge, Crest } from "@/components/ui";
 import { useRefs, invalidateRefs, activeSeason } from "@/lib/refs";
 import { fmtDate, fmtDateTime, fmtUZS, POSITIONS } from "@/lib/format";
@@ -18,17 +18,17 @@ export function TeamsPage() {
     { name: "name", label: "Nomi", required: true },
     { name: "slug", label: "Slug (URL)", type: "slug", slugFrom: "name", required: true, hint: "lotin harflari, raqamlar va «-»" },
     { name: "short_name", label: "Qisqa nomi", hint: "emblemada (3 belgigacha)" },
-    { name: "group_label", label: "Guruh", type: "select", nullable: true, options: GROUPS },
-    { name: "group_is_provisional", label: "Guruh taxminiy (rasman e’lon qilinmagan)", type: "bool" },
-    { name: "is_active", label: "Faol", type: "bool" },
-    { name: "crest_url", label: "Emblema", type: "image" },
+    { name: "group_label", label: "Guruh", type: "select", nullable: true, options: GROUPS, side: true },
+    { name: "group_is_provisional", label: "Guruh taxminiy (rasman e’lon qilinmagan)", type: "bool", side: true },
+    { name: "is_active", label: "Faol", type: "bool", side: true },
+    { name: "crest_url", label: "Emblema", type: "image", side: true },
     { name: "colors", label: "Ranglar", type: "colors", hint: "#E5383B, #FFFFFF" },
     { name: "leader", label: "Sardor / yetakchi" },
     { name: "instagram", label: "Instagram", type: "url" },
     { name: "telegram", label: "Telegram", type: "url" },
   ];
   return (
-    <CrudPage<Team & Record<string, any>> onChanged={invalidateRefs} title="Jamoalar" resource="/admin/teams" singular="Jamoa" searchable fields={fields} defaults={{ is_active: true, group_is_provisional: true }}
+    <CrudSection<Team & Record<string, any>> base="/teams" onChanged={invalidateRefs} title="Jamoalar" resource="/admin/teams" singular="Jamoa" searchable fields={fields} defaults={{ is_active: true, group_is_provisional: true }}
       filters={[{ param: "group", label: "Guruh", options: GROUPS }]}
       columns={[
         { label: "Jamoa", render: (t) => <span className="row"><Crest team={t} /> <b>{t.name}</b></span> },
@@ -55,12 +55,12 @@ export function PlayersPage() {
     { name: "team_id", label: "Jamoa", type: "select", nullable: true, numeric: true, options: teamOpts },
     { name: "number", label: "Raqam", type: "number", nullable: true },
     { name: "position", label: "Amplua", type: "select", nullable: true, options: posOpts },
-    { name: "is_active", label: "Faol", type: "bool" },
-    { name: "photo_url", label: "Rasm", type: "image" },
+    { name: "is_active", label: "Faol", type: "bool", side: true },
+    { name: "photo_url", label: "Rasm", type: "image", side: true },
     { name: "instagram", label: "Instagram", type: "url" },
   ];
   return (
-    <CrudPage<Player & Record<string, any>> title="O‘yinchilar" resource="/admin/players" singular="O‘yinchi" searchable fields={fields} defaults={{ is_active: true }} reloadKey={teams.length}
+    <CrudSection<Player & Record<string, any>> base="/players" titleField="full_name" title="O‘yinchilar" resource="/admin/players" singular="O‘yinchi" searchable fields={fields} defaults={{ is_active: true }} reloadKey={teams.length}
       filters={[{ param: "team_id", label: "Jamoa", options: teamOpts }, { param: "position", label: "Amplua", options: posOpts }]}
       columns={[
         { label: "№", render: (p) => <b className="tnum">{p.number ?? "—"}</b> },
@@ -85,7 +85,7 @@ export function SeasonsPage() {
   const seasonOpts = seasons.map((s) => ({ value: String(s.id), label: s.name }));
   return (
     <div className="stack" style={{ gap: 32 }}>
-      <CrudPage onChanged={invalidateRefs} title="Mavsumlar" resource="/admin/seasons" singular="Mavsum" defaults={{ is_active: false }}
+      <CrudPage edit="drawer" onChanged={invalidateRefs} title="Mavsumlar" resource="/admin/seasons" singular="Mavsum" defaults={{ is_active: false }}
         fields={[
           { name: "name", label: "Nomi", required: true },
           { name: "slug", label: "Slug", type: "slug", slugFrom: "name", required: true },
@@ -100,7 +100,7 @@ export function SeasonsPage() {
           { label: "Holat", render: (s) => s.is_active ? <Badge tone="ok">Faol</Badge> : <Badge>Arxiv</Badge> },
         ]}
       />
-      <CrudPage onChanged={invalidateRefs} title="Bosqichlar" resource="/admin/stages" singular="Bosqich" limit={100} reloadKey={seasons.length}
+      <CrudPage edit="drawer" onChanged={invalidateRefs} title="Bosqichlar" resource="/admin/stages" singular="Bosqich" limit={100} reloadKey={seasons.length}
         defaults={{ season_id: String(activeSeason(seasons)?.id || ""), kind: "group", status: "scheduled", ord: "1" }}
         filters={[{ param: "season_id", label: "Mavsum", options: seasonOpts }]}
         fields={[
@@ -127,18 +127,18 @@ export function SeasonsPage() {
 const NEWS_STATUS = [{ value: "draft", label: "Qoralama" }, { value: "published", label: "Nashr etilgan" }, { value: "scheduled", label: "Rejalashtirilgan" }];
 export function NewsPage() {
   return (
-    <CrudPage title="Yangiliklar" resource="/admin/news" singular="Yangilik" searchable defaults={{ status: "draft", category: "LIGA" }}
+    <CrudSection base="/news" title="Yangiliklar" resource="/admin/news" singular="Yangilik" searchable defaults={{ status: "draft", category: "LIGA" }}
       filters={[{ param: "status", label: "Holat", options: NEWS_STATUS }]}
       fields={[
         { name: "title", label: "Sarlavha", required: true, full: true },
         { name: "slug", label: "Slug (URL)", type: "slug", slugFrom: "title", required: true, full: true },
         { name: "category", label: "Rukn", placeholder: "LIGA, ANONS, NATIJA…" },
-        { name: "status", label: "Holat", type: "select", options: NEWS_STATUS },
-        { name: "published_at", label: "Nashr vaqti (Toshkent)", type: "datetime", hint: "Nashr/rejalashtirish uchun majburiy" },
-        { name: "on_home", label: "Bosh sahifada ko‘rsatish", type: "bool" },
+        { name: "status", label: "Holat", type: "select", options: NEWS_STATUS, side: true },
+        { name: "published_at", label: "Nashr vaqti (Toshkent)", type: "datetime", hint: "Nashr/rejalashtirish uchun majburiy", side: true },
+        { name: "on_home", label: "Bosh sahifada ko‘rsatish", type: "bool", side: true },
         { name: "excerpt", label: "Qisqa matn (lid)", type: "textarea" },
         { name: "body", label: "Matn", type: "markdown" },
-        { name: "cover_url", label: "Muqova", type: "image" },
+        { name: "cover_url", label: "Muqova", type: "image", side: true },
         { name: "tags", label: "Teglar", type: "tags", hint: "vergul bilan" },
         { name: "match_id", label: "Bog‘langan match ID", type: "number", nullable: true },
         { name: "seo_description", label: "SEO tavsif (160 belgi)", type: "textarea" },
@@ -158,17 +158,17 @@ export function NewsPage() {
 const VIDEO_KIND = [{ value: "highlight", label: "Sharh" }, { value: "interview", label: "Intervyu" }, { value: "announcement", label: "Anons" }, { value: "full", label: "To‘liq o‘yin" }];
 export function VideosPage() {
   return (
-    <CrudPage title="Videolar" resource="/admin/videos" singular="Video" defaults={{ kind: "highlight", status: "draft" }}
+    <CrudSection base="/videos" title="Videolar" resource="/admin/videos" singular="Video" defaults={{ kind: "highlight", status: "draft" }}
       filters={[{ param: "status", label: "Holat", options: [{ value: "draft", label: "Qoralama" }, { value: "published", label: "Nashr etilgan" }] }]}
       fields={[
         { name: "title", label: "Sarlavha", required: true, full: true },
         { name: "url", label: "Havola (YouTube)", type: "url", required: true, full: true },
         { name: "kind", label: "Turi", type: "select", options: VIDEO_KIND },
-        { name: "status", label: "Holat", type: "select", options: [{ value: "draft", label: "Qoralama" }, { value: "published", label: "Nashr etilgan" }] },
+        { name: "status", label: "Holat", type: "select", options: [{ value: "draft", label: "Qoralama" }, { value: "published", label: "Nashr etilgan" }], side: true },
         { name: "match_id", label: "Match ID", type: "number", nullable: true },
-        { name: "published_at", label: "Nashr vaqti", type: "datetime" },
+        { name: "published_at", label: "Nashr vaqti", type: "datetime", side: true },
         { name: "duration_sec", label: "Davomiyligi (soniya)", type: "number", nullable: true },
-        { name: "thumbnail_url", label: "Muqova (ixtiyoriy)", type: "image", hint: "Bo‘sh bo‘lsa YouTube muqovasi" },
+        { name: "thumbnail_url", label: "Muqova (ixtiyoriy)", type: "image", hint: "Bo‘sh bo‘lsa YouTube muqovasi", side: true },
       ]}
       columns={[
         { label: "Video", render: (v) => <b>{v.title}</b> },
@@ -184,7 +184,7 @@ export function VideosPage() {
 const PRODUCT_STATUS = [{ value: "active", label: "Sotuvda" }, { value: "in_review", label: "Tekshiruvda" }, { value: "out_of_stock", label: "Tugagan" }, { value: "hidden", label: "Yashirin" }];
 export function ProductsPage() {
   return (
-    <CrudPage title="Merch" resource="/admin/products" singular="Mahsulot" searchable defaults={{ status: "active", visible: true, ord: "0" }}
+    <CrudSection base="/products" title="Merch" resource="/admin/products" singular="Mahsulot" searchable defaults={{ status: "active", visible: true, ord: "0" }}
       filters={[{ param: "status", label: "Holat", options: PRODUCT_STATUS }]}
       fields={[
         { name: "name", label: "Nomi", required: true, full: true },
@@ -192,10 +192,10 @@ export function ProductsPage() {
         { name: "category", label: "Toifa", placeholder: "Kiyim, Aksessuar…" },
         { name: "price_uzs", label: "Narx (so‘m)", type: "number", required: true },
         { name: "sale_price_uzs", label: "Chegirma narxi", type: "number", nullable: true },
-        { name: "status", label: "Holat", type: "select", options: PRODUCT_STATUS },
-        { name: "ord", label: "Tartib", type: "number" },
-        { name: "visible", label: "Saytda ko‘rinadi", type: "bool" },
-        { name: "featured", label: "Bosh sahifada", type: "bool" },
+        { name: "status", label: "Holat", type: "select", options: PRODUCT_STATUS, side: true },
+        { name: "ord", label: "Tartib", type: "number", side: true },
+        { name: "visible", label: "Saytda ko‘rinadi", type: "bool", side: true },
+        { name: "featured", label: "Bosh sahifada", type: "bool", side: true },
         { name: "external_url", label: "Sotib olish havolasi", type: "url", full: true },
         { name: "description", label: "Tavsif", type: "markdown" },
         { name: "images", label: "Rasmlar (URL, vergul bilan)", type: "tags", full: true, hint: "Birinchisi asosiy rasm. Rasm yuklash uchun «Rasm yuklash» maydonidan foydalaning." },
@@ -262,11 +262,11 @@ const REQ_STATUS = [{ value: "new", label: "Yangi" }, { value: "in_progress", la
 const TOPIC: Record<string, string> = { partnership: "Hamkorlik", sponsorship: "Homiylik", team: "Jamoa", tickets: "Chiptalar", other: "Boshqa" };
 export function RequestsPage() {
   return (
-    <CrudPage title="Murojaatlar" sub="Saytdagi aloqa formasi orqali kelgan so‘rovlar" resource="/admin/requests" singular="Murojaat" searchable canCreate={false}
+    <CrudSection base="/requests" titleField="name" title="Murojaatlar" sub="Saytdagi aloqa formasi orqali kelgan so‘rovlar" resource="/admin/requests" singular="Murojaat" searchable canCreate={false}
       filters={[{ param: "status", label: "Holat", options: REQ_STATUS }, { param: "topic", label: "Mavzu", options: Object.entries(TOPIC).map(([value, label]) => ({ value, label })) }]}
       fields={[
-        { name: "status", label: "Holat", type: "select", options: REQ_STATUS },
-        { name: "internal_note", label: "Ichki izoh", type: "textarea" },
+        { name: "status", label: "Holat", type: "select", options: REQ_STATUS, side: true },
+        { name: "internal_note", label: "Ichki izoh", type: "textarea", side: true },
       ]}
       columns={[
         { label: "Sana", render: (r) => <span className="nowrap">{fmtDateTime(r.created_at)}</span> },

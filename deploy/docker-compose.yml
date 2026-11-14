@@ -49,8 +49,28 @@ services:
       # purge the site's data cache after every admin change
       WEB_REVALIDATE_URL: http://web:3000/internal/revalidate
       REVALIDATE_SECRET: ${REVALIDATE_SECRET:?set REVALIDATE_SECRET in .env}
+      # AI image generation goes through the separate ai service
+      AI_SERVICE_URL: http://ai:8090
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?set AI_INTERNAL_TOKEN in .env (deploy.sh generates it)}
+      WEB_INTERNAL_URL: http://web:3000
     volumes:
       - uploads:/data/uploads
+
+  # AI service: OpenAI / Gemini keys (encrypted), generation settings, prompt
+  # improvement and image generation. Internal network only — no ports.
+  ai:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.ai
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      AI_ADDR: ":8090"
+      DATABASE_URL: postgres://unitedmfl:${POSTGRES_PASSWORD}@db:5432/unitedmfl?sslmode=disable
+      AI_MASTER_KEY: ${AI_MASTER_KEY:?set AI_MASTER_KEY in .env (deploy.sh generates it)}
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
 
   web:
     build:

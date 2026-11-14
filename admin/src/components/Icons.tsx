@@ -15,6 +15,7 @@ export const I = {
   play: ({ size }: P) => <svg width={size || 18} height={size || 18} viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M8 5.5v13a1 1 0 001.5.86l10.5-6.5a1 1 0 000-1.72L9.5 4.64A1 1 0 008 5.5z" /></svg>,
   bag: ({ size }: P) => <svg {...a(size)}><path d="M5 8h14l-1 13H6zM9 8V6a3 3 0 016 0v2" /></svg>,
   inbox: ({ size }: P) => <svg {...a(size)}><path d="M3 13l3-8h12l3 8v6a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><path d="M3 13h5l1 3h6l1-3h5" /></svg>,
+  sparkles: ({ size }: P) => <svg {...a(size)}><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>,
   lock: ({ size }: P) => <svg {...a(size)}><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 018 0v3" /></svg>,
   log: ({ size }: P) => <svg {...a(size)}><path d="M4 6h16M4 12h16M4 18h10" /></svg>,
   plus: ({ size }: P) => <svg {...a(size)}><path d="M12 5v14M5 12h14" /></svg>,
