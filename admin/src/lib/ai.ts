@@ -50,6 +50,7 @@ export type KitSettings = {
   size: "original" | "portrait";
   background: "auto" | "keep" | "studio";
   framing: "auto" | "keep" | "head_shoulders";
+  pose: "front" | "keep";
   prompt: string;
 };
 

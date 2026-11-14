@@ -12,6 +12,7 @@ export type KitAnalysis = {
   skipped?: boolean;
   studio?: boolean;
   head_shoulders?: boolean;
+  front?: boolean;
 };
 
 export type KitPlayer = {
@@ -66,11 +67,13 @@ export function analysisLines(a: KitAnalysis | null | undefined): string[] {
   if (a.skipped) return ["Rasm tahlili o‘chirilgan — rasm oddiy portret deb qabul qilindi"];
   const out: string[] = [];
   if (a.graphic) out.push(a.studio ? "Afisha: matn, logotiplar va grafik fon bor → olib tashlandi, studiya foni" : "Afisha/grafika aniqlandi");
+  if (a.front) out.push("Standart portret: kameraga to‘g‘ri qaraydi, ko‘krakkacha kadr, kulrang studiya foni");
+  else if (a.graphic) { /* already said */ }
   else if (a.studio) out.push("Fon studiya foniga almashtirildi");
   else out.push("Oddiy rasm — asl fon saqlandi");
   if (a.people !== undefined) out.push(`${a.people} ta odam${a.face_visible ? ", yuz to‘liq ko‘rinadi" : ", yuz ko‘rinmaydi"}`);
   if (a.wearing_jersey) out.push("Allaqachon forma kiygan → yangi forma bilan almashtirildi");
-  if (a.head_shoulders) out.push("Kadr: bosh va yelka, 3:4 ga kesildi");
+  if (a.head_shoulders && !a.front) out.push("Kadr: bosh va yelka, 3:4 ga kesildi");
   if (a.notes) out.push(a.notes);
   return out;
 }

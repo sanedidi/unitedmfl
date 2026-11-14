@@ -480,6 +480,12 @@ function KitSettingsCard({ kit, err, onChange }: { kit: AiSettings["kit"]; err: 
             <input type="checkbox" className="switch" checked={!!kit[k]} onChange={(e) => set({ [k]: e.target.checked } as Partial<AiSettings["kit"]>)} />
           </label>
         ))}
+        <Field label="Poza" hint={kit.pose === "front" ? "Rasmiy tarkib rasmi kabi: kameraga to‘g‘ri qaraydi, ko‘krakkacha, kulrang studiya foni, 3:4 — fon va kadr sozlamalari e’tiborga olinmaydi" : "Asl rasmdagi poza, qarash va burchak saqlanadi"} error={err["kit.pose"]}>
+          <div className="seg seg-wide">
+            <button type="button" aria-pressed={kit.pose === "front"} onClick={() => set({ pose: "front" })}>Standart portret (kameraga to‘g‘ri)</button>
+            <button type="button" aria-pressed={kit.pose === "keep"} onClick={() => set({ pose: "keep" })}>Asl poza</button>
+          </div>
+        </Field>
         <div className="form-grid">
           <Field label="Sifat" hint="Model — «Model» kartasidagi rasm modeli" error={err["kit.quality"]}>
             <select className="select" value={kit.quality} onChange={(e) => set({ quality: e.target.value as AiSettings["kit"]["quality"] })}>
@@ -492,12 +498,12 @@ function KitSettingsCard({ kit, err, onChange }: { kit: AiSettings["kit"]; err: 
             </select>
           </Field>
           <Field label="Fon" hint="Afisha yoki grafik fonda — studiya foniga almashtiriladi" error={err["kit.background"]}>
-            <select className="select" value={kit.background} onChange={(e) => set({ background: e.target.value as AiSettings["kit"]["background"] })}>
+            <select className="select" disabled={kit.pose === "front"} value={kit.background} onChange={(e) => set({ background: e.target.value as AiSettings["kit"]["background"] })}>
               <option value="auto">Avtomatik (oddiy rasmda — asl fon)</option><option value="keep">Doim asl fon</option><option value="studio">Doim studiya foni</option>
             </select>
           </Field>
           <Field label="Kadr" error={err["kit.framing"]}>
-            <select className="select" value={kit.framing} onChange={(e) => set({ framing: e.target.value as AiSettings["kit"]["framing"] })}>
+            <select className="select" disabled={kit.pose === "front"} value={kit.framing} onChange={(e) => set({ framing: e.target.value as AiSettings["kit"]["framing"] })}>
               <option value="auto">Avtomatik (studiya fonida — bosh va yelka 3:4)</option><option value="keep">Asl kadr</option><option value="head_shoulders">Doim bosh va yelka · 3:4</option>
             </select>
           </Field>

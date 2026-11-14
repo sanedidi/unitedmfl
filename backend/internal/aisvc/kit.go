@@ -24,6 +24,7 @@ type KitSettings struct {
 	Size         string `json:"size"`           // original (keep the photo's ratio) | portrait (1200×1600)
 	Background   string `json:"background"`     // auto | keep | studio
 	Framing      string `json:"framing"`        // auto | keep | head_shoulders
+	Pose         string `json:"pose"`           // front (standard roster portrait, facing the camera) | keep
 	Prompt       string `json:"prompt"`         // template with {jamoa} {forma_tavsifi} {o‘yinchi} {rasm_holati}
 }
 
@@ -36,7 +37,7 @@ IMAGE 1 — PERSON PHOTO: the original photograph of {o‘yinchi}.
 IMAGE 2 — OFFICIAL JERSEY REFERENCE of {jamoa}: {forma_tavsifi}
 The reference jersey must be reproduced as accurately as possible.
 
-PHOTO-SPECIFIC INSTRUCTIONS (they take precedence over section 5):
+PHOTO-SPECIFIC INSTRUCTIONS (where they conflict with sections 1, 3 or 5 about pose, gaze, framing, lighting or background, these win; facial identity is always preserved):
 {rasm_holati}
 
 1. ABSOLUTE PRIORITY — PRESERVE IDENTITY. The face must remain identical to the original photograph. Do NOT regenerate, redraw or reinterpret the face; do NOT change facial features, proportions, expression, eyes, eyebrows, nose, lips, ears, jawline, skin tone, natural skin texture, hairstyle, hairline, beard or mustache. No beauty filters, face enhancement or skin smoothing. Preserve age, head position, camera angle and gaze. Treat the face as a protected, non-editable region.
@@ -57,7 +58,7 @@ Change ONLY the clothing. Preserve EVERYTHING else. Photorealistic, professional
 
 func defaultKit() KitSettings {
 	return KitSettings{AutoOnKit: true, AutoOnPlayer: true, Describe: true, Analyze: true, Quality: "high",
-		Size: "original", Background: "auto", Framing: "auto", Prompt: DefaultKitPrompt}
+		Size: "original", Background: "auto", Framing: "auto", Pose: "front", Prompt: DefaultKitPrompt}
 }
 
 func (k *KitSettings) merge() {
@@ -81,6 +82,9 @@ func (k *KitSettings) merge() {
 	if k.Framing == "" {
 		k.Framing = d.Framing
 	}
+	if k.Pose == "" {
+		k.Pose = d.Pose
+	}
 }
 
 func (k *KitSettings) validate(e map[string]string) {
@@ -95,6 +99,9 @@ func (k *KitSettings) validate(e map[string]string) {
 	}
 	if !contains([]string{"auto", "keep", "head_shoulders"}, k.Framing) {
 		e["kit.framing"] = "auto, keep yoki head_shoulders"
+	}
+	if !contains([]string{"front", "keep"}, k.Pose) {
+		e["kit.pose"] = "front yoki keep"
 	}
 	if len(k.Prompt) > 12000 {
 		e["kit.prompt"] = "shablon juda uzun"
@@ -115,6 +122,7 @@ type PhotoAnalysis struct {
 	// What the editor decided (filled by the service, shown in the admin)
 	Studio        bool `json:"studio"`
 	HeadShoulders bool `json:"head_shoulders"`
+	Front         bool `json:"front"` // re-posed as a standard roster portrait
 }
 
 var analysisSchema = map[string]any{
@@ -144,25 +152,38 @@ framing — headshot, half (waist up) or full (full body);
 notes — one short sentence in Uzbek (Latin) for the admin about anything unusual (pose, crossed arms, occlusion, low quality).`
 
 // rasmHolati turns the analysis and settings into photo-specific editing instructions.
+// standardPortrait turns any photo into the league's roster portrait: facing the
+// camera, chest-up, plain grey studio backdrop (like the official squad photos).
+const standardPortrait = `- STANDARD TEAM ROSTER PORTRAIT. These instructions OVERRIDE every rule in this prompt about keeping the original pose, head position, camera angle, gaze, framing, lighting or background. Facial identity must still be preserved exactly: same facial features and proportions, hair, beard, skin tone and texture, age; keep their natural expression (a smile stays a smile).
+- Pose: the person stands facing the camera straight on, shoulders square and level, head upright and centred (not tilted, not turned), eyes looking directly into the lens. Arms relaxed down at the sides; no crossed arms, no hands near the face.
+- Framing: centred chest-up portrait in 3:4 — top of the hair about 5% below the top edge, the image ending at mid-torso; the whole jersey front from the collar down (sponsor, chest badge and both sleeve patches) clearly visible and symmetric.
+- Background and light: a seamless plain neutral light-grey studio backdrop (no texture, no vignette, no objects, no stadium); soft, even frontal studio lighting with no coloured, warm or rim/back light and no lens flare; natural colours.
+- Remove necklaces, chains and anything worn over the jersey.`
+
+// rasmHolati turns the analysis and settings into photo-specific editing instructions.
 func rasmHolati(k KitSettings, a *PhotoAnalysis, hint string) string {
 	var lines []string
 	if a == nil {
 		a = &PhotoAnalysis{People: 1, FaceVisible: true, Framing: "half", Skipped: true}
 	}
-	a.Studio = k.Background == "studio" || (k.Background == "auto" && a.Graphic)
-	a.HeadShoulders = k.Framing == "head_shoulders" || (k.Framing == "auto" && a.Studio)
+	a.Front = k.Pose == "front"
+	a.Studio = a.Front || k.Background == "studio" || (k.Background == "auto" && a.Graphic)
+	a.HeadShoulders = a.Front || k.Framing == "head_shoulders" || (k.Framing == "auto" && a.Studio)
 	if hint != "" {
 		lines = append(lines, fmt.Sprintf("- Several people are visible. Edit ONLY the person described as: %s. Remove everyone else.", hint))
 	}
 	if a.Graphic {
 		lines = append(lines, "- IMAGE 1 is a designed poster/graphic, not a plain photo. Use ONLY the person: remove all overlaid text, name lists, logos, flags, brush strokes and graphic effects. Do not reproduce any of them.")
 	}
-	if a.Studio {
+	switch {
+	case a.Front:
+		lines = append(lines, standardPortrait)
+	case a.Studio:
 		lines = append(lines, "- Replace the background with a clean, neutral light-grey professional studio backdrop with soft even lighting; keep the person's lighting consistent with it.")
-	} else {
+	default:
 		lines = append(lines, "- IMAGE 1 is a regular photo: keep its original background, framing and lighting.")
 	}
-	if a.HeadShoulders {
+	if a.HeadShoulders && !a.Front {
 		lines = append(lines, "- Frame the result as a centred head-and-shoulders portrait in 3:4, eyes in the upper third, the jersey chest (sponsor and collar) clearly visible.")
 	}
 	if a.WearingJersey {

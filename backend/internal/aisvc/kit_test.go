@@ -111,7 +111,7 @@ func TestKitDress(t *testing.T) {
 	}
 	// defaults include the kit settings and the owner's prompt template
 	st, _ := svc.Settings(ctx)
-	if !st.Kit.AutoOnKit || !st.Kit.Analyze || !strings.Contains(st.Kit.Prompt, "{rasm_holati}") || !strings.Contains(st.Kit.Prompt, "PRESERVE IDENTITY") {
+	if st.Kit.Pose != "front" || !st.Kit.AutoOnKit || !st.Kit.Analyze || !strings.Contains(st.Kit.Prompt, "{rasm_holati}") || !strings.Contains(st.Kit.Prompt, "PRESERVE IDENTITY") {
 		t.Fatalf("kit defaults: %+v", st.Kit)
 	}
 	// a template without {rasm_holati} is refused
@@ -138,7 +138,7 @@ func TestKitDress(t *testing.T) {
 		t.Fatalf("poster result: %+v %+v", res.Image.Width, res.Analysis)
 	}
 	p := prompts[0]
-	for _, want := range []string{"Ravshan Kulob", "Ignatiy Nesterov", "kontent markazi", "remove all overlaid text", "studio backdrop", "head-and-shoulders", "replace it COMPLETELY"} {
+	for _, want := range []string{"Ravshan Kulob", "Ignatiy Nesterov", "kontent markazi", "remove all overlaid text", "studio backdrop", "eyes looking directly into the lens", "chest-up", "OVERRIDE", "replace it COMPLETELY"} {
 		if !strings.Contains(p, want) {
 			t.Fatalf("prompt lacks %q:\n%s", want, p)
 		}
@@ -147,7 +147,15 @@ func TestKitDress(t *testing.T) {
 		t.Fatalf("placeholders/refs/size: refs=%v sizes=%v", refs, sizes)
 	}
 
-	// regular photo: background kept, original ratio (600×800 → 1200×1600, 900×600 → 1600×1072)
+	if !res.Analysis.Front {
+		t.Fatal("default pose must be the standard front-facing portrait")
+	}
+	// regular photo with the pose kept: background kept, original ratio (900×600 → 1600×1072)
+	st, _ = svc.Settings(ctx)
+	st.Kit.Pose = "keep"
+	if _, err := svc.SaveSettings(ctx, st); err != nil {
+		t.Fatal(err)
+	}
 	mu.Lock()
 	analysis = `{"people":1,"face_visible":true,"graphic":false,"wearing_jersey":false,"framing":"half","notes":""}`
 	mu.Unlock()
