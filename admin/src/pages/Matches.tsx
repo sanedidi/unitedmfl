@@ -133,7 +133,7 @@ function MatchForm({ detail, mode, onSaved }: { detail?: MatchDetail; mode: "mai
   const teamOpts = teams.map((t) => ({ value: String(t.id), label: t.name }));
   const statusOpts = Object.entries(MATCH_STATUS).map(([value, v]) => ({ value, label: v.label }));
   const mainFields: FieldSpec[] = [
-    { name: "season_id", label: "Mavsum", type: "select", numeric: true, required: true, options: seasons.map((s) => ({ value: String(s.id), label: s.name })) },
+    { name: "season_id", label: "Mavsum", type: "select", numeric: true, nullable: true, hint: "Bo‘sh bo‘lsa — joriy mavsum", options: seasons.map((s) => ({ value: String(s.id), label: s.name })) },
     { name: "stage_id", label: "Bosqich", type: "select", numeric: true, nullable: true, options: stages.map((s) => ({ value: String(s.id), label: s.name })) },
     { name: "home_team_id", label: "Uy egasi", type: "select", numeric: true, nullable: true, options: teamOpts },
     { name: "away_team_id", label: "Mehmon", type: "select", numeric: true, nullable: true, options: teamOpts },

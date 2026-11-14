@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -46,6 +47,8 @@ type resource struct {
 	search  []string          // columns searched by ?q=
 	touch   bool              // has updated_at
 	entity  string            // audit entity name
+	// prepare may fill defaults or drop values before validation (create and patch).
+	prepare func(ctx context.Context, s *Server, body map[string]any, creating bool) error
 }
 
 var reSlug = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
@@ -155,6 +158,9 @@ func convert(name string, f field, v any) (any, error) {
 	if v == nil {
 		if f.nullable {
 			return nil, nil
+		}
+		if f.kind == kText && !f.required {
+			return "", nil // an emptied select («—») on a text column
 		}
 		return nil, fmt.Errorf("%s bo‘sh bo‘lishi mumkin emas", name)
 	}
@@ -308,6 +314,12 @@ func (h crudHandlers) create(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, r, err)
 		return
 	}
+	if h.res.prepare != nil {
+		if err := h.res.prepare(r.Context(), h.s, body, true); err != nil {
+			httpx.Fail(w, r, err)
+			return
+		}
+	}
 	cols, vals, err := h.build(body, true)
 	if err != nil {
 		httpx.Fail(w, r, err)
@@ -338,6 +350,12 @@ func (h crudHandlers) patch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		httpx.Fail(w, r, err)
 		return
+	}
+	if h.res.prepare != nil {
+		if err := h.res.prepare(r.Context(), h.s, body, false); err != nil {
+			httpx.Fail(w, r, err)
+			return
+		}
 	}
 	cols, vals, err := h.build(body, false)
 	if err != nil {
@@ -431,7 +449,30 @@ var matchesRes = &resource{table: "matches", entity: "match", touch: true, order
 		"status":     enum("scheduled", "live", "halftime", "finished", "postponed", "cancelled"),
 		"home_score": optInt, "away_score": optInt, "home_ht": optInt, "away_ht": optInt, "home_et": optInt, "away_et": optInt,
 		"home_pen": optInt, "away_pen": optInt, "attendance": optInt, "added_time_1h": optInt, "added_time_2h": optInt,
-		"banner_url": txt(500), "video_url": txt(500), "notes": txt(2000), "published": boolean, "show_in_hero": boolean}}
+		"banner_url": txt(500), "video_url": txt(500), "notes": txt(2000), "published": boolean, "show_in_hero": boolean},
+	prepare: defaultSeason}
+
+// defaultSeason lets a match be created without choosing a season: the active one
+// (or the newest) is used. An emptied season on edit keeps the current one.
+func defaultSeason(ctx context.Context, s *Server, body map[string]any, creating bool) error {
+	if v, ok := body["season_id"]; ok && v != nil {
+		return nil
+	}
+	if !creating {
+		delete(body, "season_id")
+		return nil
+	}
+	var id int64
+	err := s.DB.QueryRowContext(ctx, `SELECT id FROM seasons ORDER BY is_active DESC, id DESC LIMIT 1`).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return httpx.Validation(map[string]any{"season_id": "Avval «Mavsumlar» bo‘limida mavsum yarating"})
+	}
+	if err != nil {
+		return err
+	}
+	body["season_id"] = json.Number(strconv.FormatInt(id, 10))
+	return nil
+}
 
 var newsRes = &resource{table: "news", entity: "news", touch: true, order: "coalesce(published_at, created_at) DESC",
 	search: []string{"title"}, filters: map[string]string{"status": "status", "category": "category"},
