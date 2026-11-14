@@ -465,8 +465,8 @@ function History() {
 function KitSettingsCard({ kit, err, onChange }: { kit: AiSettings["kit"]; err: Record<string, string>; onChange: (k: AiSettings["kit"]) => void }) {
   const set = (patch: Partial<AiSettings["kit"]>) => onChange({ ...kit, ...patch });
   const toggles: [keyof AiSettings["kit"], string, string][] = [
-    ["auto_on_kit", "Forma yuklanganda avtomatik kiyintirish", "Jamoadagi barcha rasmli o‘yinchilar navbatga qo‘yiladi"],
-    ["auto_on_player", "Yangi o‘yinchi rasmiga avtomatik", "Rasm yuklanganda jamoa formasi bilan yaratiladi"],
+    ["auto_on_kit", "Forma yuklanganda avtomatik kiyintirish", "Jamoadagi barcha rasmli o‘yinchilar va murabbiylar navbatga qo‘yiladi"],
+    ["auto_on_player", "Yangi o‘yinchi va murabbiy rasmiga avtomatik", "Rasm yuklanganda jamoa formasi bilan yaratiladi"],
     ["describe", "Forma tavsifini AI tuzadi", "Forma rasmidan matn tavsif — promptdagi {forma_tavsifi}"],
     ["analyze", "Rasm tahlili — generatsiyadan oldin", "Afisha/grafika, bir nechta odam, allaqachon formada, yuz ko‘rinmasligi aniqlanadi"],
   ];

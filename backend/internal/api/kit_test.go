@@ -39,7 +39,7 @@ func TestTeamKitFlow(t *testing.T) {
 	}
 	upload := t.TempDir()
 	os.MkdirAll(filepath.Join(upload, "images"), 0o755)
-	for _, n := range []string{"kit.png", "p1.png", "p2.png", "p3.png", "p1b.png"} {
+	for _, n := range []string{"kit.png", "p1.png", "p2.png", "p3.png", "p1b.png", "coach.png"} {
 		os.WriteFile(filepath.Join(upload, "images", n), tinyPNG(), 0o644)
 	}
 
@@ -112,6 +112,7 @@ func TestTeamKitFlow(t *testing.T) {
 			Description string `json:"kit_description"`
 		} `json:"team"`
 		Players []kp           `json:"players"`
+		Staff   []kp           `json:"staff"`
 		Counts  map[string]int `json:"counts"`
 	}
 	slug := "kit-" + idStr(time.Now().UnixNano()%1e9)
@@ -133,6 +134,13 @@ func TestTeamKitFlow(t *testing.T) {
 		}
 		players[p.name] = out.ID
 	}
+	var coach struct {
+		ID int64 `json:"id"`
+	}
+	if c := call("POST", "/admin/team-staff", map[string]any{"team_id": team.ID, "full_name": "Timur Kapadze", "role": "head_coach", "photo_url": "/uploads/images/coach.png", "show_on_site": true, "ord": 1}, &coach); c != 201 {
+		t.Fatal(c)
+	}
+	defer conn.Exec(`DELETE FROM team_staff WHERE team_id=$1`, team.ID)
 	wait := func() view {
 		var v view
 		for i := 0; i < 100; i++ {
@@ -157,17 +165,26 @@ func TestTeamKitFlow(t *testing.T) {
 	var v view
 	for i := 0; i < 100; i++ {
 		v = wait()
-		if v.Counts["review"] == 2 && v.Counts["multi"] == 1 {
+		if v.Counts["review"] == 3 && v.Counts["multi"] == 1 {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	if v.Team.Description != "Oq forma, yashil yoqa" || v.Counts["review"] != 2 || v.Counts["multi"] != 1 || v.Counts["skipped"] != 1 || describes != 1 {
+	if v.Team.Description != "Oq forma, yashil yoqa" || v.Counts["review"] != 3 || v.Counts["multi"] != 1 || v.Counts["skipped"] != 1 || describes != 1 || len(v.Staff) != 1 || v.Staff[0].Status != "review" {
 		t.Fatalf("after kit: %+v %+v describes=%d", v.Team, v.Counts, describes)
 	}
 	mu.Lock()
 	first := dressed[0]
+	coachAsked := false
+	for _, d := range dressed {
+		if d["player"] == "Bosh murabbiy Timur Kapadze (coaching staff of the team)" {
+			coachAsked = true
+		}
+	}
 	mu.Unlock()
+	if !coachAsked {
+		t.Fatal("the head coach was not dressed")
+	}
 	if first["team"] != "Kit FC "+slug || first["description"] != "Oq forma, yashil yoqa" || first["photo"].(map[string]any)["mime"] != "image/png" || first["kit"] == nil {
 		t.Fatalf("dress request: %+v", first)
 	}
@@ -199,8 +216,15 @@ func TestTeamKitFlow(t *testing.T) {
 		t.Fatalf("site photo after approve: %s", got)
 	}
 	var n struct{ Players int64 }
-	if c := call("POST", "/admin/teams/"+idStr(team.ID)+"/kit/approve", nil, &n); c != 200 || n.Players != 1 {
+	if c := call("POST", "/admin/teams/"+idStr(team.ID)+"/kit/approve", nil, &n); c != 200 || n.Players != 2 {
 		t.Fatalf("approve all: %d %+v", c, n)
+	}
+	var cp kp
+	if c := call("GET", "/admin/team-staff/"+idStr(coach.ID)+"/kit", nil, &cp); c != 200 || cp.Status != "approved" || cp.ApprovedURL == "" {
+		t.Fatalf("coach approved: %d %+v", c, cp)
+	}
+	if c := call("POST", "/admin/team-staff/"+idStr(coach.ID)+"/kit/revert", nil, &cp); c != 200 || cp.ApprovedURL != "" {
+		t.Fatalf("coach revert: %+v", cp)
 	}
 	// several people: regenerate with a hint
 	if c := call("POST", "/admin/players/"+idStr(players["Guruh Rasm"])+"/kit/regenerate", map[string]any{"hint": "chapdagi, 10-raqam"}, &p); c != 200 || (p.Status != "queued" && p.Status != "running" && p.Status != "review") {
@@ -242,7 +266,7 @@ func TestTeamKitFlow(t *testing.T) {
 	// run all again, then stop: queued ones are cancelled
 	block := make(chan struct{})
 	defer close(block)
-	if c := call("POST", "/admin/teams/"+idStr(team.ID)+"/kit/run", nil, &n); c != 200 || n.Players != 4 {
+	if c := call("POST", "/admin/teams/"+idStr(team.ID)+"/kit/run", nil, &n); c != 200 || n.Players != 5 {
 		t.Fatalf("run: %d %+v", c, n)
 	}
 	call("POST", "/admin/teams/"+idStr(team.ID)+"/kit/stop", nil, &n)

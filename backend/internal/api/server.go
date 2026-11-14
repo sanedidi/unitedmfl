@@ -39,7 +39,7 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 		Hub:            live.NewHub(),
 		web:            newWebNotifier(cfg.WebRevalidateURL, cfg.RevalidateSecret),
 		loginLimiter:   httpx.NewRateLimiter(10, 10*time.Minute),
-		kit:            &kitWorker{wake: make(chan struct{}, 1), running: map[int64]context.CancelFunc{}},
+		kit:            &kitWorker{wake: make(chan struct{}, 1), running: map[string]context.CancelFunc{}},
 		contactLimiter: httpx.NewRateLimiter(5, 10*time.Minute),
 		viewLimiter:    httpx.NewRateLimiter(1, 30*time.Minute), // one view per IP per article per 30 min
 	}

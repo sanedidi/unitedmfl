@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { uploadImage } from "@/lib/api";
 import { fmtDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
-import { analysisLines, busyStatus, kitApi, type KitPlayer, type TeamKit } from "@/lib/kit";
+import { analysisLines, busyStatus, kitApi, STAFF_ROLES, type KitPlayer, type TeamKit } from "@/lib/kit";
 import type { CardCtx } from "@/components/Crud";
 import { Badge, ImageInput, Modal, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
@@ -77,7 +77,7 @@ export function TeamKitSection({ c }: { c: CardCtx }) {
   return (
     <>
       <KitCard c={c} data={data} onChanged={reload} />
-      {teamId && data && (data.team.kit_url || data.players.some((p) => p.kit_status)) && <KitPlayersCard data={data} onChanged={reload} />}
+      {teamId && data && (data.team.kit_url || [...data.players, ...data.staff].some((p) => p.kit_status)) && <KitPlayersCard data={data} onChanged={reload} />}
     </>
   );
 }
@@ -187,9 +187,10 @@ function KitPlayersCard({ data, onChanged }: { data: TeamKit; onChanged: () => v
   const [busy, setBusy] = useState("");
   const [hintFor, setHintFor] = useState<KitPlayer | null>(null);
   const n = data.counts;
-  const total = data.players.length;
+  const people = [...data.players, ...data.staff];
+  const total = people.length;
   const pending = (n.queued || 0) + (n.running || 0);
-  const done = data.players.filter((p) => !busyStatus(p.kit_status) && p.kit_status !== "" && p.kit_status !== "cancelled").length;
+  const done = people.filter((p) => !busyStatus(p.kit_status) && p.kit_status !== "" && p.kit_status !== "cancelled").length;
   const review = n.review || 0;
   const list = all ? data.players : data.players.slice(0, 8);
   const teamId = data.team.id;
@@ -206,23 +207,27 @@ function KitPlayersCard({ data, onChanged }: { data: TeamKit; onChanged: () => v
     }
   }
   async function rerunAll() {
-    if (!(await confirm({ title: "Hammasini qayta kiyintirish", text: `${total} ta o‘yinchi navbatga qo‘yiladi. Saytdagi tasdiqlangan rasmlar yangisi tasdiqlanguncha qoladi.`, ok: "Boshlash" }))) return;
+    if (!(await confirm({ title: "Hammasini qayta kiyintirish", text: `${total} kishi (o‘yinchilar va murabbiylar) navbatga qo‘yiladi. Saytdagi tasdiqlangan rasmlar yangisi tasdiqlanguncha qoladi.`, ok: "Boshlash" }))) return;
     run(() => kitApi.run(teamId), "run", "Navbatga qo‘yildi");
+  }
+  function onAct(p: KitPlayer, a: Act) {
+    if (a === "hint") setHintFor(p);
+    else run(() => kitApi.act(p.id, a, undefined, p.kind), `${a}:${p.kind}${p.id}`, a === "approve" ? "Tasdiqlandi" : undefined);
   }
   const head = pending > 0 ? `Kiyintirilmoqda · ${done} / ${total}` : `${n.on_site || 0} / ${total} saytda${review ? ` · ${review} ta tekshiruvda` : ""}`;
   return (
     <div className="card">
-      <div className="card-head"><h3>O‘yinchilar formada</h3><span className="muted small">{head}</span></div>
+      <div className="card-head"><h3>O‘yinchilar va murabbiylar formada</h3><span className="muted small">{head}</span></div>
       <div className="card-pad stack" style={{ gap: 16 }}>
         {!data.ai.on && <div className="alert warn"><I.alert size={16} /><div>AI-servis o‘chirilgan yoki ulanmagan — o‘yinchilar kiyintirilmaydi.</div></div>}
         {pending > 0 ? (
           <div className="kit-progress">
-            <div className="row"><b>✦ O‘yinchilar formada kiyintirilmoqda</b><div className="grow" /><span className="small">{done} / {total} · har biri ≈ 30–60 s</span></div>
+            <div className="row"><b>✦ O‘yinchilar va murabbiylar formada kiyintirilmoqda</b><div className="grow" /><span className="small">{done} / {total} · har biri ≈ 30–60 s</span></div>
             <div className="bar"><i style={{ width: `${total ? (done / total) * 100 : 0}%` }} /></div>
             <span className="small">Sahifani yopsangiz ham jarayon serverda davom etadi. Natijalar tayyor bo‘lgach shu yerda tekshirasiz.</span>
           </div>
         ) : (
-          <div className="note-box">Forma yuklanganda barcha o‘yinchilar avtomatik kiyintiriladi. Asl rasmlar saqlanadi — tasdiqlanmaguncha saytda eski rasm turadi.</div>
+          <div className="note-box">Forma yuklanganda barcha o‘yinchilar va murabbiylar shtabi avtomatik kiyintiriladi. Asl rasmlar saqlanadi — tasdiqlanmaguncha saytda eski rasm turadi.</div>
         )}
         <div className="row wrap">
           {pending > 0
@@ -234,15 +239,18 @@ function KitPlayersCard({ data, onChanged }: { data: TeamKit; onChanged: () => v
           <div className="grow" />
           {data.ai.model && <span className="muted small">{data.ai.model} · {data.ai.quality === "high" ? "Yuqori" : data.ai.quality === "medium" ? "O‘rta" : "Past"}</span>}
         </div>
-        {total === 0 ? <p className="muted" style={{ margin: 0 }}>Jamoada hali o‘yinchi yo‘q.</p> : (
+        {data.players.length === 0 ? <p className="muted" style={{ margin: 0 }}>Jamoada hali o‘yinchi yo‘q.</p> : (
           <div className="kit-grid">
-            {list.map((p) => <KitTile key={p.id} p={p} busy={busy} onAct={(a) => {
-              if (a === "hint") setHintFor(p);
-              else run(() => kitApi.act(p.id, a), `${a}:${p.id}`, a === "approve" ? "Tasdiqlandi" : undefined);
-            }} />)}
+            {list.map((p) => <KitTile key={`p${p.id}`} p={p} busy={busy} onAct={(a) => onAct(p, a)} />)}
           </div>
         )}
         {data.players.length > 8 && <button type="button" className="link-btn" onClick={() => setAll(!all)}>{all ? "Kamroq ko‘rsatish" : `Hammasini ko‘rish (${data.players.length})`}</button>}
+        <div className="kit-sub"><b>Murabbiylar shtabi</b><span className="muted small">{data.staff.length ? `${data.staff.length} kishi` : "«Murabbiylar shtabi» bo‘limida qo‘shing va rasm yuklang"}</span></div>
+        {data.staff.length > 0 && (
+          <div className="kit-grid">
+            {data.staff.map((p) => <KitTile key={`s${p.id}`} p={p} busy={busy} onAct={(a) => onAct(p, a)} />)}
+          </div>
+        )}
       </div>
       {hintFor && <HintModal p={hintFor} onClose={() => setHintFor(null)} onDone={() => { setHintFor(null); onChanged(); }} />}
     </div>
@@ -268,7 +276,7 @@ type Act = "approve" | "reject" | "revert" | "regenerate" | "hint";
 
 function KitTile({ p, busy, onAct }: { p: KitPlayer; busy: string; onAct: (a: Act) => void }) {
   const s = p.kit_status;
-  const dis = busy.endsWith(`:${p.id}`);
+  const dis = busy.endsWith(`:${p.kind}${p.id}`);
   const chip = (label: string, a: Act, kind = "") => <button key={a} type="button" className={`chip-btn ${kind}`} disabled={dis} onClick={() => onAct(a)}>{label}</button>;
   return (
     <div className={`kit-tile${s === "review" ? " focus" : ""}`}>
@@ -276,7 +284,9 @@ function KitTile({ p, busy, onAct }: { p: KitPlayer; busy: string; onAct: (a: Ac
         {p.photo_url ? <Thumb src={p.photo_url} /> : <Thumb dashed><span>—</span></Thumb>}
         {afterThumb(p)}
       </div>
-      <Link className="kit-name ellipsis" to={`/players/${p.id}`}>{p.number != null && <>#{p.number}  </>}{p.full_name}</Link>
+      {p.kind === "staff"
+        ? <span className="kit-name ellipsis" title={p.full_name}>{p.full_name}<small className="muted" style={{ display: "block", fontWeight: 500 }}>{STAFF_ROLES[p.role || "other"] || p.role}</small></span>
+        : <Link className="kit-name ellipsis" to={`/players/${p.id}`}>{p.number != null && <>#{p.number}  </>}{p.full_name}</Link>}
       <KitBadge p={p} />
       {s === "error" && p.kit_error && <span className="small danger-text clamp-2" title={p.kit_error}>{p.kit_error}</span>}
       <div className="row wrap" style={{ gap: 6 }}>
@@ -298,7 +308,7 @@ function HintModal({ p, onClose, onDone }: { p: KitPlayer; onClose: () => void; 
   async function go() {
     setBusy(true);
     try {
-      await kitApi.act(p.id, "regenerate", hint.trim());
+      await kitApi.act(p.id, "regenerate", hint.trim(), p.kind);
       toast("Navbatga qo‘yildi");
       onDone();
     } catch (e) {

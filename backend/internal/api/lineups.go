@@ -421,4 +421,5 @@ var staffRes = &resource{table: "team_staff", entity: "team_staff", touch: true,
 	search: []string{"full_name"}, filters: map[string]string{"team_id": "team_id"},
 	fields: map[string]field{"team_id": reqInt, "full_name": reqTxt(120),
 		"role":      enum("head_coach", "assistant", "gk_coach", "fitness", "doctor", "manager", "other"),
-		"photo_url": txt(500), "show_on_site": boolean, "ord": {kind: kInt}}}
+		"photo_url": txt(500), "show_on_site": boolean, "ord": {kind: kInt}},
+	afterWrite: staffPhotoChanged}

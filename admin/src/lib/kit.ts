@@ -16,6 +16,8 @@ export type KitAnalysis = {
 
 export type KitPlayer = {
   id: number;
+  kind: "player" | "staff";
+  role?: string;
   full_name: string;
   number: number | null;
   team_id: number | null;
@@ -34,6 +36,7 @@ export type KitPlayer = {
 export type TeamKit = {
   team: { id: number; name: string; kit_url: string; kit_description: string };
   players: KitPlayer[];
+  staff: KitPlayer[];
   counts: Partial<Record<KitStatus | "on_site", number>>;
   ai: { on: boolean; model: string; quality: string; auto_on_kit: boolean; auto_on_player: boolean };
 };
@@ -46,8 +49,13 @@ export const kitApi = {
   stop: (id: number) => api.post<{ players: number }>(`/admin/teams/${id}/kit/stop`),
   approveAll: (id: number) => api.post<{ players: number }>(`/admin/teams/${id}/kit/approve`),
   player: (id: number) => api.get<KitPlayer>(`/admin/players/${id}/kit`),
-  act: (id: number, action: "approve" | "reject" | "revert" | "regenerate", hint?: string) =>
-    api.post<KitPlayer>(`/admin/players/${id}/kit/${action}`, hint ? { hint } : undefined),
+  act: (id: number, action: "approve" | "reject" | "revert" | "regenerate", hint?: string, kind: KitPlayer["kind"] = "player") =>
+    api.post<KitPlayer>(`/admin/${kind === "staff" ? "team-staff" : "players"}/${id}/kit/${action}`, hint ? { hint } : undefined),
+};
+
+export const STAFF_ROLES: Record<string, string> = {
+  head_coach: "Bosh murabbiy", assistant: "Yordamchi murabbiy", gk_coach: "Darvozabonlar murabbiyi",
+  fitness: "Fitnes murabbiyi", doctor: "Shifokor", manager: "Menejer", other: "Shtab a’zosi",
 };
 
 export const busyStatus = (s: KitStatus) => s === "queued" || s === "running";
