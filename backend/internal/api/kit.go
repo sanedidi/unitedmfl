@@ -256,9 +256,41 @@ func (s *Server) kitDescribe(ctx context.Context, team int64) (kitDescription, e
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return out, err
 	}
-	_, err = s.DB.ExecContext(ctx, `UPDATE teams SET kit_description=$2, kit_has_number=$4, kit_number_style=$5, updated_at=now() WHERE id=$1 AND kit_url=$3`,
-		team, out.Description, kit, out.NumberVisible, out.NumberStyle)
+	_, err = s.DB.ExecContext(ctx, `UPDATE teams SET kit_description=$2, kit_has_number=$4, kit_number_style=$5, kit_desc_version=$6, updated_at=now() WHERE id=$1 AND kit_url=$3`,
+		team, out.Description, kit, out.NumberVisible, out.NumberStyle, kitDescVersion)
 	return out, err
+}
+
+// kitDescVersion: descriptions older than this are written again once (number detection).
+const kitDescVersion = 2
+
+// redescribeOldKits refreshes kit descriptions written by an older version.
+func (s *Server) redescribeOldKits(ctx context.Context) {
+	cfg, _, ok := s.kitConfig(ctx)
+	if !ok || !cfg.Describe {
+		return
+	}
+	rows, err := s.DB.QueryContext(ctx, `SELECT id FROM teams WHERE kit_url<>'' AND kit_desc_version < $1`, kitDescVersion)
+	if err != nil {
+		return
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if rows.Scan(&id) == nil {
+			ids = append(ids, id)
+		}
+	}
+	rows.Close()
+	for _, id := range ids {
+		c, cancel := context.WithTimeout(ctx, 3*time.Minute)
+		if _, err := s.kitDescribe(c, id); err != nil {
+			slog.Warn("kit re-describe failed", "team", id, "err", err)
+		} else {
+			slog.Info("kit re-described", "team", id)
+		}
+		cancel()
+	}
 }
 
 type kitDescription struct {
@@ -305,6 +337,7 @@ func (s *Server) StartKitWorker(ctx context.Context) {
 	for _, tbl := range kitTables {
 		_, _ = s.DB.ExecContext(ctx, `UPDATE `+tbl+` SET kit_status='queued' WHERE kit_status='running'`)
 	}
+	go s.redescribeOldKits(ctx)
 	for i := 0; i < 2; i++ {
 		go func() {
 			tick := time.NewTicker(10 * time.Second)

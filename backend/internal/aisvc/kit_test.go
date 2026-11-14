@@ -166,6 +166,11 @@ func TestKitDress(t *testing.T) {
 	if np := prompts[len(prompts)-1]; !strings.Contains(np, `exactly "21"`) || !strings.Contains(np, "2 1") || !strings.Contains(np, "halqa") {
 		t.Fatalf("number rule: %s", np)
 	}
+	// number not detected on the kit (old description): still replace a visible sample number
+	call("/v1/kit/dress", DressInput{Photo: photo, Kit: kit, Team: "R", Player: "Ntumba", Number: "21", Description: "ko‘krakda “17” raqami"}, &res)
+	if np := prompts[len(prompts)-1]; !strings.Contains(np, `replace it with exactly "21"`) || !strings.Contains(np, "Ignore any digits mentioned") {
+		t.Fatalf("undetected number rule: %s", np)
+	}
 	call("/v1/kit/dress", DressInput{Photo: photo, Kit: kit, Team: "R", Player: "Coach", NumberOnKit: true, Staff: true}, &res)
 	if np := prompts[len(prompts)-1]; !strings.Contains(np, "WITHOUT any player number") {
 		t.Fatalf("staff number rule: %s", np)

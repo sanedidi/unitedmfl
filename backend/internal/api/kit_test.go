@@ -76,6 +76,7 @@ func TestTeamKitFlow(t *testing.T) {
 
 	cfg := &config.Config{UploadDir: upload, AIServiceURL: ai.URL, AIInternalToken: "tok-1234567890abcdef", WebInternalURL: "http://127.0.0.1:9", JWTSecret: []byte("test-secret-test-secret-test-secret!!"), AccessTTL: time.Hour}
 	s := New(conn, cfg)
+	conn.Exec(`UPDATE teams SET kit_desc_version=2`) // leftovers of earlier runs are not re-described here
 	s.StartKitWorker(ctx)
 	h := s.Routes()
 	tok, _, _ := s.Tokens.Sign(uid, "admin", "Admin")
@@ -316,6 +317,17 @@ func TestTeamKitFlow(t *testing.T) {
 	mu.Unlock()
 	if last["number"] != "17" {
 		t.Fatalf("number change must re-dress: %+v", last["number"])
+	}
+	// a description from an older version is written again once at startup
+	conn.Exec(`UPDATE teams SET kit_desc_version=0 WHERE id=$1`, team.ID)
+	mu.Lock()
+	d0 := describes
+	mu.Unlock()
+	s.redescribeOldKits(ctx)
+	var ver int
+	conn.QueryRow(`SELECT kit_desc_version FROM teams WHERE id=$1`, team.ID).Scan(&ver)
+	if describes != d0+1 || ver != 2 {
+		t.Fatalf("re-describe: %d→%d v%d", d0, describes, ver)
 	}
 	// removing the kit keeps nothing pending
 	if c := call("PATCH", "/admin/teams/"+idStr(team.ID), map[string]any{"kit_url": ""}, nil); c != 200 {

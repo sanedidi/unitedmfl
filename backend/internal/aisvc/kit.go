@@ -319,20 +319,28 @@ func rasmHolati(k KitSettings, a *PhotoAnalysis, hint string, frontalTemplate bo
 }
 
 // numberRule tells the image model which player number the jersey must show.
+// kit_has_number may be unknown (old description) or wrong, so even without it the
+// rule says what to do if IMAGE 2 does show a number: never copy the sample's.
 func numberRule(in DressInput) string {
 	n := strings.TrimSpace(in.Number)
-	switch {
-	case !in.NumberOnKit:
-		return "\n- PLAYER NUMBER: do not add any player number or name to the front of the jersey."
-	case in.Staff || n == "":
-		return "\n- PLAYER NUMBER: this person is coaching staff — show the jersey WITHOUT any player number: fill that area with the jersey's plain fabric and pattern. Never copy the number from IMAGE 2."
-	}
 	style := strings.TrimSpace(in.NumberStyle)
 	if style == "" {
-		style = "the same font, size, colours, outline and position as in IMAGE 2"
+		style = "the same font, size, colours, outline and position as the number in IMAGE 2"
 	}
-	return fmt.Sprintf("\n- PLAYER NUMBER (critical): IMAGE 2 is a sample jersey, its number belongs to another player. The number on the result MUST be exactly \"%s\" (%d digit%s: %s) — %s. Never copy the number shown in IMAGE 2 or in IMAGE 1; check the digits before finishing.",
-		n, len([]rune(n)), map[bool]string{true: "", false: "s"}[len([]rune(n)) == 1], strings.Join(strings.Split(n, ""), " "), style)
+	const ignore = " Ignore any digits mentioned in the jersey description — they belong to the sample jersey."
+	switch {
+	case in.Staff:
+		return "\n- PLAYER NUMBER: this person is coaching staff — show the jersey WITHOUT any player number. If IMAGE 2 shows a number on the front, do NOT reproduce it: fill that area with the jersey's plain fabric and pattern." + ignore
+	case n == "" && in.NumberOnKit:
+		return "\n- PLAYER NUMBER: show the jersey WITHOUT any player number (fill that area with the jersey's plain fabric and pattern). Never copy the number from IMAGE 2." + ignore
+	case n == "":
+		return "\n- PLAYER NUMBER: do not add any player number. If IMAGE 2 shows a number on the front, remove it (plain fabric and pattern instead)." + ignore
+	}
+	digits := fmt.Sprintf("exactly \"%s\" (%d digit%s: %s)", n, len([]rune(n)), map[bool]string{true: "", false: "s"}[len([]rune(n)) == 1], strings.Join(strings.Split(n, ""), " "))
+	if in.NumberOnKit {
+		return fmt.Sprintf("\n- PLAYER NUMBER (critical): IMAGE 2 is a sample jersey; its number belongs to another player. The number on the result MUST be %s — %s. Never copy the number shown in IMAGE 2 or in IMAGE 1; check the digits before finishing.%s", digits, style, ignore)
+	}
+	return fmt.Sprintf("\n- PLAYER NUMBER (critical): this player's number is %s. If the jersey in IMAGE 2 shows a player number on the front, replace it with %s in %s — never copy the number from IMAGE 2. If IMAGE 2 shows no number on the front, do not add one.%s", digits, digits, style, ignore)
 }
 
 // isFrontalTemplate reports whether the template already demands the frontal studio portrait.
