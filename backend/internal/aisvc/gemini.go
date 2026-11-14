@@ -3,6 +3,7 @@ package aisvc
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strings"
@@ -124,6 +125,29 @@ func (g *gemini) Improve(ctx context.Context, c Credentials, model, system, user
 		}
 	}
 	return Improved{}, &ProviderError{Status: 502, Message: "Gemini javob qaytarmadi"}
+}
+
+func (g *gemini) Ask(ctx context.Context, c Credentials, model, system, user string, images []Ref, name string, schema map[string]any) (json.RawMessage, error) {
+	parts := []gemPart{{Text: user}}
+	for _, im := range images {
+		parts = append(parts, gemPart{InlineData: &gemInline{MimeType: im.Mime, Data: base64.StdEncoding.EncodeToString(im.Data)}})
+	}
+	res, err := g.generate(ctx, c, model, map[string]any{
+		"systemInstruction": gemContent{Parts: []gemPart{{Text: system}}},
+		"contents":          []gemContent{{Role: "user", Parts: parts}},
+		"generationConfig":  map[string]any{"responseMimeType": "application/json", "responseSchema": geminiSchema(schema)},
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, cand := range res.Candidates {
+		for _, p := range cand.Content.Parts {
+			if p.Text != "" {
+				return cleanJSON(p.Text), nil
+			}
+		}
+	}
+	return nil, &ProviderError{Status: 502, Message: "Gemini javob qaytarmadi"}
 }
 
 var geminiRatios = []string{"1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"}

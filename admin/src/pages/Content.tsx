@@ -9,6 +9,7 @@ import { ImageInput, useToast } from "@/components/ui";
 import type { Player, Team } from "@/lib/types";
 import { SITE_URL } from "@/components/Layout";
 import { TeamExtras } from "@/components/TeamExtras";
+import { PlayerPhotoCard, TeamKitSection } from "@/components/Kit";
 
 const GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H"].map((g) => ({ value: g, label: `Guruh ${g}` }));
 
@@ -26,9 +27,10 @@ export function TeamsPage() {
     { name: "leader", label: "Sardor / yetakchi" },
     { name: "instagram", label: "Instagram", type: "url" },
     { name: "telegram", label: "Telegram", type: "url" },
+    { name: "kit_url", label: "Forma", hidden: true },
   ];
   return (
-    <CrudSection<Team & Record<string, any>> base="/teams" onChanged={invalidateRefs} title="Jamoalar" resource="/admin/teams" singular="Jamoa" searchable fields={fields} defaults={{ is_active: true, group_is_provisional: true }}
+    <CrudSection<Team & Record<string, any>> base="/teams" cards={(c) => <TeamKitSection c={c} />} onChanged={invalidateRefs} title="Jamoalar" resource="/admin/teams" singular="Jamoa" searchable fields={fields} defaults={{ is_active: true, group_is_provisional: true }}
       filters={[{ param: "group", label: "Guruh", options: GROUPS }]}
       columns={[
         { label: "Jamoa", render: (t) => <span className="row"><Crest team={t} /> <b>{t.name}</b></span> },
@@ -56,11 +58,11 @@ export function PlayersPage() {
     { name: "number", label: "Raqam", type: "number", nullable: true },
     { name: "position", label: "Amplua", type: "select", nullable: true, options: posOpts },
     { name: "is_active", label: "Faol", type: "bool", side: true },
-    { name: "photo_url", label: "Rasm", type: "image", side: true },
+    { name: "photo_url", label: "Rasm", hidden: true },
     { name: "instagram", label: "Instagram", type: "url" },
   ];
   return (
-    <CrudSection<Player & Record<string, any>> base="/players" titleField="full_name" title="O‘yinchilar" resource="/admin/players" singular="O‘yinchi" searchable fields={fields} defaults={{ is_active: true }} reloadKey={teams.length}
+    <CrudSection<Player & Record<string, any>> base="/players" sideCards={(c) => <PlayerPhotoCard c={c} />} titleField="full_name" title="O‘yinchilar" resource="/admin/players" singular="O‘yinchi" searchable fields={fields} defaults={{ is_active: true }} reloadKey={teams.length}
       filters={[{ param: "team_id", label: "Jamoa", options: teamOpts }, { param: "position", label: "Amplua", options: posOpts }]}
       columns={[
         { label: "№", render: (p) => <b className="tnum">{p.number ?? "—"}</b> },

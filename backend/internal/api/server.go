@@ -2,6 +2,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"os"
@@ -28,6 +29,7 @@ type Server struct {
 	contactLimiter *httpx.RateLimiter
 	viewLimiter    *httpx.RateLimiter
 	ai             aiJobs
+	kit            *kitWorker
 }
 
 func New(db *sql.DB, cfg *config.Config) *Server {
@@ -37,6 +39,7 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 		Hub:            live.NewHub(),
 		web:            newWebNotifier(cfg.WebRevalidateURL, cfg.RevalidateSecret),
 		loginLimiter:   httpx.NewRateLimiter(10, 10*time.Minute),
+		kit:            &kitWorker{wake: make(chan struct{}, 1), running: map[int64]context.CancelFunc{}},
 		contactLimiter: httpx.NewRateLimiter(5, 10*time.Minute),
 		viewLimiter:    httpx.NewRateLimiter(1, 30*time.Minute), // one view per IP per article per 30 min
 	}
@@ -136,6 +139,7 @@ func (s *Server) Routes() http.Handler {
 			s.mountCRUD(r, auth.PermTeams, "/players", playersRes)
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermTeams))
+				s.mountKits(r)
 				r.Post("/team-staff", s.crud(staffRes).create)
 				r.Get("/team-staff/{id}", s.crud(staffRes).get)
 				r.Patch("/team-staff/{id}", s.crud(staffRes).patch)

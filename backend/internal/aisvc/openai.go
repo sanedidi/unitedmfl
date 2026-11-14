@@ -124,6 +124,51 @@ func (o *openAI) Improve(ctx context.Context, c Credentials, model, system, user
 	return parseImproved(text)
 }
 
+func (o *openAI) Ask(ctx context.Context, c Credentials, model, system, user string, images []Ref, name string, schema map[string]any) (json.RawMessage, error) {
+	content := []map[string]any{{"type": "input_text", "text": user}}
+	for _, im := range images {
+		content = append(content, map[string]any{"type": "input_image", "image_url": "data:" + im.Mime + ";base64," + base64.StdEncoding.EncodeToString(im.Data)})
+	}
+	body := map[string]any{
+		"model": model, "instructions": system,
+		"input": []map[string]any{{"role": "user", "content": content}},
+		"text":  map[string]any{"format": map[string]any{"type": "json_schema", "name": name, "strict": true, "schema": schema}},
+	}
+	req, err := jsonRequest(http.MethodPost, o.url(c, "/responses"), body)
+	if err != nil {
+		return nil, err
+	}
+	o.auth(req, c)
+	var res struct {
+		OutputText string `json:"output_text"`
+		Output     []struct {
+			Content []struct {
+				Type    string `json:"type"`
+				Text    string `json:"text"`
+				Refusal string `json:"refusal"`
+			} `json:"content"`
+		} `json:"output"`
+	}
+	if err := doJSON(ctx, o.hc, req, &res); err != nil {
+		return nil, err
+	}
+	text := res.OutputText
+	for _, out := range res.Output {
+		for _, ct := range out.Content {
+			if ct.Type == "output_text" && text == "" {
+				text = ct.Text
+			}
+			if ct.Type == "refusal" && ct.Refusal != "" {
+				return nil, &ProviderError{Status: 422, Message: "Model rad etdi: " + ct.Refusal}
+			}
+		}
+	}
+	if strings.TrimSpace(text) == "" {
+		return nil, &ProviderError{Status: 502, Message: "Matn modeli javob qaytarmadi"}
+	}
+	return cleanJSON(text), nil
+}
+
 func parseImproved(text string) (Improved, error) {
 	text = strings.TrimSpace(text)
 	text = strings.TrimPrefix(strings.TrimSuffix(strings.TrimPrefix(text, "```json"), "```"), "```")

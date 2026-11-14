@@ -23,7 +23,10 @@ export type FieldSpec = {
   placeholder?: string;
   show?: (v: Rec) => boolean;
   side?: boolean; // on the edit page: shown in the right-hand «Holat» column
+  hidden?: boolean; // saved with the form but edited by a custom card
 };
+/** Extra cards on the edit page; they edit hidden fields through set(). */
+export type CardCtx = { item: Rec | null; values: Rec; set: (k: string, v: any) => void; version: number };
 export type Rec = Record<string, any>;
 export type Col<T> = { label: string; render: (r: T) => ReactNode; className?: string };
 
@@ -51,7 +54,7 @@ export function fieldValueOut(f: FieldSpec, v: any) {
 export function FormFields({ fields, values, set, errors }: { fields: FieldSpec[]; values: Rec; set: (k: string, v: any) => void; errors: Record<string, string> }) {
   return (
     <div className="form-grid">
-      {fields.filter((f) => !f.show || f.show(values)).map((f) => {
+      {fields.filter((f) => !f.hidden && (!f.show || f.show(values))).map((f) => {
         const v = values[f.name];
         const err = errors[f.name];
         const common = { id: `f-${f.name}`, "aria-invalid": !!err || undefined } as const;
@@ -184,6 +187,9 @@ export type CrudProps<T extends Rec> = {
   edit?: "page" | "drawer";
   /** Field used as the page title on the edit page. */
   titleField?: string;
+  /** Edit page: cards after the main card (left) and before the status card (right). */
+  cards?: (c: CardCtx) => ReactNode;
+  sideCards?: (c: CardCtx) => ReactNode;
 };
 
 export function CrudPage<T extends Rec>(p: CrudProps<T>) {
@@ -298,8 +304,10 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
   const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(() => JSON.stringify(form.values));
+  const [version, setVersion] = useState(0);
   const dirty = JSON.stringify(form.values) !== saved;
   const back = p.listPath || p.base;
+  const ctx: CardCtx = { item, values: form.values, set: form.set, version };
   useEffect(() => {
     if (!dirty) return;
     const h = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -320,6 +328,7 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
       toast("Saqlandi");
       p.onChanged?.();
       setSaved(JSON.stringify(form.values));
+      setVersion((v) => v + 1);
       if (!item) navigate(`${p.base}/${r.id}`, { replace: true });
     } catch (err) {
       form.fail(err);
@@ -358,9 +367,11 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
               <div className="card-pad"><FormFields fields={main} values={form.values} set={form.set} errors={form.errors} /></div>
             </div>
           )}
+          {p.cards?.(ctx)}
           {item && p.extra && <div className="card"><div className="card-pad">{p.extra(item)}</div></div>}
         </div>
         <aside className="stack" style={{ gap: 24 }}>
+          {p.sideCards?.(ctx)}
           {side.length > 0 && (
             <div className="card">
               <div className="card-head"><h3>Holat</h3></div>

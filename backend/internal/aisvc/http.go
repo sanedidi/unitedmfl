@@ -75,6 +75,24 @@ func (s *Service) Routes() http.Handler {
 			out, err := s.Images(r.Context(), in)
 			reply(w, r, out, err)
 		})
+		r.Post("/kit/describe", func(w http.ResponseWriter, r *http.Request) {
+			var in DescribeInput
+			if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 60<<20)).Decode(&in); err != nil {
+				httpx.Fail(w, r, httpx.BadRequest("JSON noto‘g‘ri: "+err.Error()))
+				return
+			}
+			out, err := s.Describe(r.Context(), in)
+			reply(w, r, out, err)
+		})
+		r.Post("/kit/dress", func(w http.ResponseWriter, r *http.Request) {
+			var in DressInput
+			if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 120<<20)).Decode(&in); err != nil {
+				httpx.Fail(w, r, httpx.BadRequest("JSON noto‘g‘ri: "+err.Error()))
+				return
+			}
+			out, err := s.Dress(r.Context(), in)
+			reply(w, r, out, err)
+		})
 	})
 	return r
 }

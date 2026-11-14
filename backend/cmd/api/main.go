@@ -47,6 +47,8 @@ func run() error {
 
 	server := api.New(conn, cfg)
 	server.ResetStaleAIJobs(ctx)
+	// dresses players in their team kit (AI service), two at a time
+	server.StartKitWorker(ctx)
 	// copy hero images from the old site into /uploads (no-op once done)
 	go server.MirrorRemoteImages(ctx)
 	// Instagram feed for /media (no-op until a token is connected in the admin)

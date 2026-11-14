@@ -38,6 +38,19 @@ export type AiSettings = {
   improve_language: "user" | "en";
   default_assets: Record<string, boolean>;
   max_assets: number;
+  kit: KitSettings;
+};
+
+export type KitSettings = {
+  auto_on_kit: boolean;
+  auto_on_player: boolean;
+  describe: boolean;
+  analyze: boolean;
+  quality: "low" | "medium" | "high";
+  size: "original" | "portrait";
+  background: "auto" | "keep" | "studio";
+  framing: "auto" | "keep" | "head_shoulders";
+  prompt: string;
 };
 
 export type AiImage = { url: string; mime: string; width: number; height: number };

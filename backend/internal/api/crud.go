@@ -49,6 +49,14 @@ type resource struct {
 	entity  string            // audit entity name
 	// prepare may fill defaults or drop values before validation (create and patch).
 	prepare func(ctx context.Context, s *Server, body map[string]any, creating bool) error
+	// afterWrite runs after a successful create (old == nil) or update with both row versions.
+	afterWrite func(s *Server, id int64, old, cur map[string]any)
+}
+
+func rowMap(raw []byte) map[string]any {
+	m := map[string]any{}
+	_ = json.Unmarshal(raw, &m)
+	return m
 }
 
 var reSlug = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
@@ -337,6 +345,9 @@ func (h crudHandlers) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.s.audit(r, "create", h.res.entity, id, body)
+	if h.res.afterWrite != nil {
+		h.res.afterWrite(h.s, id, nil, rowMap(raw))
+	}
 	writeRaw(w, http.StatusCreated, raw)
 }
 
@@ -370,6 +381,10 @@ func (h crudHandlers) patch(w http.ResponseWriter, r *http.Request) {
 		sets = append(sets, "updated_at=now()")
 	}
 	vals = append(vals, id)
+	var oldRaw []byte
+	if h.res.afterWrite != nil {
+		_ = h.s.DB.QueryRowContext(r.Context(), fmt.Sprintf(`SELECT row_to_json(t) FROM %s t WHERE id=$1`, h.res.table), id).Scan(&oldRaw)
+	}
 	var raw []byte
 	q := fmt.Sprintf(`UPDATE %[1]s SET %[2]s WHERE id=$%[3]d RETURNING row_to_json(%[1]s.*)`, h.res.table, strings.Join(sets, ","), len(vals))
 	err = h.s.DB.QueryRowContext(r.Context(), q, vals...).Scan(&raw)
@@ -382,6 +397,9 @@ func (h crudHandlers) patch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.s.audit(r, "update", h.res.entity, id, body)
+	if h.res.afterWrite != nil && oldRaw != nil {
+		h.res.afterWrite(h.s, id, rowMap(oldRaw), rowMap(raw))
+	}
 	if h.res.table == "matches" {
 		h.s.broadcastMatch(r.Context(), id)
 	}
@@ -425,12 +443,15 @@ var (
 var teamsRes = &resource{table: "teams", entity: "team", touch: true, order: "group_label, name",
 	search: []string{"name", "slug"}, filters: map[string]string{"group": "group_label", "active": "is_active"},
 	fields: map[string]field{"slug": slugF, "name": reqTxt(80), "short_name": txt(8), "group_label": txt(4), "group_is_provisional": boolean,
-		"crest_url": txt(500), "colors": textList, "leader": txt(120), "instagram": txt(200), "telegram": txt(200), "is_active": boolean}}
+		"crest_url": txt(500), "colors": textList, "leader": txt(120), "instagram": txt(200), "telegram": txt(200), "is_active": boolean,
+		"kit_url": txt(500), "kit_description": txt(2000)},
+	afterWrite: teamKitChanged}
 
 var playersRes = &resource{table: "players", entity: "player", touch: true, order: "team_id, number NULLS LAST, full_name",
 	search: []string{"full_name"}, filters: map[string]string{"team_id": "team_id", "position": "position", "active": "is_active"},
 	fields: map[string]field{"team_id": optInt, "full_name": reqTxt(120), "number": optInt, "position": enum("", "GK", "DF", "MF", "FW"),
-		"photo_url": txt(500), "instagram": txt(200), "is_active": boolean}}
+		"photo_url": txt(500), "instagram": txt(200), "is_active": boolean},
+	afterWrite: playerPhotoChanged}
 
 var seasonsRes = &resource{table: "seasons", entity: "season", order: "id DESC",
 	fields: map[string]field{"name": reqTxt(80), "slug": slugF, "is_active": boolean, "teams_planned": optInt, "matches_planned": optInt}}

@@ -252,6 +252,7 @@ function SettingsTab() {
       </div>
       <div className="edit-layout">
         <div className="stack" style={{ gap: 24 }}>
+          <KitSettingsCard kit={s.kit} err={err} onChange={(kit) => set({ kit })} />
           <div className="card">
             <div className="card-head"><h3>Model</h3></div>
             <div className="card-pad stack" style={{ gap: 16 }}>
@@ -456,6 +457,62 @@ function History() {
         </div>
       )}
       {data && <Pager page={page} total={data.total} limit={20} onPage={setPage} />}
+    </div>
+  );
+}
+
+/* ---------- Kit try-on settings ---------- */
+function KitSettingsCard({ kit, err, onChange }: { kit: AiSettings["kit"]; err: Record<string, string>; onChange: (k: AiSettings["kit"]) => void }) {
+  const set = (patch: Partial<AiSettings["kit"]>) => onChange({ ...kit, ...patch });
+  const toggles: [keyof AiSettings["kit"], string, string][] = [
+    ["auto_on_kit", "Forma yuklanganda avtomatik kiyintirish", "Jamoadagi barcha rasmli o‘yinchilar navbatga qo‘yiladi"],
+    ["auto_on_player", "Yangi o‘yinchi rasmiga avtomatik", "Rasm yuklanganda jamoa formasi bilan yaratiladi"],
+    ["describe", "Forma tavsifini AI tuzadi", "Forma rasmidan matn tavsif — promptdagi {forma_tavsifi}"],
+    ["analyze", "Rasm tahlili — generatsiyadan oldin", "Afisha/grafika, bir nechta odam, allaqachon formada, yuz ko‘rinmasligi aniqlanadi"],
+  ];
+  return (
+    <div className="card">
+      <div className="card-head"><h3>Forma kiyintirish (o‘yinchilar)</h3><span className="muted small">Jamoa formasi → o‘yinchi rasmlari</span></div>
+      <div className="card-pad stack" style={{ gap: 16 }}>
+        {toggles.map(([k, l, sub]) => (
+          <label key={k} className="toggle-row">
+            <span><b>{l}</b><small>{sub}</small></span>
+            <input type="checkbox" className="switch" checked={!!kit[k]} onChange={(e) => set({ [k]: e.target.checked } as Partial<AiSettings["kit"]>)} />
+          </label>
+        ))}
+        <div className="form-grid">
+          <Field label="Sifat" hint="Model — «Model» kartasidagi rasm modeli" error={err["kit.quality"]}>
+            <select className="select" value={kit.quality} onChange={(e) => set({ quality: e.target.value as AiSettings["kit"]["quality"] })}>
+              <option value="high">Yuqori</option><option value="medium">O‘rta</option><option value="low">Past</option>
+            </select>
+          </Field>
+          <Field label="Natija o‘lchami" error={err["kit.size"]}>
+            <select className="select" value={kit.size} onChange={(e) => set({ size: e.target.value as AiSettings["kit"]["size"] })}>
+              <option value="original">Asl rasm nisbatida (uzun tomoni 1600)</option><option value="portrait">Portret 3:4 · 1200×1600</option>
+            </select>
+          </Field>
+          <Field label="Fon" hint="Afisha yoki grafik fonda — studiya foniga almashtiriladi" error={err["kit.background"]}>
+            <select className="select" value={kit.background} onChange={(e) => set({ background: e.target.value as AiSettings["kit"]["background"] })}>
+              <option value="auto">Avtomatik (oddiy rasmda — asl fon)</option><option value="keep">Doim asl fon</option><option value="studio">Doim studiya foni</option>
+            </select>
+          </Field>
+          <Field label="Kadr" error={err["kit.framing"]}>
+            <select className="select" value={kit.framing} onChange={(e) => set({ framing: e.target.value as AiSettings["kit"]["framing"] })}>
+              <option value="auto">Avtomatik (studiya fonida — bosh va yelka 3:4)</option><option value="keep">Asl kadr</option><option value="head_shoulders">Doim bosh va yelka · 3:4</option>
+            </select>
+          </Field>
+        </div>
+        <Field label="Prompt shabloni (rasmni tahrirlash)" error={err["kit.prompt"]}>
+          <textarea className="textarea mono" rows={12} value={kit.prompt} onChange={(e) => set({ prompt: e.target.value })} />
+        </Field>
+        <div className="row wrap" style={{ gap: 6 }}>
+          <span className="muted small">O‘zgaruvchilar:</span>
+          {["{forma_tavsifi}", "{jamoa}", "{o‘yinchi}", "{rasm_holati}"].map((v) => <span key={v} className="var-chip">{v}</span>)}
+          <div className="grow" />
+          <button type="button" className="link-btn" onClick={() => set({ prompt: "" })} title="Saqlaganda standart shablon qo‘yiladi">Standartga qaytarish</button>
+        </div>
+        <div className="row muted small" style={{ alignItems: "flex-start" }}><I.lock size={16} /> Natija avtomatik saytga chiqmaydi: admin jamoa yoki o‘yinchi sahifasida tasdiqlaydi. Asl rasmlar saqlanadi.</div>
+      </div>
     </div>
   );
 }

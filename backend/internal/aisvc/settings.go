@@ -40,6 +40,8 @@ type Settings struct {
 
 	DefaultAssets map[string]bool `json:"default_assets"` // logo, crests, kits, stadium
 	MaxAssets     int             `json:"max_assets"`
+
+	Kit KitSettings `json:"kit"` // dressing players in the team kit
 }
 
 const defaultInstruction = "Sen sport fotosuratchisi va art-direktorsan. Foydalanuvchi tavsifini rasm modeli uchun aniq promptga aylantir: kadr, rakurs, yorug‘lik, ranglar (grafit, laym), banner ko‘rinishiga qarab matn uchun bo‘sh zona va assetlar joylashuvi. Matn va yozuv qo‘shma. Mazmunni o‘zgartirma."
@@ -67,6 +69,7 @@ func DefaultSettings() Settings {
 		ImproveLanguage:    "user",
 		DefaultAssets:      map[string]bool{"logo": true, "crests": true, "kits": false, "stadium": false},
 		MaxAssets:          6,
+		Kit:                defaultKit(),
 	}
 }
 
@@ -138,6 +141,7 @@ func (s *Settings) merge() {
 	if s.MaxAssets == 0 {
 		s.MaxAssets = d.MaxAssets
 	}
+	s.Kit.merge()
 }
 
 func (s *Settings) validate() map[string]string {
@@ -177,6 +181,7 @@ func (s *Settings) validate() map[string]string {
 	if len(s.Style) > 2000 || len(s.Forbidden) > 1000 || len(s.ImproveInstruction) > 4000 {
 		e["style"] = "matn juda uzun"
 	}
+	s.Kit.validate(e)
 	return e
 }
 

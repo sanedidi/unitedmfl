@@ -83,7 +83,7 @@ func (s *Server) publicTeam(w http.ResponseWriter, r *http.Request) {
 	s.respondQuery(w, r, `SELECT json_build_object(
 		'team', row_to_json(t),
 		'players', (SELECT coalesce(json_agg(p ORDER BY p.number NULLS LAST, p.full_name), '[]') FROM
-			(SELECT id, full_name, number, position, photo_url FROM players WHERE team_id = t.id AND is_active) p),
+			(SELECT p.id, p.full_name, p.number, p.position, `+displayPhoto+` AS photo_url FROM players p WHERE p.team_id = t.id AND p.is_active) p),
 		'matches', (SELECT coalesce(json_agg(x ORDER BY x.kickoff_at), '[]') FROM (`+matchSelect+`
 			WHERE m.published AND (m.home_team_id = t.id OR m.away_team_id = t.id)) x))
 		FROM (SELECT id, slug, name, short_name, group_label, group_is_provisional, crest_url, colors, leader, instagram, telegram
@@ -94,7 +94,7 @@ func (s *Server) publicPlayers(w http.ResponseWriter, r *http.Request) {
 	limit, offset := pageParams(r)
 	q := r.URL.Query()
 	s.respondQuery(w, r, `SELECT coalesce(json_agg(p), '[]') FROM (
-		SELECT p.id, p.full_name, p.number, p.position, p.photo_url,
+		SELECT p.id, p.full_name, p.number, p.position, `+displayPhoto+` AS photo_url,
 		       json_build_object('id', t.id, 'name', t.name, 'slug', t.slug) AS team
 		FROM players p LEFT JOIN teams t ON t.id = p.team_id
 		WHERE p.is_active AND ($1 = '' OR t.slug = $1) AND ($2 = '' OR p.position = $2) AND ($3 = '' OR p.full_name ILIKE '%' || $3 || '%')
@@ -109,7 +109,7 @@ func (s *Server) publicPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.respondQuery(w, r, `SELECT json_build_object(
-		'player', json_build_object('id', p.id, 'full_name', p.full_name, 'number', p.number, 'position', p.position, 'photo_url', p.photo_url, 'instagram', p.instagram),
+		'player', json_build_object('id', p.id, 'full_name', p.full_name, 'number', p.number, 'position', p.position, 'photo_url', `+displayPhoto+`, 'instagram', p.instagram),
 		'team', CASE WHEN t.id IS NULL THEN NULL ELSE json_build_object('id', t.id, 'name', t.name, 'slug', t.slug) END,
 		'stats', json_build_object(
 			'appearances', (SELECT count(DISTINCT match_id) FROM lineups WHERE player_id = p.id AND match_id IN (SELECT id FROM matches WHERE published)),
@@ -161,7 +161,7 @@ func (s *Server) matchDetailJSON(ctx context.Context, id int64, adminView bool) 
 			(SELECT id, side, type, minute, extra_minute, player_id, player_name, related_player_id, related_player_name, note, source, payload
 			 FROM match_events WHERE match_id = x.id) e),
 		'lineups', (SELECT coalesce(json_agg(l ORDER BY l.side, NOT l.is_starter, l.slot NULLS LAST, l.number NULLS LAST), '[]') FROM
-			(SELECT l.side, l.player_id, l.player_name, l.number, l.position, l.role, l.slot, l.is_starter, l.is_captain, coalesce(p.photo_url, '') AS photo_url
+			(SELECT l.side, l.player_id, l.player_name, l.number, l.position, l.role, l.slot, l.is_starter, l.is_captain, coalesce(`+displayPhoto+`, '') AS photo_url
 			 FROM lineups l LEFT JOIN players p ON p.id = l.player_id WHERE l.match_id = x.id `+lineupPub+`) l),
 		'lineup_meta', (SELECT coalesce(json_agg(lm ORDER BY lm.side), '[]') FROM
 			(SELECT side, formation, status, coach, assistant, published_at, updated_at FROM lineup_meta lm WHERE match_id = x.id `+metaPub+`) lm),

@@ -49,6 +49,8 @@ type Provider interface {
 	Models(ctx context.Context, c Credentials) (Models, error)
 	Improve(ctx context.Context, c Credentials, model, system, user string) (Improved, error)
 	Images(ctx context.Context, c Credentials, job ImageJob) ([][]byte, error)
+	// Ask sends text plus images to the text (vision) model and returns JSON matching schema.
+	Ask(ctx context.Context, c Credentials, model, system, user string, images []Ref, name string, schema map[string]any) (json.RawMessage, error)
 }
 
 // ProviderError is a provider-side failure with a message safe to show in the admin.
