@@ -379,7 +379,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .leader .val { font-family: var(--font-display); font-weight: 600; font-size: 22px; }
 .leader:hover b { color: var(--accent-text); }
 .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-muted); flex-shrink: 0; display: grid; place-items: center; font-weight: 600; font-size: 13px; color: var(--text-2); overflow: hidden; }
-.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; } /* portraits: keep the face, not the chest */
 .bar { height: 8px; border-radius: var(--r-xs); background: var(--bg-muted); overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--bg-inverse); border-radius: var(--r-xs); }
 .bar.first > i, .bar > i.accent { background: var(--accent); }
@@ -698,7 +698,7 @@ main > .section:last-child:not(.alt) { padding-bottom: 80px; }
 .lu-list .who a, .lu-list .who > span > span { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lu-list .who a:hover { text-decoration: underline; }
 .lu-list .who small { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lu-ava { flex: none; border-radius: 50%; background: var(--bg-muted); color: var(--text-muted); display: inline-grid; place-items: center; object-fit: cover; }
+.lu-ava { flex: none; border-radius: 50%; background: var(--bg-muted); color: var(--text-muted); display: inline-grid; place-items: center; object-fit: cover; object-position: 50% 12%; }
 .lu-chips { display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .lu-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .lu-chip .card-y, .lu-chip .card-r, .lu-legend .card-y, .lu-legend .card-r { width: 8px; height: 11px; }

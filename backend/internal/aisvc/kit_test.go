@@ -111,8 +111,14 @@ func TestKitDress(t *testing.T) {
 	}
 	// defaults include the kit settings and the owner's prompt template
 	st, _ := svc.Settings(ctx)
-	if st.Kit.Pose != "front" || !st.Kit.AutoOnKit || !st.Kit.Analyze || !strings.Contains(st.Kit.Prompt, "{rasm_holati}") || !strings.Contains(st.Kit.Prompt, "PRESERVE IDENTITY") {
+	if st.Kit.Pose != "front" || !st.Kit.AutoOnKit || !st.Kit.Analyze || !strings.Contains(st.Kit.Prompt, "{rasm_holati}") || !strings.Contains(st.Kit.Prompt, "IDENTITY PRESERVATION") {
 		t.Fatalf("kit defaults: %+v", st.Kit)
+	}
+	// an untouched earlier default prompt is upgraded to the current one
+	old := st
+	old.Kit.Prompt = kitPromptV1
+	if saved, err := svc.SaveSettings(ctx, old); err != nil || saved.Kit.Prompt != DefaultKitPrompt {
+		t.Fatalf("old default not upgraded: %v", err)
 	}
 	// a template without {rasm_holati} is refused
 	bad := st
@@ -138,7 +144,7 @@ func TestKitDress(t *testing.T) {
 		t.Fatalf("poster result: %+v %+v", res.Image.Width, res.Analysis)
 	}
 	p := prompts[0]
-	for _, want := range []string{"Ravshan Kulob", "Ignatiy Nesterov", "kontent markazi", "remove all overlaid text", "studio backdrop", "eyes looking directly into the lens", "chest-up", "OVERRIDE", "replace it COMPLETELY"} {
+	for _, want := range []string{"Ravshan Kulob", "Ignatiy Nesterov", "kontent markazi", "remove all overlaid text", "FULL FRONTAL", "#D3D3D6", "3:4", "chest-up", "replace it COMPLETELY", "Qo‘llar chalishtirilgan"} {
 		if !strings.Contains(p, want) {
 			t.Fatalf("prompt lacks %q:\n%s", want, p)
 		}
@@ -147,6 +153,9 @@ func TestKitDress(t *testing.T) {
 		t.Fatalf("placeholders/refs/size: refs=%v sizes=%v", refs, sizes)
 	}
 
+	if strings.Contains(p, "STANDARD TEAM ROSTER PORTRAIT") || strings.Contains(p, "OVERRIDE: keep the original pose") {
+		t.Fatalf("frontal template must not get the duplicate / keep-pose block:\n%s", p)
+	}
 	if !res.Analysis.Front {
 		t.Fatal("default pose must be the standard front-facing portrait")
 	}
@@ -163,7 +172,7 @@ func TestKitDress(t *testing.T) {
 	if c := call("/v1/kit/dress", DressInput{Photo: wide, Kit: kit, Team: "A", Player: "B"}, &res); c != 200 || res.Status != "done" || res.Image.Width != 1600 || res.Image.Height != 1072 || res.Analysis.Studio {
 		t.Fatalf("regular: %d %+v %+v", c, res.Image, res.Analysis)
 	}
-	if !strings.Contains(prompts[1], "keep its original background") || strings.Contains(prompts[1], "studio backdrop") {
+	if !strings.Contains(prompts[1], "keep its original background") || !strings.Contains(prompts[1], "POSE AND BACKGROUND OVERRIDE") {
 		t.Fatalf("regular prompt: %s", prompts[1])
 	}
 
@@ -216,5 +225,21 @@ func TestImageSizeWebP(t *testing.T) {
 	}
 	if s := geminiSchema(analysisSchema); s["type"] != "OBJECT" || s["additionalProperties"] != nil || s["properties"].(map[string]any)["people"].(map[string]any)["type"] != "INTEGER" {
 		t.Fatalf("gemini schema: %+v", s)
+	}
+}
+
+func TestRasmHolatiCustomTemplate(t *testing.T) {
+	k := defaultKit()
+	k.Prompt = "dress {o‘yinchi} {rasm_holati}"
+	h := rasmHolati(k, &PhotoAnalysis{People: 1, FaceVisible: true}, "", isFrontalTemplate(k.Prompt))
+	if !strings.Contains(h, "STANDARD TEAM ROSTER PORTRAIT") {
+		t.Fatalf("a custom template without frontal rules needs the portrait block: %s", h)
+	}
+	if !isFrontalTemplate(DefaultKitPrompt) || isFrontalTemplate(kitPromptV1) {
+		t.Fatal("frontal template detection")
+	}
+	h = rasmHolati(defaultKit(), &PhotoAnalysis{People: 1, FaceVisible: true}, "", true)
+	if !strings.Contains(h, "apply all the rules") {
+		t.Fatalf("empty notes must still say something: %q", h)
 	}
 }

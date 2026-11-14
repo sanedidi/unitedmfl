@@ -28,8 +28,112 @@ type KitSettings struct {
 	Prompt       string `json:"prompt"`         // template with {jamoa} {forma_tavsifi} {o‘yinchi} {rasm_holati}
 }
 
-// DefaultKitPrompt is the owner's jersey-editing prompt, generalised to any team.
-const DefaultKitPrompt = `# FOOTBALL JERSEY PHOTO EDITING
+// DefaultKitPrompt is the owner's squad-portrait prompt, generalised to any team.
+// Sections 4, 6 and 8 make the standard front-facing 3:4 chest-up studio portrait.
+const DefaultKitPrompt = `# UNIVERSAL FOOTBALL PLAYER STUDIO PORTRAIT — STRICT IDENTITY PRESERVATION
+
+## ROLE & OBJECTIVE
+
+Act as a world-class professional sports photographer, expert photo compositor, and high-end portrait retoucher.
+
+Transform the uploaded photograph of {o‘yinchi} into a professional, photorealistic football squad portrait of {jamoa}.
+
+The result must match the visual consistency of an official football team photoshoot.
+
+ABSOLUTE REQUIREMENTS:
+1. Preserve the EXACT identity of the person from IMAGE 1.
+2. Dress the person in the EXACT official {jamoa} football jersey from IMAGE 2.
+3. Make the person's FACE look DIRECTLY into the camera.
+4. Make the person's ENTIRE UPPER BODY face DIRECTLY toward the camera.
+5. Replace the original background with a CLEAN, SOLID LIGHT-GRAY STUDIO BACKGROUND.
+6. Create a realistic professional sports portrait without changing the person's recognizable facial features.
+
+This is an IMAGE EDITING AND PHOTO COMPOSITING TASK, not an opportunity to invent a new person.
+
+## 1. INPUT IMAGE PRIORITY
+
+IMAGE 1 — PERSON / IDENTITY REFERENCE ({o‘yinchi}). This is the primary and authoritative source for the person's identity. Preserve: exact facial identity; original facial proportions; eye shape and color; nose and lips; eyebrows; jawline and cheekbones; natural skin tone and texture; hairstyle, hair color and hairline; beard, mustache or clean-shaven appearance; recognizable facial details; approximate age and natural appearance.
+
+IMAGE 2 — OFFICIAL FOOTBALL JERSEY of {jamoa}. This is the authoritative clothing reference. Description: {forma_tavsifi}
+Reproduce the jersey exactly as in IMAGE 2: base color and fabric pattern, collar and sleeve cuffs, every sponsor logo with its exact text, sleeve patches on the correct sleeves (left/right from the wearer's view), graphics and illustrations, original logo proportions, colors and placements. Do not invent, redesign, simplify or replace any logos or jersey details. If the person already wears this jersey, preserve its original design.
+
+## 2. PHOTO-SPECIFIC NOTES (from the automatic check of IMAGE 1 — follow them)
+
+{rasm_holati}
+
+## 3. CRITICAL — FACE MUST REMAIN THE SAME PERSON
+
+IDENTITY PRESERVATION IS THE HIGHEST PRIORITY.
+Do NOT: generate a different face; replace the person with a lookalike; change the facial structure; change eye spacing, eye shape, nose or lips; change hairstyle or facial hair; artificially beautify the person; smooth or reshape the skin; make the person look older or younger; change the person's ethnicity or recognizable appearance.
+Preserve the original facial expression as closely as possible: a smile stays a natural smile, a neutral expression stays neutral.
+When changing the head angle, reconstruct only what is necessary for the new perspective while maintaining maximum identity similarity.
+The final face must be immediately recognizable as the person in IMAGE 1.
+
+## 4. MANDATORY — FULL FRONTAL BODY POSITION
+
+This requirement overrides the original pose and camera angle.
+THE PERSON MUST FACE THE CAMERA STRAIGHT ON:
+- Head facing directly forward; eyes looking directly into the camera lens; nose pointing toward the camera; both eyes visible from a frontal perspective.
+- Both shoulders facing forward; shoulder line horizontal and symmetrical; chest and torso facing directly toward the camera without rotation.
+- Body centered in the image; natural upright posture; both arms resting naturally at the sides; both sleeves visible; nothing in the hands.
+IMPORTANT: the face AND the entire torso must face the camera. A frontal face with a sideways body is NOT acceptable. A frontal torso with the head turned sideways is NOT acceptable. Do not use a three-quarter angle, do not rotate the shoulders, do not tilt the body. Do not preserve the original pose if it conflicts with the required frontal position.
+The result must look like an official football squad registration photograph.
+
+## 5. EXACT FOOTBALL JERSEY REPRODUCTION
+
+Replace all original upper-body clothing with the official reference jersey.
+Remove: jackets, hoodies, shirts, sweaters, backpacks and straps, necklaces and chains, lanyards and name badges worn over the clothing, and any objects obstructing the uniform (the jersey's own printed badges and sleeve patches always stay).
+The jersey must fit the person's natural body proportions with realistic sports polyester fabric, accurate fabric texture, natural folds and wrinkles, correct collar shape, correct sleeve length, authentic stitching, physically realistic shadows and accurate placement of all logos and graphics.
+The shirt must look like a real manufactured football jersey. Never generate fictional sponsor names, distorted text or invented graphics.
+
+## 6. MANDATORY — LIGHT-GRAY STUDIO BACKGROUND
+
+REPLACE THE ENTIRE ORIGINAL BACKGROUND with a clean, neutral, light-gray studio backdrop. Target background color: #D3D3D6.
+Uniform light-gray color with subtle natural studio lighting; very soft tonal variation is acceptable. No patterns, textures, objects, buildings, stadiums, crowds, office interiors, windows, furniture, promotional graphics or text, and no artificial orange or blue lighting.
+The background must resemble a professional football club's official player portrait studio. Never preserve the original background.
+
+## 7. PROFESSIONAL STUDIO LIGHTING
+
+Large softbox near the camera; soft frontal illumination; subtle natural facial shadows; even lighting across the jersey; neutral white balance; accurate natural skin colors; moderate contrast. No harsh highlights, no dramatic colored rim lighting, no cinematic orange glow. Avoid overexposure, excessive sharpening and artificial HDR.
+The image must look like a real photograph captured with a professional DSLR or mirrorless camera.
+
+## 8. STANDARDIZED COMPOSITION (same for every person)
+
+- Aspect ratio 3:4 vertical, 1200 × 1600 pixels.
+- Chest-up portrait: person centered; head fully visible with comfortable space above it (no cropped hair); face in the upper third of the frame; both shoulders fully visible with the tops of both sleeves and their patches; the frame ends at mid-torso, just below the chest sponsor and chest graphics.
+- Camera at eye level, straight-on angle, portrait lens equivalent to 85mm, natural proportions, no wide-angle facial distortion, sharp facial details, realistic depth of field.
+The portrait must visually match the framing of the other official squad photos.
+
+## 9. AUTOMATIC SOURCE IMAGE HANDLING
+
+- Casual photograph: extract the person, remove the original background, change the clothing and position them front-facing.
+- Football poster: remove all surrounding poster graphics, text, logos, decorative elements and color effects; extract the real person and create a clean studio portrait.
+- Screenshot: ignore all application interface elements and surrounding graphics; use only the actual person as the identity reference.
+- Sideways or three-quarter pose: reposition the head, shoulders and torso into a fully frontal pose while preserving identity.
+- Crossed arms: change the pose so both arms rest naturally at the sides.
+- Objects: remove phones, bags, microphones and unrelated objects.
+- Low resolution: preserve recognizable facial information and improve clarity conservatively without inventing new facial features.
+
+## 10. STRICT NEGATIVE INSTRUCTIONS
+
+Never generate: a different person; a generic AI-generated face; altered facial proportions; a different hairstyle; incorrect facial hair; a side-facing head; a side-facing torso; rotated shoulders; a three-quarter pose; crossed arms; hands holding objects; an incorrect football jersey; missing sleeve patches; invented logos; incorrect sponsor text; a dark background; a stadium or office background; orange backlighting; cartoon rendering; CGI appearance; plastic skin; excessive skin smoothing; artificially enhanced facial features; unnatural anatomy; extra fingers or arms; promotional text or watermarks.
+
+## 11. FINAL QUALITY CONTROL
+
+Same person as IMAGE 1, facial features preserved; looking DIRECTLY into the camera; HEAD, BOTH SHOULDERS, CHEST and the ENTIRE TORSO facing straight forward; both arms resting naturally at the sides; jersey identical to IMAGE 2 with all logos and sleeve patches correctly positioned; neutral LIGHT-GRAY background; professional, realistic lighting; centered 3:4 chest-up framing; looks like a genuine football team photoshoot.
+
+## FINAL EXECUTION INSTRUCTION
+
+CREATE A CLEAN, PHOTOREALISTIC, FRONT-FACING FOOTBALL PLAYER STUDIO PORTRAIT.
+Use IMAGE 1 exclusively as the person's identity reference and IMAGE 2 exclusively as the official jersey reference.
+Make the person's HEAD, EYES, SHOULDERS, CHEST and TORSO face DIRECTLY toward the camera, both arms resting naturally at the sides, on a uniform LIGHT-GRAY studio background (#D3D3D6), in a centered 3:4 chest-up frame.
+Preserve the person's recognizable identity, hairstyle, facial hair, skin texture and natural expression. Reproduce the official jersey as accurately as possible.
+PRIORITY ORDER: 1. Facial identity preservation. 2. Fully frontal head and body alignment. 3. Exact official jersey reproduction. 4. Uniform light-gray background. 5. Photorealistic studio quality.
+
+FINAL RESULT: a professional official football squad portrait of the ORIGINAL person, standing straight, looking directly at the camera, wearing the exact reference jersey, against a clean light-gray studio background.`
+
+// kitPromptV1 is the previous default; settings that still hold it get the new one.
+const kitPromptV1 = `# FOOTBALL JERSEY PHOTO EDITING
 
 ROLE: Act as a professional sports photographer, high-end photo retoucher and expert photo compositor. Dress the person from IMAGE 1 in the EXACT football jersey from IMAGE 2. This is a PHOTO EDITING task, NOT a new portrait generation task.
 
@@ -63,6 +167,10 @@ func defaultKit() KitSettings {
 
 func (k *KitSettings) merge() {
 	d := defaultKit()
+	// untouched copies of earlier defaults follow the current default
+	if k.Prompt == kitPromptV1 || k.Prompt == strings.Replace(kitPromptV1, "(where they conflict with sections 1, 3 or 5 about pose, gaze, framing, lighting or background, these win; facial identity is always preserved)", "(they take precedence over section 5)", 1) {
+		k.Prompt = d.Prompt
+	}
 	if strings.TrimSpace(k.Prompt) == "" && k.Quality == "" { // never saved: take every default
 		*k = d
 		return
@@ -151,7 +259,6 @@ wearing_jersey — true if the person already wears a football/sports jersey;
 framing — headshot, half (waist up) or full (full body);
 notes — one short sentence in Uzbek (Latin) for the admin about anything unusual (pose, crossed arms, occlusion, low quality).`
 
-// rasmHolati turns the analysis and settings into photo-specific editing instructions.
 // standardPortrait turns any photo into the league's roster portrait: facing the
 // camera, chest-up, plain grey studio backdrop (like the official squad photos).
 const standardPortrait = `- STANDARD TEAM ROSTER PORTRAIT. These instructions OVERRIDE every rule in this prompt about keeping the original pose, head position, camera angle, gaze, framing, lighting or background. Facial identity must still be preserved exactly: same facial features and proportions, hair, beard, skin tone and texture, age; keep their natural expression (a smile stays a smile).
@@ -161,7 +268,8 @@ const standardPortrait = `- STANDARD TEAM ROSTER PORTRAIT. These instructions OV
 - Remove necklaces, chains and anything worn over the jersey.`
 
 // rasmHolati turns the analysis and settings into photo-specific editing instructions.
-func rasmHolati(k KitSettings, a *PhotoAnalysis, hint string) string {
+// frontalTemplate: the prompt template already carries the standard-portrait rules.
+func rasmHolati(k KitSettings, a *PhotoAnalysis, hint string, frontalTemplate bool) string {
 	var lines []string
 	if a == nil {
 		a = &PhotoAnalysis{People: 1, FaceVisible: true, Framing: "half", Skipped: true}
@@ -176,15 +284,20 @@ func rasmHolati(k KitSettings, a *PhotoAnalysis, hint string) string {
 		lines = append(lines, "- IMAGE 1 is a designed poster/graphic, not a plain photo. Use ONLY the person: remove all overlaid text, name lists, logos, flags, brush strokes and graphic effects. Do not reproduce any of them.")
 	}
 	switch {
+	case a.Front && frontalTemplate:
+		// the template's own sections describe the frontal studio portrait
 	case a.Front:
 		lines = append(lines, standardPortrait)
-	case a.Studio:
-		lines = append(lines, "- Replace the background with a clean, neutral light-grey professional studio backdrop with soft even lighting; keep the person's lighting consistent with it.")
 	default:
-		lines = append(lines, "- IMAGE 1 is a regular photo: keep its original background, framing and lighting.")
-	}
-	if a.HeadShoulders && !a.Front {
-		lines = append(lines, "- Frame the result as a centred head-and-shoulders portrait in 3:4, eyes in the upper third, the jersey chest (sponsor and collar) clearly visible.")
+		lines = append(lines, "- POSE AND BACKGROUND OVERRIDE: keep the original pose, head angle, gaze and camera angle of IMAGE 1; ignore any requirement in this prompt to re-pose the person to face the camera.")
+		if a.Studio {
+			lines = append(lines, "- Replace the background with a clean, neutral light-grey professional studio backdrop with soft even lighting; keep the person's lighting consistent with it.")
+		} else {
+			lines = append(lines, "- IMAGE 1 is a regular photo: keep its original background, framing and lighting; ignore any requirement in this prompt to replace the background or change the framing.")
+		}
+		if a.HeadShoulders {
+			lines = append(lines, "- Frame the result as a centred head-and-shoulders portrait in 3:4, eyes in the upper third, the jersey chest (sponsor and collar) clearly visible.")
+		}
 	}
 	if a.WearingJersey {
 		lines = append(lines, "- The person already wears a jersey: replace it COMPLETELY with the jersey from IMAGE 2, including all old sponsors, badges and patches.")
@@ -192,7 +305,18 @@ func rasmHolati(k KitSettings, a *PhotoAnalysis, hint string) string {
 	if a.Framing == "headshot" && !a.HeadShoulders {
 		lines = append(lines, "- Only the top of the jersey is visible: reproduce the collar, shoulders and visible chest details exactly.")
 	}
+	if !a.Skipped && a.Notes != "" {
+		lines = append(lines, "- Note from the check: "+a.Notes)
+	}
+	if len(lines) == 0 {
+		lines = append(lines, "- Regular photo of one person: apply all the rules of this prompt as written.")
+	}
 	return strings.Join(lines, "\n")
+}
+
+// isFrontalTemplate reports whether the template already demands the frontal studio portrait.
+func isFrontalTemplate(p string) bool {
+	return strings.Contains(p, "FULL FRONTAL") && strings.Contains(p, "STUDIO BACKGROUND")
 }
 
 func kitPrompt(k KitSettings, team, player, description, holati string) string {
@@ -347,12 +471,12 @@ func (s *Service) Dress(ctx context.Context, in DressInput) (DressResult, error)
 	}
 	if a != nil {
 		if a.People > 1 && hint == "" {
-			rasmHolati(k, a, "")
+			rasmHolati(k, a, "", isFrontalTemplate(k.Prompt))
 			res.Status, res.Analysis, res.MS = "multi", a, time.Since(start).Milliseconds()
 			return res, nil
 		}
 		if a.People == 0 || !a.FaceVisible {
-			rasmHolati(k, a, hint)
+			rasmHolati(k, a, hint, isFrontalTemplate(k.Prompt))
 			res.Status, res.Analysis, res.MS = "noface", a, time.Since(start).Milliseconds()
 			return res, nil
 		}
@@ -360,7 +484,7 @@ func (s *Service) Dress(ctx context.Context, in DressInput) (DressResult, error)
 	if a == nil {
 		a = &PhotoAnalysis{People: 1, FaceVisible: true, Framing: "half", Skipped: true}
 	}
-	holati := rasmHolati(k, a, hint)
+	holati := rasmHolati(k, a, hint, isFrontalTemplate(k.Prompt))
 	res.Analysis = a
 	w, h := kitOutputSize(k, a, in.Photo.Data)
 	prompt := kitPrompt(k, strings.TrimSpace(in.Team), strings.TrimSpace(in.Player), strings.TrimSpace(in.Description), holati)
