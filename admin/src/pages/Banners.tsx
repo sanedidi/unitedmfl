@@ -5,7 +5,7 @@ import { useLoad } from "@/lib/hooks";
 import { fmtDate } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { useRefs } from "@/lib/refs";
-import { aiApi, PROVIDER_LABEL, QUALITY_LABEL, type AiGeneration, type AiSettings, type Improved, type ProviderView } from "@/lib/ai";
+import { aiApi, PROVIDER_LABEL, QUALITY_LABEL, type AiGeneration, type AiSettings, type BannerText, type Improved, type ProviderView } from "@/lib/ai";
 import { FormFields, useForm, type FieldSpec, type Rec } from "@/components/Crud";
 import { PageHead, SITE_URL } from "@/components/Layout";
 import { Badge, Empty, ErrorBox, Loading, useConfirm, useToast } from "@/components/ui";
@@ -212,7 +212,8 @@ function BannerForm({ item }: { item: Rec | null }) {
             <div className="card-pad">
               {source === "upload"
                 ? <FormFields fields={IMAGES} values={form.values} set={form.set} errors={form.errors} />
-                : <AiGenerator bannerId={item ? Number(item.id) : null} title={String(form.values.title || "")} layout={String(form.values.layout || "shade")} onApply={applyImages} />}
+                : <AiGenerator bannerId={item ? Number(item.id) : null} title={String(form.values.title || "")} layout={String(form.values.layout || "shade")} onApply={applyImages}
+                    banner={{ title: String(form.values.title || ""), badge: String(form.values.badge || ""), meta: !!(form.values.event_date || form.values.venue), cta: !!form.values.cta_label }} />}
             </div>
           </div>
         </div>
@@ -253,7 +254,7 @@ function HeroPreview({ values }: { values: Rec }) {
 type Asset = { key: string; kind: "logo" | "url"; url: string; label: string; thumb: string };
 type Step = "input" | "review" | "run";
 
-function AiGenerator({ bannerId, title, layout, onApply }: { bannerId: number | null; title: string; layout: string; onApply: (images: Record<string, string>) => void }) {
+function AiGenerator({ bannerId, title, layout, banner, onApply }: { bannerId: number | null; title: string; layout: string; banner: BannerText; onApply: (images: Record<string, string>) => void }) {
   const { can } = useAuth();
   const { teams } = useRefs();
   const toast = useToast();
@@ -339,7 +340,7 @@ function AiGenerator({ bannerId, title, layout, onApply }: { bannerId: number | 
     setImproving(true);
     setErr("");
     try {
-      const r = await aiApi.improve({ prompt: text.trim(), layout, assets: used.map((a) => a.label) });
+      const r = await aiApi.improve({ prompt: text.trim(), layout, assets: used.map((a) => a.label), banner });
       setImproved(r);
       setPrompt(r.prompt);
       setStep("review");
@@ -355,7 +356,7 @@ function AiGenerator({ bannerId, title, layout, onApply }: { bannerId: number | 
     try {
       const g = await aiApi.start({
         prompt_original: text.trim(), prompt: prompt.trim(), layout, formats,
-        assets: used.map((a) => ({ kind: a.kind, url: a.url, label: a.label })), target: "banner", target_id: bannerId,
+        assets: used.map((a) => ({ kind: a.kind, url: a.url, label: a.label })), target: "banner", target_id: bannerId, banner,
       });
       setGen(g);
       setVariant(0);

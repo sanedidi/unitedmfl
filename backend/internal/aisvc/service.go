@@ -190,9 +190,10 @@ func (s *Service) order(ctx context.Context, st Settings) ([]string, error) {
 
 // ImproveInput is the user's description plus context for the rewrite.
 type ImproveInput struct {
-	Prompt string   `json:"prompt"`
-	Layout string   `json:"layout"`
-	Assets []string `json:"assets"` // labels only
+	Prompt string      `json:"prompt"`
+	Layout string      `json:"layout"`
+	Assets []string    `json:"assets"` // labels only
+	Banner *BannerText `json:"banner,omitempty"`
 }
 
 // ImproveResult is shown to the user for confirmation.
@@ -252,10 +253,11 @@ type AssetIn struct {
 
 // ImagesInput asks for pictures in one or more formats.
 type ImagesInput struct {
-	Prompt  string    `json:"prompt"` // the confirmed (improved) prompt
-	Layout  string    `json:"layout"`
-	Formats []string  `json:"formats"`
-	Assets  []AssetIn `json:"assets"`
+	Prompt  string      `json:"prompt"` // the confirmed (improved) prompt
+	Layout  string      `json:"layout"`
+	Formats []string    `json:"formats"`
+	Assets  []AssetIn   `json:"assets"`
+	Banner  *BannerText `json:"banner,omitempty"`
 }
 
 // Variant is one generated picture in every requested format.
@@ -326,7 +328,7 @@ func (s *Service) generate(ctx context.Context, st Settings, name string, in Ima
 	start := time.Now()
 	first := st.Formats[formats[0]]
 	raw, err := p.Images(ctx, c, ImageJob{
-		Model: model, Prompt: imagePrompt(st, in.Prompt, in.Layout, formats[0], first, labels, false),
+		Model: model, Prompt: imagePrompt(st, in.Prompt, in.Layout, formats[0], first, labels, false, in.Banner),
 		W: first.W, H: first.H, N: st.Variants, Quality: st.Quality, Refs: refs, Moderation: st.Moderation, People: st.People,
 	})
 	if err != nil {
@@ -354,7 +356,7 @@ func (s *Service) generate(ctx context.Context, st Settings, name string, in Ima
 				defer wg.Done()
 				vrefs := append([]Ref{{Label: "variant", Mime: "image/png", Data: raw[i]}}, refs...)
 				imgs, err := p.Images(ctx, c, ImageJob{
-					Model: model, Prompt: imagePrompt(st, in.Prompt, in.Layout, key, f, labels, true),
+					Model: model, Prompt: imagePrompt(st, in.Prompt, in.Layout, key, f, labels, true, in.Banner),
 					W: f.W, H: f.H, N: 1, Quality: st.Quality, Refs: vrefs, Moderation: st.Moderation, People: st.People,
 				})
 				if err != nil {

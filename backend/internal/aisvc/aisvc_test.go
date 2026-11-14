@@ -230,21 +230,21 @@ func TestAIService(t *testing.T) {
 
 	// improve
 	var imp ImproveResult
-	if c := call("POST", "/v1/improve", map[string]any{"prompt": "Tungi stadion, final oldidan", "layout": "shade", "assets": []string{"Liga logotipi"}}, &imp); c != 200 {
+	if c := call("POST", "/v1/improve", map[string]any{"prompt": "Tungi stadion, final oldidan", "layout": "shade", "assets": []string{"Liga logotipi"}, "banner": map[string]any{"title": "Final: Ravshan Kulob — Paxtakor, 14-iyun", "badge": "FINAL", "cta": true}}, &imp); c != 200 {
 		t.Fatal(c)
 	}
 	if imp.Prompt != "Kino uslubidagi keng kadr: tungi stadion." || len(imp.Added) != 2 || imp.Model != "gpt-6-luna" {
 		t.Fatalf("improve: %+v", imp)
 	}
 	sent := oLog.body[len(oLog.body)-1]
-	if sent["model"] != "gpt-6-luna" || !strings.Contains(sent["input"].(string), "Liga logotipi") || !strings.Contains(sent["input"].(string), "chap 45%") {
+	if sent["model"] != "gpt-6-luna" || !strings.Contains(sent["input"].(string), "Liga logotipi") || !strings.Contains(sent["input"].(string), "0–58%") || !strings.Contains(sent["input"].(string), "«FINAL»") || !strings.Contains(sent["input"].(string), "chipta tugmasi") {
 		t.Fatalf("improve request: %+v", sent)
 	}
 
 	// images with one asset: desktop via edits (n=2), mobile recomposed per variant
 	asset := AssetIn{Label: "Liga logotipi", Mime: "image/png", Data: pngOf(64, 64)}
 	var res ImagesResult
-	if c := call("POST", "/v1/images", map[string]any{"prompt": "Kino uslubidagi keng kadr", "layout": "shade", "formats": []string{"hero_mobile", "hero_desktop"}, "assets": []AssetIn{asset}}, &res); c != 200 {
+	if c := call("POST", "/v1/images", map[string]any{"prompt": "Kino uslubidagi keng kadr", "layout": "split", "formats": []string{"hero_mobile", "hero_desktop"}, "assets": []AssetIn{asset}, "banner": map[string]any{"title": "Yarim final"}}, &res); c != 200 {
 		t.Fatal(c)
 	}
 	if res.Provider != "openai" || len(res.Variants) != 2 {
@@ -269,6 +269,16 @@ func TestAIService(t *testing.T) {
 			edits = append(edits, oLog.body[i]["size"].(string))
 			sizes = append(sizes, strings.Repeat("x", int(oLog.body[i]["images"].(int))))
 		}
+	}
+	var prompts []string
+	for i, hit := range oLog.hits {
+		if hit == "/images/edits" {
+			prompts = append(prompts, oLog.body[i]["prompt"].(string))
+		}
+	}
+	if !strings.Contains(prompts[0], "«Diagonal» ko‘rinishi. Matn zonasi") || !strings.Contains(prompts[0], "60–92%") || !strings.Contains(prompts[0], "«Yarim final»") ||
+		!strings.Contains(prompts[1], "«Diagonal» ko‘rinishi, mobil") || !strings.Contains(prompts[1], "LED-ekrani") {
+		t.Fatalf("layout not in image prompts: %q", prompts)
 	}
 	if len(edits) != 3 || edits[0] != "2400x1104" || edits[1] != "1088x1920" || sizes[0] != "x" || sizes[1] != "xx" {
 		t.Fatalf("edit calls: %v refs %v", edits, sizes)
@@ -367,5 +377,34 @@ func TestCoverResize(t *testing.T) {
 	cfg, _, _ := image.DecodeConfig(bytes.NewReader(out.Data))
 	if cfg.Width != 1200 || cfg.Height != 1200 {
 		t.Fatalf("%+v", cfg)
+	}
+}
+
+func TestCompositionHint(t *testing.T) {
+	desk, mob := Format{W: 2400, H: 1100}, Format{W: 1080, H: 1920}
+	short, long := &BannerText{Title: "Final"}, &BannerText{Title: "Yarim final: Ravshan Kulob — Paxtakor, Toshkent"}
+	cases := []struct {
+		layout, format string
+		f              Format
+		b              *BannerText
+		want           string
+	}{
+		{"shade", "hero_desktop", desk, short, "0–48%"},
+		{"shade", "hero_desktop", desk, long, "0–58%"},
+		{"panel", "hero_desktop", desk, short, "pastki 40%"},
+		{"glass", "hero_desktop", desk, long, "0–52%"},
+		{"poster", "hero_desktop", desk, nil, "18–82%"},
+		{"split", "hero_mobile", mob, nil, "Diagonal» ko‘rinishi, mobil"},
+		{"unknown", "hero_desktop", desk, nil, "Chapdagi soya"},
+		{"shade", "news_cover", Format{W: 1600, H: 900}, nil, "muvozanatli"},
+	}
+	for _, c := range cases {
+		if h := compositionHint(c.layout, c.format, c.f, c.b); !strings.Contains(h, c.want) {
+			t.Errorf("%s/%s: %q lacks %q", c.layout, c.format, h, c.want)
+		}
+	}
+	p := imagePrompt(Settings{TextSpace: false}, "x", "shade", "hero_desktop", desk, nil, false, short)
+	if strings.Contains(p, "Matn zonasi") || !strings.Contains(p, "«Final»") {
+		t.Errorf("text_space off must drop zones but keep banner context: %q", p)
 	}
 }

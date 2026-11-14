@@ -62,6 +62,7 @@ export type AiGeneration = {
   created_at: string;
 };
 
+export type BannerText = { title: string; badge: string; meta: boolean; cta: boolean };
 export type Improved = { prompt: string; added: string[]; provider: string; model: string; ms: number };
 
 export const PROVIDER_LABEL: Record<string, string> = { openai: "OpenAI", gemini: "Google Gemini" };
@@ -77,7 +78,7 @@ export const aiApi = {
   deleteProvider: (p: ProviderName) => api.del(`/admin/ai/providers/${p}`),
   settings: () => api.get<AiSettings>("/admin/ai/settings"),
   saveSettings: (s: AiSettings) => api.put<AiSettings>("/admin/ai/settings", s),
-  improve: (body: { prompt: string; layout: string; assets: string[] }) => api.post<Improved>("/admin/ai/improve", body),
+  improve: (body: { prompt: string; layout: string; assets: string[]; banner?: BannerText }) => api.post<Improved>("/admin/ai/improve", body),
   start: (body: unknown) => api.post<AiGeneration>("/admin/ai/generations", body),
   get: (id: number) => api.get<AiGeneration>(`/admin/ai/generations/${id}`),
   cancel: (id: number) => api.post<AiGeneration>(`/admin/ai/generations/${id}/cancel`),

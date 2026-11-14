@@ -190,10 +190,19 @@ func (s *Server) aiProviderProxy(method, suffix string) http.HandlerFunc {
 	}
 }
 
+// aiBannerText is the banner copy shown over the picture; it shapes the composition.
+type aiBannerText struct {
+	Title string `json:"title"`
+	Badge string `json:"badge"`
+	Meta  bool   `json:"meta"`
+	CTA   bool   `json:"cta"`
+}
+
 type aiImproveIn struct {
-	Prompt string   `json:"prompt"`
-	Layout string   `json:"layout"`
-	Assets []string `json:"assets"`
+	Prompt string        `json:"prompt"`
+	Layout string        `json:"layout"`
+	Assets []string      `json:"assets"`
+	Banner *aiBannerText `json:"banner,omitempty"`
 }
 
 func (s *Server) aiImprove(w http.ResponseWriter, r *http.Request) {
@@ -220,13 +229,14 @@ type aiAsset struct {
 }
 
 type aiStartIn struct {
-	PromptOriginal string    `json:"prompt_original"`
-	Prompt         string    `json:"prompt"`
-	Layout         string    `json:"layout"`
-	Formats        []string  `json:"formats"`
-	Assets         []aiAsset `json:"assets"`
-	Target         string    `json:"target"`
-	TargetID       *int64    `json:"target_id"`
+	PromptOriginal string        `json:"prompt_original"`
+	Prompt         string        `json:"prompt"`
+	Layout         string        `json:"layout"`
+	Formats        []string      `json:"formats"`
+	Assets         []aiAsset     `json:"assets"`
+	Target         string        `json:"target"`
+	TargetID       *int64        `json:"target_id"`
+	Banner         *aiBannerText `json:"banner,omitempty"`
 }
 
 type aiImageOut struct {
@@ -367,7 +377,7 @@ func (s *Server) runGeneration(ctx context.Context, cancel context.CancelFunc, i
 		}
 	}
 	assets, warnings := s.loadAssets(ctx, in.Assets)
-	raw, err := s.aiCall(ctx, http.MethodPost, "/v1/images", map[string]any{"prompt": in.Prompt, "layout": in.Layout, "formats": in.Formats, "assets": assets})
+	raw, err := s.aiCall(ctx, http.MethodPost, "/v1/images", map[string]any{"prompt": in.Prompt, "layout": in.Layout, "formats": in.Formats, "assets": assets, "banner": in.Banner})
 	if err != nil {
 		switch {
 		case errors.Is(err, context.Canceled):
