@@ -444,13 +444,14 @@ var teamsRes = &resource{table: "teams", entity: "team", touch: true, order: "gr
 	search: []string{"name", "slug"}, filters: map[string]string{"group": "group_label", "active": "is_active"},
 	fields: map[string]field{"slug": slugF, "name": reqTxt(80), "short_name": txt(8), "group_label": txt(4), "group_is_provisional": boolean,
 		"crest_url": txt(500), "colors": textList, "leader": txt(120), "instagram": txt(200), "telegram": txt(200), "is_active": boolean,
-		"kit_url": txt(500), "kit_description": txt(2000)},
+		"kit_url": txt(500), "kit_description": txt(2000), "kit_has_number": boolean, "kit_number_style": txt(300)},
 	afterWrite: teamKitChanged}
 
 var playersRes = &resource{table: "players", entity: "player", touch: true, order: "team_id, number NULLS LAST, full_name",
 	search: []string{"full_name"}, filters: map[string]string{"team_id": "team_id", "position": "position", "active": "is_active"},
 	fields: map[string]field{"team_id": optInt, "full_name": reqTxt(120), "number": optInt, "position": enum("", "GK", "DF", "MF", "FW"),
 		"photo_url": txt(500), "instagram": txt(200), "is_active": boolean},
+	prepare:    playerNumberRequired,
 	afterWrite: playerPhotoChanged}
 
 var seasonsRes = &resource{table: "seasons", entity: "season", order: "id DESC",

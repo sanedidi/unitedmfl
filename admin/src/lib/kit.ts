@@ -35,16 +35,17 @@ export type KitPlayer = {
 };
 
 export type TeamKit = {
-  team: { id: number; name: string; kit_url: string; kit_description: string };
+  team: { id: number; name: string; kit_url: string; kit_description: string; kit_has_number: boolean; kit_number_style: string };
   players: KitPlayer[];
   staff: KitPlayer[];
-  counts: Partial<Record<KitStatus | "on_site", number>>;
+  counts: Partial<Record<KitStatus | "on_site" | "no_number", number>>;
   ai: { on: boolean; model: string; quality: string; auto_on_kit: boolean; auto_on_player: boolean };
 };
 
 export const kitApi = {
   team: (id: number) => api.get<TeamKit>(`/admin/teams/${id}/kit`),
-  describe: (id: number) => api.post<{ kit_description: string }>(`/admin/teams/${id}/kit/describe`),
+  describe: (id: number) => api.post<{ kit_description: string; kit_has_number: boolean; kit_number_style: string }>(`/admin/teams/${id}/kit/describe`),
+  setNumber: (id: number, on: boolean) => api.patch(`/admin/teams/${id}`, { kit_has_number: on }),
   saveDescription: (id: number, text: string) => api.patch(`/admin/teams/${id}`, { kit_description: text }),
   run: (id: number) => api.post<{ players: number }>(`/admin/teams/${id}/kit/run`),
   stop: (id: number) => api.post<{ players: number }>(`/admin/teams/${id}/kit/stop`),

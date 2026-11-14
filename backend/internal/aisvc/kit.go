@@ -247,8 +247,12 @@ var analysisSchema = map[string]any{
 }
 
 var describeSchema = map[string]any{
-	"type": "object", "additionalProperties": false, "required": []string{"description"},
-	"properties": map[string]any{"description": map[string]any{"type": "string"}},
+	"type": "object", "additionalProperties": false, "required": []string{"description", "number_visible", "number_style"},
+	"properties": map[string]any{
+		"description":    map[string]any{"type": "string"},
+		"number_visible": map[string]any{"type": "boolean"},
+		"number_style":   map[string]any{"type": "string"},
+	},
 }
 
 const analyzeSystem = `You check a player's photo before a football-jersey try-on edit. Look at the image and answer in JSON:
@@ -314,6 +318,23 @@ func rasmHolati(k KitSettings, a *PhotoAnalysis, hint string, frontalTemplate bo
 	return strings.Join(lines, "\n")
 }
 
+// numberRule tells the image model which player number the jersey must show.
+func numberRule(in DressInput) string {
+	n := strings.TrimSpace(in.Number)
+	switch {
+	case !in.NumberOnKit:
+		return "\n- PLAYER NUMBER: do not add any player number or name to the front of the jersey."
+	case in.Staff || n == "":
+		return "\n- PLAYER NUMBER: this person is coaching staff — show the jersey WITHOUT any player number: fill that area with the jersey's plain fabric and pattern. Never copy the number from IMAGE 2."
+	}
+	style := strings.TrimSpace(in.NumberStyle)
+	if style == "" {
+		style = "the same font, size, colours, outline and position as in IMAGE 2"
+	}
+	return fmt.Sprintf("\n- PLAYER NUMBER (critical): IMAGE 2 is a sample jersey, its number belongs to another player. The number on the result MUST be exactly \"%s\" (%d digit%s: %s) — %s. Never copy the number shown in IMAGE 2 or in IMAGE 1; check the digits before finishing.",
+		n, len([]rune(n)), map[bool]string{true: "", false: "s"}[len([]rune(n)) == 1], strings.Join(strings.Split(n, ""), " "), style)
+}
+
 // isFrontalTemplate reports whether the template already demands the frontal studio portrait.
 func isFrontalTemplate(p string) bool {
 	return strings.Contains(p, "FULL FRONTAL") && strings.Contains(p, "STUDIO BACKGROUND")
@@ -373,9 +394,11 @@ type DescribeInput struct {
 
 // DescribeResult is the kit description for {forma_tavsifi}.
 type DescribeResult struct {
-	Description string `json:"description"`
-	Provider    string `json:"provider"`
-	Model       string `json:"model"`
+	Description   string `json:"description"`
+	NumberVisible bool   `json:"number_visible"` // a player number is printed on the front (visible in a chest-up portrait)
+	NumberStyle   string `json:"number_style"`   // its look and position, without the digits
+	Provider      string `json:"provider"`
+	Model         string `json:"model"`
 }
 
 // Describe writes a kit description from the kit photo with the text (vision) model.
@@ -395,8 +418,11 @@ func (s *Service) Describe(ctx context.Context, in DescribeInput) (DescribeResul
 	if st.ImproveLanguage == "en" {
 		lang = "Write in English."
 	}
-	system := "You describe a football jersey for a photo-editing model that must reproduce it exactly. In 2–4 sentences cover: base colour and fabric pattern; collar and sleeve cuffs (colours, stripes); every sponsor logo/text with its exact spelling and position; sleeve patches and which sleeve (from the wearer's view); any graphics, illustrations or brush strokes and where they are. No marketing words. " + lang
-	user := fmt.Sprintf("Team: %s. Describe the jersey in the image. Answer as JSON {\"description\": \"...\"}.", strings.TrimSpace(in.Team))
+	system := "You describe a football jersey for a photo-editing model that must reproduce it exactly. In 2–4 sentences cover: base colour and fabric pattern; collar and sleeve cuffs (colours, stripes); every sponsor logo/text with its exact spelling and position; sleeve patches and which sleeve (from the wearer's view); any graphics, illustrations or brush strokes and where they are. No marketing words. " +
+		"A player number on the jersey belongs to one player only: NEVER write its digits in the description — describe only its style and position (e.g. «large white player number with a blue ring in the centre of the chest»). " +
+		"number_visible: true if a player number is printed on the FRONT of the jersey (chest or belly) so it would be visible in a chest-up portrait; false if there is no number or it is only on the back/shorts. " +
+		"number_style: if number_visible, its font, colours, outline/ring and exact position without the digits; otherwise an empty string. " + lang
+	user := fmt.Sprintf("Team: %s. Describe the jersey in the image. Answer as JSON {\"description\": \"...\", \"number_visible\": true|false, \"number_style\": \"...\"}.", strings.TrimSpace(in.Team))
 	var lastErr error
 	for _, name := range order {
 		c, _, err := s.st.credentials(ctx, name)
@@ -407,10 +433,12 @@ func (s *Service) Describe(ctx context.Context, in DescribeInput) (DescribeResul
 		raw, err := s.provs[name].Ask(ctx, c, model, system, user, []Ref{{Label: "kit", Mime: in.Kit.Mime, Data: in.Kit.Data}}, "kit_description", describeSchema)
 		if err == nil {
 			var out struct {
-				Description string `json:"description"`
+				Description   string `json:"description"`
+				NumberVisible bool   `json:"number_visible"`
+				NumberStyle   string `json:"number_style"`
 			}
 			if json.Unmarshal(raw, &out) == nil && strings.TrimSpace(out.Description) != "" {
-				return DescribeResult{Description: strings.TrimSpace(out.Description), Provider: name, Model: model}, nil
+				return DescribeResult{Description: strings.TrimSpace(out.Description), NumberVisible: out.NumberVisible, NumberStyle: strings.TrimSpace(out.NumberStyle), Provider: name, Model: model}, nil
 			}
 			err = &ProviderError{Status: 502, Message: "Matn modeli forma tavsifini qaytarmadi"}
 		}
@@ -431,6 +459,12 @@ type DressInput struct {
 	Player      string  `json:"player"`
 	Description string  `json:"description"`
 	Hint        string  `json:"hint"` // which person, when the photo has several
+	// player numbers: the kit shows one on the front; Number is this person's
+	// ("" for coaching staff → the jersey is shown without a number)
+	NumberOnKit bool   `json:"number_on_kit"`
+	NumberStyle string `json:"number_style"`
+	Number      string `json:"number"`
+	Staff       bool   `json:"staff"`
 }
 
 // DressResult: status done (image set), multi (several people, hint needed) or noface.
@@ -484,10 +518,11 @@ func (s *Service) Dress(ctx context.Context, in DressInput) (DressResult, error)
 	if a == nil {
 		a = &PhotoAnalysis{People: 1, FaceVisible: true, Framing: "half", Skipped: true}
 	}
-	holati := rasmHolati(k, a, hint, isFrontalTemplate(k.Prompt))
+	holati := rasmHolati(k, a, hint, isFrontalTemplate(k.Prompt)) + numberRule(in)
 	res.Analysis = a
 	w, h := kitOutputSize(k, a, in.Photo.Data)
 	prompt := kitPrompt(k, strings.TrimSpace(in.Team), strings.TrimSpace(in.Player), strings.TrimSpace(in.Description), holati)
+	prompt = strings.ReplaceAll(prompt, "{raqam}", strings.TrimSpace(in.Number))
 	refs := []Ref{{Label: "person", Mime: in.Photo.Mime, Data: in.Photo.Data}, {Label: "jersey", Mime: in.Kit.Mime, Data: in.Kit.Data}}
 	var lastErr error
 	for _, name := range order {

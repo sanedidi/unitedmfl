@@ -68,7 +68,7 @@ export type MatchRow = {
   published: boolean; show_in_hero: boolean;
 };
 
-export type Team = { id: number; slug: string; name: string; short_name: string; group_label: string; group_is_provisional: boolean; crest_url: string; colors: string[]; leader: string; instagram: string; telegram: string; is_active: boolean };
+export type Team = { id: number; slug: string; name: string; short_name: string; group_label: string; group_is_provisional: boolean; crest_url: string; colors: string[]; leader: string; instagram: string; telegram: string; is_active: boolean; kit_url?: string; kit_has_number?: boolean };
 export type Player = { id: number; team_id: number | null; full_name: string; number: number | null; position: string; photo_url: string; instagram: string; is_active: boolean };
 
 export type ProtoEvent = { side: "home" | "away"; type: string; minute: number; extra: number; raw?: string; number?: number; player?: string; related?: string; related_number?: number; uncertain?: boolean };

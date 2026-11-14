@@ -513,7 +513,7 @@ function KitSettingsCard({ kit, err, onChange }: { kit: AiSettings["kit"]; err: 
         </Field>
         <div className="row wrap" style={{ gap: 6 }}>
           <span className="muted small">O‘zgaruvchilar:</span>
-          {["{forma_tavsifi}", "{jamoa}", "{o‘yinchi}", "{rasm_holati}"].map((v) => <span key={v} className="var-chip">{v}</span>)}
+          {["{forma_tavsifi}", "{jamoa}", "{o‘yinchi}", "{raqam}", "{rasm_holati}"].map((v) => <span key={v} className="var-chip">{v}</span>)}
           <div className="grow" />
           <button type="button" className="link-btn" onClick={() => set({ prompt: "" })} title="Saqlaganda standart shablon qo‘yiladi">Standartga qaytarish</button>
         </div>

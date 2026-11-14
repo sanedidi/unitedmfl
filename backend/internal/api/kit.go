@@ -146,10 +146,18 @@ func teamKitChanged(s *Server, id int64, old, cur map[string]any) {
 func kitPhotoChanged(tbl string) func(s *Server, id int64, old, cur map[string]any) {
 	return func(s *Server, id int64, old, cur map[string]any) {
 		photo := str(cur, "photo_url")
-		if photo == str(old, "photo_url") && num(cur, "team_id") == num(old, "team_id") {
-			return
-		}
 		ctx := context.Background()
+		if photo == str(old, "photo_url") && num(cur, "team_id") == num(old, "team_id") {
+			// a new number matters only when the kit shows numbers
+			if old == nil || num(cur, "number") == num(old, "number") {
+				return
+			}
+			var shows bool
+			_ = s.DB.QueryRowContext(ctx, `SELECT kit_has_number FROM teams WHERE id=$1`, num(cur, "team_id")).Scan(&shows)
+			if !shows {
+				return
+			}
+		}
 		// the approved picture belongs to the old photo / team: never show it again
 		_, _ = s.DB.ExecContext(ctx, `UPDATE `+tbl+` SET kit_approved_url='', kit_photo_url='', kit_hint='', kit_error='', kit_analysis=NULL,
 			kit_status='', kit_updated_at=now() WHERE id=$1`, id)
@@ -224,33 +232,70 @@ func (s *Server) kitStopTeam(ctx context.Context, team int64) []string {
 }
 
 // kitDescribe asks the AI service to describe the team's kit and stores it.
-func (s *Server) kitDescribe(ctx context.Context, team int64) (string, error) {
+func (s *Server) kitDescribe(ctx context.Context, team int64) (kitDescription, error) {
+	var none kitDescription
 	var name, kit string
 	if err := s.DB.QueryRowContext(ctx, `SELECT name, kit_url FROM teams WHERE id=$1`, team).Scan(&name, &kit); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", httpx.ErrNotFound
+			return none, httpx.ErrNotFound
 		}
-		return "", err
+		return none, err
 	}
 	if kit == "" {
-		return "", httpx.Validation(map[string]any{"kit_url": "Avval forma rasmini yuklang va saqlang"})
+		return none, httpx.Validation(map[string]any{"kit_url": "Avval forma rasmini yuklang va saqlang"})
 	}
 	assets, warnings := s.loadAssets(ctx, []aiAsset{{Kind: "url", URL: kit, Label: "forma"}})
 	if len(assets) == 0 {
-		return "", httpx.BadRequest(strings.Join(warnings, "; "))
+		return none, httpx.BadRequest(strings.Join(warnings, "; "))
 	}
 	raw, err := s.aiCall(ctx, http.MethodPost, "/v1/kit/describe", map[string]any{"kit": assets[0], "team": name})
 	if err != nil {
-		return "", err
+		return none, err
 	}
-	var out struct {
-		Description string `json:"description"`
-	}
+	var out kitDescription
 	if err := json.Unmarshal(raw, &out); err != nil {
-		return "", err
+		return out, err
 	}
-	_, err = s.DB.ExecContext(ctx, `UPDATE teams SET kit_description=$2, updated_at=now() WHERE id=$1 AND kit_url=$3`, team, out.Description, kit)
-	return out.Description, err
+	_, err = s.DB.ExecContext(ctx, `UPDATE teams SET kit_description=$2, kit_has_number=$4, kit_number_style=$5, updated_at=now() WHERE id=$1 AND kit_url=$3`,
+		team, out.Description, kit, out.NumberVisible, out.NumberStyle)
+	return out, err
+}
+
+type kitDescription struct {
+	Description   string `json:"kit_description"`
+	NumberVisible bool   `json:"kit_has_number"`
+	NumberStyle   string `json:"kit_number_style"`
+}
+
+func (d *kitDescription) UnmarshalJSON(b []byte) error {
+	var v struct {
+		Description   string `json:"description"`
+		NumberVisible bool   `json:"number_visible"`
+		NumberStyle   string `json:"number_style"`
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	d.Description, d.NumberVisible, d.NumberStyle = v.Description, v.NumberVisible, v.NumberStyle
+	return nil
+}
+
+// playerNumberRequired: when the team kit shows a number, a player must have one.
+func playerNumberRequired(ctx context.Context, s *Server, body map[string]any, creating bool) error {
+	team, hasTeam := body["team_id"]
+	number, hasNumber := body["number"]
+	if !creating && !(hasTeam && hasNumber) {
+		return nil // partial update (e.g. bulk photos)
+	}
+	if !hasTeam || team == nil || (hasNumber && number != nil) {
+		return nil
+	}
+	var needs bool
+	_ = s.DB.QueryRowContext(ctx, `SELECT kit_has_number FROM teams WHERE id=$1`, fmt.Sprint(team)).Scan(&needs)
+	if needs {
+		return httpx.Validation(map[string]any{"number": "Raqam majburiy: jamoa formasida o‘yinchi raqami bor"})
+	}
+	return nil
 }
 
 // ---------- worker ----------
@@ -284,21 +329,23 @@ type kitJob struct {
 	id                        int64
 	name, role, photo, hint   string
 	team, kitURL, description string
+	number, numberStyle       string
+	kitHasNumber              bool
 }
 
 // kitClaim takes the oldest queued person of one table.
 func (s *Server) kitClaim(ctx context.Context, tbl string) (kitJob, error) {
 	j := kitJob{tbl: tbl}
-	role := `''`
+	role, number := `''`, `coalesce(p.number::text, '')`
 	if tbl == tStaff {
-		role = `p.role`
+		role, number = `p.role`, `''`
 	}
 	err := s.DB.QueryRowContext(ctx, `UPDATE `+tbl+` p SET kit_status='running', kit_error='', kit_updated_at=now()
 		FROM teams t
 		WHERE p.id = (SELECT id FROM `+tbl+` WHERE kit_status='queued' ORDER BY kit_updated_at NULLS FIRST, id LIMIT 1 FOR UPDATE SKIP LOCKED)
 		  AND t.id = p.team_id
-		RETURNING p.id, p.full_name, `+role+`, p.photo_url, p.kit_hint, t.name, t.kit_url, t.kit_description`).
-		Scan(&j.id, &j.name, &j.role, &j.photo, &j.hint, &j.team, &j.kitURL, &j.description)
+		RETURNING p.id, p.full_name, `+role+`, `+number+`, p.photo_url, p.kit_hint, t.name, t.kit_url, t.kit_description, t.kit_has_number, t.kit_number_style`).
+		Scan(&j.id, &j.name, &j.role, &j.number, &j.photo, &j.hint, &j.team, &j.kitURL, &j.description, &j.kitHasNumber, &j.numberStyle)
 	return j, err
 }
 
@@ -360,6 +407,9 @@ func (s *Server) kitProcess(ctx context.Context, j kitJob) (status, url, errMsg 
 	if j.photo == "" {
 		return "skipped", "", "", nil, ""
 	}
+	if j.tbl == tPlayers && j.kitHasNumber && j.number == "" {
+		return "error", "", "Raqam kiritilmagan — jamoa formasida o‘yinchi raqami bor. Raqamni kiriting va saqlang.", nil, ""
+	}
 	assets, warnings := s.loadAssets(ctx, []aiAsset{{Kind: "url", URL: j.photo, Label: "photo"}, {Kind: "url", URL: j.kitURL, Label: "kit"}})
 	if len(assets) != 2 {
 		return "error", "", "Rasmni o‘qib bo‘lmadi: " + strings.Join(warnings, "; "), nil, ""
@@ -374,6 +424,7 @@ func (s *Server) kitProcess(ctx context.Context, j kitJob) (status, url, errMsg 
 	}
 	raw, err := s.aiCall(ctx, http.MethodPost, "/v1/kit/dress", map[string]any{
 		"photo": assets[0], "kit": assets[1], "team": j.team, "player": person, "description": j.description, "hint": j.hint,
+		"number_on_kit": j.kitHasNumber, "number_style": j.numberStyle, "number": j.number, "staff": j.tbl == tStaff,
 	})
 	if err != nil {
 		var he *httpx.Error
@@ -515,8 +566,11 @@ func (s *Server) kitTeamView(w http.ResponseWriter, r *http.Request) {
 		Name        string `json:"name"`
 		KitURL      string `json:"kit_url"`
 		Description string `json:"kit_description"`
+		HasNumber   bool   `json:"kit_has_number"`
+		NumberStyle string `json:"kit_number_style"`
 	}
-	err = s.DB.QueryRowContext(r.Context(), `SELECT id, name, kit_url, kit_description FROM teams WHERE id=$1`, id).Scan(&team.ID, &team.Name, &team.KitURL, &team.Description)
+	err = s.DB.QueryRowContext(r.Context(), `SELECT id, name, kit_url, kit_description, kit_has_number, kit_number_style FROM teams WHERE id=$1`, id).
+		Scan(&team.ID, &team.Name, &team.KitURL, &team.Description, &team.HasNumber, &team.NumberStyle)
 	if errors.Is(err, sql.ErrNoRows) {
 		httpx.Fail(w, r, httpx.ErrNotFound)
 		return
@@ -536,6 +590,11 @@ func (s *Server) kitTeamView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	counts := map[string]int{}
+	for _, p := range players {
+		if p.Number == nil {
+			counts["no_number"]++
+		}
+	}
 	for _, p := range append(append([]kitPerson{}, players...), staff...) {
 		counts[p.Status]++
 		if p.ApprovedURL != "" {
@@ -561,7 +620,7 @@ func (s *Server) kitTeamDescribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "kit_describe", "team", id, nil)
-	httpx.JSON(w, http.StatusOK, map[string]string{"kit_description": desc})
+	httpx.JSON(w, http.StatusOK, desc)
 }
 
 func (s *Server) kitTeamAction(action string) http.HandlerFunc {

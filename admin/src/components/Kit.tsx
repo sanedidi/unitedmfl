@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { analysisLines, busyStatus, kitApi, STAFF_ROLES, type KitPlayer, type TeamKit } from "@/lib/kit";
 import type { CardCtx } from "@/components/Crud";
 import { Badge, ImageInput, Modal, useConfirm, useToast } from "@/components/ui";
+import { invalidateRefs } from "@/lib/refs";
 import { I } from "@/components/Icons";
 
 const fileName = (u: string) => decodeURIComponent(u.split("/").pop() || u);
@@ -107,8 +108,23 @@ function KitCard({ c, data, onChanged }: { c: CardCtx; data: TeamKit | null; onC
     if (!c.item) return;
     setBusy("describe");
     try {
-      await kitApi.describe(Number(c.item.id));
-      toast("Forma tavsifi yangilandi");
+      const d = await kitApi.describe(Number(c.item.id));
+      invalidateRefs();
+      toast(d.kit_has_number ? "Tavsif yangilandi · formada raqam bor" : "Forma tavsifi yangilandi");
+      onChanged();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Xato", "error");
+    } finally {
+      setBusy("");
+    }
+  }
+  async function toggleNumber(on: boolean) {
+    if (!c.item) return;
+    setBusy("number");
+    try {
+      await kitApi.setNumber(Number(c.item.id), on);
+      invalidateRefs();
+      toast(on ? "Raqam majburiy — «Hammasini qayta kiyintirish» bilan rasmlarni yangilang" : "Saqlandi");
       onChanged();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Xato", "error");
@@ -166,6 +182,15 @@ function KitCard({ c, data, onChanged }: { c: CardCtx; data: TeamKit | null; onC
                   <span className="muted" style={{ fontSize: 11 }}>Prompt shablonidagi {"{forma_tavsifi}"} o‘rniga qo‘yiladi</span>
                 </div>
               )}
+              {!unsaved && c.item && data && (
+                <label className="toggle-row number-row">
+                  <span><b>Formada o‘yinchi raqami bor</b>
+                    <small>{data.team.kit_has_number
+                      ? `${data.team.kit_number_style ? data.team.kit_number_style + " · " : ""}har bir o‘yinchiga o‘z raqami chiziladi; «Raqam» majburiy`
+                      : "Raqam ko‘rinmaydi — AI raqam qo‘shmaydi, «Raqam» ixtiyoriy"}</small></span>
+                  <input type="checkbox" className="switch" checked={data.team.kit_has_number} disabled={busy === "number"} onChange={(e) => toggleNumber(e.target.checked)} />
+                </label>
+              )}
               <div className="row wrap">
                 <button type="button" className="btn" onClick={() => fileRef.current?.click()} disabled={uploading}><I.upload size={16} /> {uploading ? "Yuklanmoqda…" : "Formani almashtirish"}</button>
                 {!unsaved && c.item && <button type="button" className="btn btn-ghost" onClick={redescribe} disabled={!!busy}>{busy === "describe" ? "Tuzilmoqda…" : "Tavsifni qayta tuzish"}</button>}
@@ -220,6 +245,7 @@ function KitPlayersCard({ data, onChanged }: { data: TeamKit; onChanged: () => v
       <div className="card-head"><h3>O‘yinchilar va murabbiylar formada</h3><span className="muted small">{head}</span></div>
       <div className="card-pad stack" style={{ gap: 16 }}>
         {!data.ai.on && <div className="alert warn"><I.alert size={16} /><div>AI-servis o‘chirilgan yoki ulanmagan — o‘yinchilar kiyintirilmaydi.</div></div>}
+        {data.team.kit_has_number && (n.no_number || 0) > 0 && <div className="alert warn"><I.alert size={16} /><div>Formada raqam bor, lekin {n.no_number} ta o‘yinchida raqam kiritilmagan — ular kiyintirilmaydi. O‘yinchi sahifasida «Raqam»ni to‘ldiring.</div></div>}
         {pending > 0 ? (
           <div className="kit-progress">
             <div className="row"><b>✦ O‘yinchilar va murabbiylar formada kiyintirilmoqda</b><div className="grow" /><span className="small">{done} / {total} · har biri ≈ 30–60 s</span></div>

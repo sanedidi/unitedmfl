@@ -66,7 +66,7 @@ func TestKitDress(t *testing.T) {
 			mu.Unlock()
 			text := a
 			if b.Text.Format.Name == "kit_description" {
-				text = `{"description":"Oq asos, yashil-ko‘k yoqa, ko‘krakda «kontent markazi»."}`
+				text = `{"description":"Oq asos, yashil-ko‘k yoqa, ko‘krakda «kontent markazi».","number_visible":true,"number_style":"katta oq raqam ko‘k halqa ichida, ko‘krak markazida"}`
 			}
 			json.NewEncoder(w).Encode(map[string]any{"output_text": text})
 		case "/images/edits":
@@ -131,7 +131,7 @@ func TestKitDress(t *testing.T) {
 	kit := AssetIn{Label: "kit", Mime: "image/png", Data: pngOf(256, 256)}
 
 	var d DescribeResult
-	if c := call("/v1/kit/describe", DescribeInput{Kit: kit, Team: "Ravshan Kulob"}, &d); c != 200 || !strings.Contains(d.Description, "kontent markazi") || d.Model != "gpt-6-luna" {
+	if c := call("/v1/kit/describe", DescribeInput{Kit: kit, Team: "Ravshan Kulob"}, &d); c != 200 || !strings.Contains(d.Description, "kontent markazi") || d.Model != "gpt-6-luna" || !d.NumberVisible || !strings.Contains(d.NumberStyle, "halqa") {
 		t.Fatalf("describe: %d %+v", c, d)
 	}
 
@@ -156,6 +156,22 @@ func TestKitDress(t *testing.T) {
 	if strings.Contains(p, "STANDARD TEAM ROSTER PORTRAIT") || strings.Contains(p, "OVERRIDE: keep the original pose") {
 		t.Fatalf("frontal template must not get the duplicate / keep-pose block:\n%s", p)
 	}
+	if !strings.Contains(p, "do not add any player number") {
+		t.Fatalf("kit without number: %s", p)
+	}
+	// the kit shows a number: the player's own number must be drawn, staff gets none
+	if c := call("/v1/kit/dress", DressInput{Photo: photo, Kit: kit, Team: "R", Player: "Ntumba", NumberOnKit: true, NumberStyle: d.NumberStyle, Number: "21"}, &res); c != 200 || res.Status != "done" {
+		t.Fatalf("numbered: %d %+v", c, res)
+	}
+	if np := prompts[len(prompts)-1]; !strings.Contains(np, `exactly "21"`) || !strings.Contains(np, "2 1") || !strings.Contains(np, "halqa") {
+		t.Fatalf("number rule: %s", np)
+	}
+	call("/v1/kit/dress", DressInput{Photo: photo, Kit: kit, Team: "R", Player: "Coach", NumberOnKit: true, Staff: true}, &res)
+	if np := prompts[len(prompts)-1]; !strings.Contains(np, "WITHOUT any player number") {
+		t.Fatalf("staff number rule: %s", np)
+	}
+	prompts = prompts[:1]
+	refs, sizes = refs[:1], sizes[:1]
 	if !res.Analysis.Front {
 		t.Fatal("default pose must be the standard front-facing portrait")
 	}

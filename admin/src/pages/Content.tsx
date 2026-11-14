@@ -55,7 +55,9 @@ export function PlayersPage() {
   const fields: FieldSpec[] = [
     { name: "full_name", label: "F.I.Sh.", required: true, full: true },
     { name: "team_id", label: "Jamoa", type: "select", nullable: true, numeric: true, options: teamOpts },
-    { name: "number", label: "Raqam", type: "number", nullable: true },
+    { name: "number", label: "Raqam", type: "number", nullable: true,
+      requiredIf: (v) => !!byId.get(Number(v.team_id))?.kit_has_number,
+      hintFor: (v) => byId.get(Number(v.team_id))?.kit_has_number ? "Jamoa formasida raqam bor — AI rasmda shu raqamni chizadi" : undefined },
     { name: "position", label: "Amplua", type: "select", nullable: true, options: posOpts },
     { name: "is_active", label: "Faol", type: "bool", side: true },
     { name: "photo_url", label: "Rasm", hidden: true },

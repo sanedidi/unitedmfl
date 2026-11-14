@@ -24,6 +24,8 @@ export type FieldSpec = {
   show?: (v: Rec) => boolean;
   side?: boolean; // on the edit page: shown in the right-hand «Holat» column
   hidden?: boolean; // saved with the form but edited by a custom card
+  requiredIf?: (v: Rec) => boolean; // required depending on other values (shown with *)
+  hintFor?: (v: Rec) => string | undefined;
 };
 /** Extra cards on the edit page; they edit hidden fields through set(). */
 export type CardCtx = { item: Rec | null; values: Rec; set: (k: string, v: any) => void; version: number };
@@ -97,7 +99,7 @@ export function FormFields({ fields, values, set, errors }: { fields: FieldSpec[
             input = <input {...common} className="input" type={f.type === "url" ? "url" : "text"} value={v} placeholder={f.placeholder} onChange={(e) => set(f.name, e.target.value)} />;
         }
         return (
-          <Field key={f.name} label={f.label + (f.required ? " *" : "")} error={err} hint={f.hint} full={f.full || f.type === "textarea" || f.type === "markdown" || f.type === "image"}>
+          <Field key={f.name} label={f.label + (f.required || f.requiredIf?.(values) ? " *" : "")} error={err} hint={f.hintFor?.(values) ?? f.hint} full={f.full || f.type === "textarea" || f.type === "markdown" || f.type === "image"}>
             {input}
           </Field>
         );

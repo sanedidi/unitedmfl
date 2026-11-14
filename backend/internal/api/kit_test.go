@@ -274,6 +274,49 @@ func TestTeamKitFlow(t *testing.T) {
 	if v.Counts["queued"] != 0 || v.Counts["running"] != 0 {
 		t.Fatalf("stop: %+v", v.Counts)
 	}
+	// the kit shows a number: players need one, and the dress request carries it
+	if c := call("PATCH", "/admin/teams/"+idStr(team.ID), map[string]any{"kit_has_number": true, "kit_number_style": "oq raqam halqada"}, nil); c != 200 {
+		t.Fatal(c)
+	}
+	var e struct {
+		Error struct {
+			Fields map[string]any `json:"fields"`
+		} `json:"error"`
+	}
+	if c := call("POST", "/admin/players", map[string]any{"full_name": "Raqamsiz", "team_id": team.ID, "number": nil, "photo_url": "/uploads/images/p1.png"}, &e); c != 422 || e.Error.Fields["number"] == nil {
+		t.Fatalf("number must be required: %d %+v", c, e)
+	}
+	var np struct {
+		ID int64 `json:"id"`
+	}
+	before = len(dressed)
+	if c := call("POST", "/admin/players", map[string]any{"full_name": "Ntumba", "team_id": team.ID, "number": 21, "photo_url": "/uploads/images/p1.png"}, &np); c != 201 {
+		t.Fatal(c)
+	}
+	for i := 0; i < 100 && len(dressed) == before; i++ {
+		time.Sleep(50 * time.Millisecond)
+	}
+	mu.Lock()
+	last = dressed[len(dressed)-1]
+	mu.Unlock()
+	if last["number"] != "21" || last["number_on_kit"] != true || last["number_style"] != "oq raqam halqada" || last["staff"] != false {
+		t.Fatalf("number in dress request: %+v", last)
+	}
+	// a changed number re-dresses the player
+	wait()
+	before = len(dressed)
+	if c := call("PATCH", "/admin/players/"+idStr(np.ID), map[string]any{"number": 17, "team_id": team.ID}, nil); c != 200 {
+		t.Fatal(c)
+	}
+	for i := 0; i < 100 && len(dressed) == before; i++ {
+		time.Sleep(50 * time.Millisecond)
+	}
+	mu.Lock()
+	last = dressed[len(dressed)-1]
+	mu.Unlock()
+	if last["number"] != "17" {
+		t.Fatalf("number change must re-dress: %+v", last["number"])
+	}
 	// removing the kit keeps nothing pending
 	if c := call("PATCH", "/admin/teams/"+idStr(team.ID), map[string]any{"kit_url": ""}, nil); c != 200 {
 		t.Fatal(c)
