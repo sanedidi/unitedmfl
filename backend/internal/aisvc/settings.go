@@ -49,7 +49,7 @@ func DefaultSettings() Settings {
 	return Settings{
 		Provider:   "openai",
 		ImageModel: map[string]string{"openai": "gpt-image-2.5-sunburst", "gemini": "gemini-3-pro-image"},
-		TextModel:  map[string]string{"openai": "gpt-5.6-luna", "gemini": "gemini-3.6-flash"},
+		TextModel:  map[string]string{"openai": "gpt-6-luna", "gemini": "gemini-3.6-flash"},
 		Quality:    "high", Variants: 2, FileFormat: "webp", Compression: 85,
 		Formats: map[string]Format{
 			"hero_desktop": {Label: "Hero — desktop", W: 2400, H: 1100, Enabled: true},

@@ -62,7 +62,7 @@ func (o *openAI) Models(ctx context.Context, c Credentials) (Models, error) {
 		}
 	}
 	m.Image = sortModels(m.Image, "gpt-image-2.5-sunburst", "gpt-image-2.5-flare", "gpt-image-2")
-	m.Text = sortModels(m.Text, "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
+	m.Text = sortModels(m.Text, "gpt-6-luna", "gpt-6.1-terra", "gpt-6.1-sol", "gpt-6-astra", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")
 	return m, nil
 }
 

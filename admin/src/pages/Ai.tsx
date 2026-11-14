@@ -169,13 +169,22 @@ function ProviderCard({ view, onChange, onRemoved }: { view: ProviderView; onCha
             {view.status === "ok" ? <I.check size={16} /> : <I.alert size={16} />}
             <span>
               {view.checked_at ? `Oxirgi tekshiruv: ${fmtDateTime(view.checked_at)} · javob ${view.latency_ms} ms` : "Hali tekshirilmagan"}
-              {view.status === "ok" && ` · ${view.image_models.length} ta rasm modeli`}
+              {view.status === "ok" && ` · ${view.image_models.length} ta rasm modeli, ${view.text_models.length} ta matn modeli`}
               {view.status === "error" && view.last_error && <><br />{view.last_error}</>}
             </span>
           </div>
         )}
         {view.image_models.length > 0 && (
-          <div className="chips">{view.image_models.slice(0, 8).map((m) => <span key={m} className="tag">{m}</span>)}</div>
+          <div className="stack" style={{ gap: 6 }}>
+            <div className="muted small">Rasm modellari — rasm yaratish uchun</div>
+            <div className="chips">{view.image_models.slice(0, 8).map((m) => <span key={m} className="tag">{m}</span>)}</div>
+          </div>
+        )}
+        {view.text_models.length > 0 && (
+          <div className="stack" style={{ gap: 6 }}>
+            <div className="muted small">Matn modellari — «Promptni yaxshilash» uchun</div>
+            <div className="chips">{view.text_models.slice(0, 8).map((m) => <span key={m} className="tag">{m}</span>)}{view.text_models.length > 8 && <span className="tag">+{view.text_models.length - 8}</span>}</div>
+          </div>
         )}
         <div className="row wrap">
           {view.connected && <button type="button" className="btn" onClick={test} disabled={!!busy}><I.refresh size={16} /> {busy === "test" ? "Tekshirilmoqda…" : "Ulanishni tekshirish"}</button>}
@@ -327,7 +336,7 @@ function SettingsTab() {
             <div className="card-head"><h3>Promptni yaxshilash</h3><span className="muted small">Generatsiyadan oldin majburiy</span></div>
             <div className="card-pad stack" style={{ gap: 16 }}>
               <div className="form-grid">
-                <Field label="Matn modeli" hint="Ro‘yxat ulangan provayderdan olinadi">
+                <Field label="Matn modeli" hint="Ro‘yxat ulangan provayderdan olinadi; yangi modellar «Ulanishni tekshirish»dan keyin chiqadi">
                   <select className="select" value={s.text_model[s.provider] || ""} onChange={(e) => set({ text_model: { ...s.text_model, [s.provider]: e.target.value } })}>
                     {textModels.map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>

@@ -53,7 +53,7 @@ func fakeOpenAI(t *testing.T, log *fakeLog, failImages *bool) *httptest.Server {
 		}
 		switch r.URL.Path {
 		case "/models":
-			io.WriteString(w, `{"data":[{"id":"gpt-image-2"},{"id":"gpt-image-2.5-sunburst"},{"id":"gpt-5.6-luna"},{"id":"gpt-realtime-2.1"},{"id":"whisper-1"}]}`)
+			io.WriteString(w, `{"data":[{"id":"gpt-image-2"},{"id":"gpt-image-2.5-sunburst"},{"id":"gpt-5.6-luna"},{"id":"gpt-6-astra"},{"id":"gpt-6.1-sol"},{"id":"gpt-6.1-terra"},{"id":"gpt-6-luna"},{"id":"gpt-realtime-2.1"},{"id":"whisper-1"}]}`)
 		case "/responses":
 			var b map[string]any
 			json.NewDecoder(r.Body).Decode(&b)
@@ -214,7 +214,7 @@ func TestAIService(t *testing.T) {
 	if c := call("PUT", "/v1/providers/openai", map[string]any{"api_key": "sk-test-openai-key-123"}, &pv); c != 200 {
 		t.Fatal(c)
 	}
-	if pv.Status != "ok" || pv.KeyMask != "sk-••••••••••••-123" || len(pv.ImageModels) != 2 || pv.ImageModels[0] != "gpt-image-2.5-sunburst" || len(pv.TextModels) != 1 {
+	if pv.Status != "ok" || pv.KeyMask != "sk-••••••••••••-123" || len(pv.ImageModels) != 2 || pv.ImageModels[0] != "gpt-image-2.5-sunburst" || strings.Join(pv.TextModels, ",") != "gpt-6-luna,gpt-6.1-terra,gpt-6.1-sol,gpt-6-astra,gpt-5.6-luna" {
 		t.Fatalf("provider view: %+v", pv)
 	}
 	var raw []byte
@@ -233,11 +233,11 @@ func TestAIService(t *testing.T) {
 	if c := call("POST", "/v1/improve", map[string]any{"prompt": "Tungi stadion, final oldidan", "layout": "shade", "assets": []string{"Liga logotipi"}}, &imp); c != 200 {
 		t.Fatal(c)
 	}
-	if imp.Prompt != "Kino uslubidagi keng kadr: tungi stadion." || len(imp.Added) != 2 || imp.Model != "gpt-5.6-luna" {
+	if imp.Prompt != "Kino uslubidagi keng kadr: tungi stadion." || len(imp.Added) != 2 || imp.Model != "gpt-6-luna" {
 		t.Fatalf("improve: %+v", imp)
 	}
 	sent := oLog.body[len(oLog.body)-1]
-	if sent["model"] != "gpt-5.6-luna" || !strings.Contains(sent["input"].(string), "Liga logotipi") || !strings.Contains(sent["input"].(string), "chap 45%") {
+	if sent["model"] != "gpt-6-luna" || !strings.Contains(sent["input"].(string), "Liga logotipi") || !strings.Contains(sent["input"].(string), "chap 45%") {
 		t.Fatalf("improve request: %+v", sent)
 	}
 
