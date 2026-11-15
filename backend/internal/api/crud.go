@@ -466,35 +466,15 @@ var adjustmentsRes = &resource{table: "standing_adjustments", entity: "standing_
 	fields:  map[string]field{"season_id": reqInt, "team_id": reqInt, "points": reqInt, "reason": reqTxt(300)}}
 
 var matchesRes = &resource{table: "matches", entity: "match", touch: true, order: "kickoff_at NULLS LAST",
-	fields: map[string]field{"season_id": reqInt, "stage_id": optInt, "round": txt(60), "home_team_id": optInt, "away_team_id": optInt,
+	fields: map[string]field{"season_id": optInt, "stage_id": optInt, "round": txt(60), "home_team_id": optInt, "away_team_id": optInt,
 		"kickoff_at": optTime, "venue": txt(200), "ticket_url": txt(500),
 		"status":     enum("scheduled", "live", "halftime", "finished", "postponed", "cancelled"),
 		"home_score": optInt, "away_score": optInt, "home_ht": optInt, "away_ht": optInt, "home_et": optInt, "away_et": optInt,
 		"home_pen": optInt, "away_pen": optInt, "attendance": optInt, "added_time_1h": optInt, "added_time_2h": optInt,
-		"banner_url": txt(500), "video_url": txt(500), "notes": txt(2000), "published": boolean, "show_in_hero": boolean},
-	prepare: defaultSeason}
+		"banner_url": txt(500), "video_url": txt(500), "notes": txt(2000), "published": boolean, "show_in_hero": boolean}}
 
-// defaultSeason lets a match be created without choosing a season: the active one
-// (or the newest) is used. An emptied season on edit keeps the current one.
-func defaultSeason(ctx context.Context, s *Server, body map[string]any, creating bool) error {
-	if v, ok := body["season_id"]; ok && v != nil {
-		return nil
-	}
-	if !creating {
-		delete(body, "season_id")
-		return nil
-	}
-	var id int64
-	err := s.DB.QueryRowContext(ctx, `SELECT id FROM seasons ORDER BY is_active DESC, id DESC LIMIT 1`).Scan(&id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return httpx.Validation(map[string]any{"season_id": "Avval «Mavsumlar» bo‘limida mavsum yarating"})
-	}
-	if err != nil {
-		return err
-	}
-	body["season_id"] = json.Number(strconv.FormatInt(id, 10))
-	return nil
-}
+// A match without a season is a friendly: it is listed with the season's
+// matches but never counts towards standings or season statistics.
 
 var newsRes = &resource{table: "news", entity: "news", touch: true, order: "coalesce(published_at, created_at) DESC",
 	search: []string{"title"}, filters: map[string]string{"status": "status", "category": "category"},

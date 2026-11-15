@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -13,7 +14,7 @@ import (
 	"github.com/sanedidi/unitedmfl/backend/internal/db"
 )
 
-// A match needs no season (the active one is used) and a team needs no group.
+// A match needs no season (a friendly) and a team needs no group.
 func TestOptionalSeasonAndGroup(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
@@ -52,14 +53,28 @@ func TestOptionalSeasonAndGroup(t *testing.T) {
 	}
 
 	var m struct {
-		ID       int64 `json:"id"`
-		SeasonID int64 `json:"season_id"`
+		ID       int64  `json:"id"`
+		SeasonID *int64 `json:"season_id"`
 	}
-	if c := call("POST", "/matches", map[string]any{"season_id": nil, "round": "Test", "status": "scheduled"}, &m); c != 201 || m.SeasonID != active {
-		t.Fatalf("match without season: %d %+v (active %d)", c, m, active)
+	// no season = friendly match
+	if c := call("POST", "/matches", map[string]any{"season_id": nil, "round": "O‘rtoqlik o‘yini", "status": "finished", "home_score": 4, "away_score": 7, "published": true}, &m); c != 201 || m.SeasonID != nil {
+		t.Fatalf("friendly match: %d %+v", c, m)
 	}
-	if c := call("PATCH", "/matches/"+idStr(m.ID), map[string]any{"season_id": nil, "round": "Test 2"}, &m); c != 200 || m.SeasonID != active {
-		t.Fatalf("patch keeps season: %d %+v", c, m)
+	var list struct {
+		Items []struct {
+			ID int64 `json:"id"`
+		} `json:"items"`
+	}
+	call("GET", "/matches?status=finished", nil, &list)
+	found := false
+	for _, it := range list.Items {
+		found = found || it.ID == m.ID
+	}
+	if !found {
+		t.Fatalf("friendly match missing from the admin list")
+	}
+	if c := call("PATCH", "/matches/"+idStr(m.ID), map[string]any{"season_id": active}, &m); c != 200 || m.SeasonID == nil || *m.SeasonID != active {
+		t.Fatalf("attach to season: %d %+v", c, m)
 	}
 	conn.Exec(`DELETE FROM matches WHERE id=$1`, m.ID)
 
@@ -72,4 +87,42 @@ func TestOptionalSeasonAndGroup(t *testing.T) {
 		t.Fatalf("team without group: %d %+v", c, team)
 	}
 	conn.Exec(`DELETE FROM teams WHERE id=$1`, team.ID)
+}
+
+// With no season at all (all deleted in the admin), match lists are empty rather than a 500.
+func TestMatchesWithoutSeason(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set")
+	}
+	ctx := context.Background()
+	admin, err := db.Open(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer admin.Close()
+	name := "umfl_noseason_" + idStr(time.Now().UnixNano()%1e9)
+	if _, err := admin.Exec(`CREATE DATABASE ` + name); err != nil {
+		t.Skip("cannot create database: ", err)
+	}
+	defer admin.Exec(`DROP DATABASE IF EXISTS ` + name + ` WITH (FORCE)`)
+	u, _ := url.Parse(dsn)
+	u.Path = "/" + name
+	conn, err := db.Open(ctx, u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if err := db.Migrate(ctx, conn); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(`DELETE FROM matches; DELETE FROM stages; DELETE FROM seasons`); err != nil {
+		t.Fatal(err)
+	}
+	s := New(conn, &config.Config{UploadDir: t.TempDir(), JWTSecret: []byte("test-secret-test-secret-test-secret!!"), AccessTTL: time.Hour})
+	rec := httptest.NewRecorder()
+	s.Routes().ServeHTTP(rec, httptest.NewRequest("GET", "/api/v1/matches", nil))
+	if rec.Code != 200 {
+		t.Fatalf("public matches without season: %d %s", rec.Code, rec.Body.String())
+	}
 }

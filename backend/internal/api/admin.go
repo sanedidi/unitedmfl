@@ -26,10 +26,10 @@ func (s *Server) adminMatches(w http.ResponseWriter, r *http.Request) {
 	stage, _ := strconv.ParseInt(q.Get("stage"), 10, 64)
 	limit, offset := pageParams(r)
 	s.respondQuery(w, r, `SELECT json_build_object('items', coalesce((SELECT json_agg(x) FROM (`+matchSelect+`
-		WHERE m.season_id = $1 AND ($2 = '' OR m.status = $2) AND ($3 = 0 OR m.stage_id = $3)
+		WHERE (m.season_id = $1 OR m.season_id IS NULL) AND ($2 = '' OR m.status = $2) AND ($3 = 0 OR m.stage_id = $3)
 		  AND ($4 = '' OR h.name ILIKE '%' || $4 || '%' OR a.name ILIKE '%' || $4 || '%' OR m.venue ILIKE '%' || $4 || '%')
 		ORDER BY m.kickoff_at DESC NULLS FIRST LIMIT $5 OFFSET $6) x), '[]'),
-		'total', (SELECT count(*) FROM matches WHERE season_id = $1))`,
+		'total', (SELECT count(*) FROM matches WHERE season_id = $1 OR season_id IS NULL))`,
 		seasonID, q.Get("status"), stage, strings.TrimSpace(q.Get("q")), limit, offset)
 }
 
@@ -391,9 +391,9 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 			'requests_new', (SELECT count(*) FROM contact_requests WHERE status='new'),
 			'protocols_review', (SELECT count(*) FROM protocols WHERE status='review')),
 		'upcoming', (SELECT coalesce(json_agg(x ORDER BY x.kickoff_at), '[]') FROM (`+matchSelect+`
-			WHERE m.season_id=$1 AND m.status IN ('scheduled','live','halftime') ORDER BY m.kickoff_at NULLS LAST LIMIT 5) x),
+			WHERE (m.season_id=$1 OR m.season_id IS NULL) AND m.status IN ('scheduled','live','halftime') ORDER BY m.kickoff_at NULLS LAST LIMIT 5) x),
 		'recent_results', (SELECT coalesce(json_agg(x ORDER BY x.kickoff_at DESC), '[]') FROM (`+matchSelect+`
-			WHERE m.season_id=$1 AND m.status='finished' ORDER BY m.kickoff_at DESC LIMIT 5) x),
+			WHERE (m.season_id=$1 OR m.season_id IS NULL) AND m.status='finished' ORDER BY m.kickoff_at DESC LIMIT 5) x),
 		'activity', (SELECT coalesce(json_agg(a), '[]') FROM (SELECT l.action, l.entity, l.entity_id, l.created_at, u.name AS user_name
 			FROM audit_log l LEFT JOIN users u ON u.id=l.user_id ORDER BY l.id DESC LIMIT 10) a))`, seasonID)
 }

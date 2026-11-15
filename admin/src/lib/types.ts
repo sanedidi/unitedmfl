@@ -61,7 +61,7 @@ export type MatchDetail = {
 };
 
 export type MatchRow = {
-  id: number; season_id: number; stage_id: number | null; round: string; home_team_id: number | null; away_team_id: number | null;
+  id: number; season_id: number | null; stage_id: number | null; round: string; home_team_id: number | null; away_team_id: number | null;
   kickoff_at: string | null; venue: string; ticket_url: string; status: string; home_score: number | null; away_score: number | null;
   home_ht: number | null; away_ht: number | null; home_et: number | null; away_et: number | null; home_pen: number | null; away_pen: number | null;
   attendance: number | null; added_time_1h: number | null; added_time_2h: number | null; banner_url: string; video_url: string; notes: string;

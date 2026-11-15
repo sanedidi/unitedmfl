@@ -63,6 +63,9 @@ func (s *Server) activeSeasonID(ctx context.Context, r *http.Request) (int64, er
 	}
 	var id int64
 	err := s.DB.QueryRowContext(ctx, `SELECT id FROM seasons ORDER BY is_active DESC, id DESC LIMIT 1`).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil // no season yet: lists come back empty instead of failing
+	}
 	return id, err
 }
 
@@ -137,7 +140,7 @@ func (s *Server) publicMatches(w http.ResponseWriter, r *http.Request) {
 	}
 	limit, offset := pageParams(r)
 	s.respondQuery(w, r, `SELECT coalesce(json_agg(x), '[]') FROM (`+matchSelect+`
-		WHERE m.published AND m.season_id = $1
+		WHERE m.published AND (m.season_id = $1 OR m.season_id IS NULL)
 		  AND ($2 = '' OR m.status = $2 OR ($2 = 'live' AND m.status = 'halftime'))
 		  AND ($3 = 0 OR m.stage_id = $3)
 		  AND ($4 = '' OR h.slug = $4 OR a.slug = $4)

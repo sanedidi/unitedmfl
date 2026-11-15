@@ -21,7 +21,7 @@ export type MatchStatus = "scheduled" | "live" | "halftime" | "finished" | "post
 
 export type Match = {
   id: number;
-  season_id: number;
+  season_id: number | null;
   round: string;
   kickoff_at: string;
   venue: string;
