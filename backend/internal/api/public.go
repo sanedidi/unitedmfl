@@ -25,7 +25,7 @@ const teamJSON = `CASE WHEN %[1]s.id IS NULL THEN NULL ELSE json_build_object('i
 // matchSelect is the shared projection for match cards.
 var matchSelect = `SELECT m.id, m.season_id, m.round, m.kickoff_at, m.venue, m.ticket_url, m.status, m.period,
 	m.clock_started_at, m.clock_offset_sec, m.home_score, m.away_score, m.home_ht, m.away_ht, m.home_et, m.away_et,
-	m.home_pen, m.away_pen, m.attendance, m.banner_url, m.video_url, m.show_in_hero, m.published,
+	m.home_pen, m.away_pen, m.attendance, m.banner_url, m.video_url, m.show_in_hero, m.published, m.photographer,
 	CASE WHEN st.id IS NULL THEN NULL ELSE json_build_object('id', st.id, 'name', st.name, 'kind', st.kind) END AS stage,
 	` + fmt.Sprintf(teamJSON, "h") + ` AS home, ` + fmt.Sprintf(teamJSON, "a") + ` AS away
 	FROM matches m
@@ -170,6 +170,8 @@ func (s *Server) matchDetailJSON(ctx context.Context, id int64, adminView bool) 
 			(SELECT side, formation, status, coach, assistant, published_at, updated_at FROM lineup_meta lm WHERE match_id = x.id `+metaPub+`) lm),
 		'officials', (SELECT coalesce(json_agg(o ORDER BY o.id), '[]') FROM (SELECT id, side, role, name FROM match_officials WHERE match_id = x.id) o),
 		'videos', (SELECT coalesce(json_agg(v), '[]') FROM (SELECT id, title, url, youtube_id, kind, thumbnail_url FROM videos WHERE match_id = x.id AND status='published') v),
+		'photos', (SELECT coalesce(json_agg(ph ORDER BY ph.ord, ph.id), '[]') FROM
+			(SELECT id, url, thumb_url, width, height, caption, ord FROM match_photos WHERE match_id = x.id) ph),
 		'news', (SELECT coalesce(json_agg(n), '[]') FROM (SELECT slug, title, cover_url, published_at FROM news WHERE match_id = x.id AND status='published' ORDER BY published_at DESC LIMIT 5) n),
 		'protocol_pdf', (SELECT CASE WHEN p.id IS NULL THEN NULL ELSE '/api/v1/matches/' || x.id || '/protocol.pdf' END
 			FROM protocols p WHERE p.match_id = x.id AND p.status = 'applied' AND p.publish_pdf ORDER BY p.applied_at DESC LIMIT 1),

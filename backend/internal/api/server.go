@@ -104,6 +104,7 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/matches/{id}/lineups", s.getLineups)
 				r.Get("/formations", s.formations)
 				r.Get("/team-staff", s.crud(staffRes).list)
+				r.Get("/matches/{id}/photos", s.listMatchPhotos)
 			})
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermMatchesEdit))
@@ -115,6 +116,11 @@ func (s *Server) Routes() http.Handler {
 				r.Post("/matches/{id}/lineups/publish", s.publishLineups)
 				r.Delete("/matches/{id}/lineups/publish", s.unpublishLineups)
 				r.Post("/matches/{id}/lineups/{side}/copy-last", s.copyLastLineup)
+				r.Post("/matches/{id}/photos", s.uploadMatchPhoto)
+				r.Put("/matches/{id}/photos/order", s.reorderMatchPhotos)
+				r.Delete("/matches/{id}/photos", s.deleteMatchPhotos)
+				r.Patch("/match-photos/{id}", s.patchMatchPhoto)
+				r.Delete("/match-photos/{id}", s.deleteMatchPhoto)
 			})
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermLive))

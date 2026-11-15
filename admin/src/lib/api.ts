@@ -160,3 +160,33 @@ export async function uploadImage(file: File): Promise<string> {
 }
 
 export type Page<T> = { items: T[]; total: number };
+
+/**
+ * Uploads one file with upload progress (fetch has none). `onSent` fires once
+ * the bytes are on the server — from then on the server is processing.
+ */
+export function uploadWithProgress<T>(path: string, file: File, onProgress: (share: number) => void, onSent?: () => void): Promise<T> {
+  const send = () => new Promise<{ status: number; text: string }>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${BASE}${path}`);
+    xhr.setRequestHeader("Accept", "application/json");
+    if (session) xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    xhr.upload.onload = () => { onProgress(1); onSent?.(); };
+    xhr.onload = () => resolve({ status: xhr.status, text: xhr.responseText });
+    xhr.onerror = () => reject(new ApiError(0, "network", "Tarmoq xatosi"));
+    const fd = new FormData();
+    fd.append("file", file);
+    xhr.send(fd);
+  });
+  return (async () => {
+    let r = await send();
+    if (r.status === 401 && session && (await refresh())) r = await send();
+    if (r.status === 401) {
+      expireSession();
+      throw new ApiError(401, "unauthorized", "Sessiya tugadi, qayta kiring");
+    }
+    if (r.status < 200 || r.status >= 300) throw await parseError(new Response(r.text, { status: r.status }));
+    return JSON.parse(r.text) as T;
+  })();
+}

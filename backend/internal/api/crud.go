@@ -471,7 +471,8 @@ var matchesRes = &resource{table: "matches", entity: "match", touch: true, order
 		"status":     enum("scheduled", "live", "halftime", "finished", "postponed", "cancelled"),
 		"home_score": optInt, "away_score": optInt, "home_ht": optInt, "away_ht": optInt, "home_et": optInt, "away_et": optInt,
 		"home_pen": optInt, "away_pen": optInt, "attendance": optInt, "added_time_1h": optInt, "added_time_2h": optInt,
-		"banner_url": txt(500), "video_url": txt(500), "notes": txt(2000), "published": boolean, "show_in_hero": boolean}}
+		"banner_url": txt(500), "video_url": txt(500), "notes": txt(2000), "published": boolean, "show_in_hero": boolean,
+		"photographer": txt(120)}}
 
 // A match without a season is a friendly: it is listed with the season's
 // matches but never counts towards standings or season statistics.

@@ -60,7 +60,7 @@ export default async function MatchPage({ params }: { params: P }) {
     eventStatus: `https://schema.org/${statusMap[m.status] || "EventScheduled"}`,
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     sport: "Football",
-    image: abs(`${canonical}/opengraph-image`),
+    image: [abs(`${canonical}/opengraph-image`), ...(d.photos ?? []).slice(0, 10).map((p) => abs(p.url))],
     organizer: orgRef,
     ...(m.venue ? { location: { "@type": "Place", name: m.venue.split(",")[0], address: m.venue } } : {}),
     ...(m.home ? { homeTeam: teamLd(m.home) } : {}),

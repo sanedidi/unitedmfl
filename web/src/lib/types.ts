@@ -21,6 +21,7 @@ export type MatchStatus = "scheduled" | "live" | "halftime" | "finished" | "post
 
 export type Match = {
   id: number;
+  photographer?: string;
   season_id: number | null;
   round: string;
   kickoff_at: string;
@@ -106,8 +107,11 @@ export type NewsItem = {
   author?: string | null;
 };
 
+export type MatchPhoto = { id: number; url: string; thumb_url: string; width: number; height: number; caption: string; ord: number };
+
 export type MatchDetail = {
   match: Match;
+  photos?: MatchPhoto[];
   events: MatchEvent[];
   lineups: LineupRow[];
   lineup_meta?: LineupMeta[];

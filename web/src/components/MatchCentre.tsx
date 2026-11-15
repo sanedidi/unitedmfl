@@ -7,6 +7,7 @@ import { LiveMinute } from "./LiveMinute";
 import { fmtDate, fmtTime, isLive, matchMinute, STATUS_LABEL, youtubeId } from "@/lib/format";
 import type { MatchDetail, MatchEvent } from "@/lib/types";
 import { Lineups } from "./Lineups";
+import { Lightbox, PhotoGrid, PhotoTeaser } from "./MatchPhotos";
 
 const EVENT_LABEL: Record<string, string> = {
   goal: "Gol",
@@ -48,11 +49,15 @@ function periodOf(e: MatchEvent) {
   return "Qo‘shimcha vaqt";
 }
 
-type Tab = "overview" | "lineups" | "officials" | "video";
+type Tab = "media" | "overview" | "lineups" | "officials";
 
 export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail; ticketFallback?: string }) {
   const [d, setD] = useState(initial);
-  const [tab, setTab] = useState<Tab>("overview");
+  const photos = d.photos ?? [];
+  const hasMedia = photos.length > 0 || d.videos.length > 0 || !!d.match.video_url;
+  // A finished match with a photo report or video opens on «Media».
+  const [tab, setTab] = useState<Tab>(hasMedia && !isLive(initial.match) ? "media" : "overview");
+  const [photo, setPhoto] = useState<number | null>(null);
   const [connected, setConnected] = useState(false);
   const offset = useRef(new Date(initial.server_time).getTime() - Date.now());
   const m = d.match;
@@ -78,6 +83,27 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.id, m.status]);
 
+  // ?foto=N opens the viewer on photo N, so a single photo can be shared.
+  useEffect(() => {
+    const n = Number(new URLSearchParams(window.location.search).get("foto"));
+    if (n >= 1 && n <= photos.length) {
+      setTab("media");
+      setPhoto(n - 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const u = new URL(window.location.href);
+    if (photo == null) u.searchParams.delete("foto");
+    else u.searchParams.set("foto", String(photo + 1));
+    if (u.href !== window.location.href) window.history.replaceState(window.history.state, "", u);
+  }, [photo]);
+  const credit = m.photographer ? `Foto: ${m.photographer}` : "";
+  const openAll = () => {
+    setTab("media");
+    document.getElementById("panel-media")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const events = useMemo(
     () => [...d.events].filter((e) => e.type !== "period").sort((a, b) => a.minute - b.minute || a.extra_minute - b.extra_minute || a.id - b.id),
     [d.events],
@@ -98,10 +124,10 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
   const hasScore = m.home_score != null && m.away_score != null && m.status !== "scheduled";
   const ticket = m.ticket_url || ticketFallback;
   const tabs: { id: Tab; label: string; show: boolean }[] = [
+    { id: "media", label: "Media", show: hasMedia },
     { id: "overview", label: "Umumiy", show: true },
     { id: "lineups", label: "Tarkiblar", show: m.status !== "cancelled" },
     { id: "officials", label: "Hakamlar", show: d.officials.length > 0 },
-    { id: "video", label: "Video", show: d.videos.length > 0 || !!m.video_url },
   ];
 
   return (
@@ -113,7 +139,7 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
         </h1>
         <div className="row" style={{ justifyContent: "center", flexWrap: "wrap", gap: 8 }}>
           {live ? <span className="badge badge-live">Jonli</span> : m.stage && <span className="badge badge-muted">{m.stage.name}</span>}
-          <span className="overline" style={{ color: "var(--text-2)", fontSize: 11 }}>United MFL 2026{m.round && m.stage?.kind === "group" ? ` · ${m.round}` : ""}</span>
+          <span className="overline" style={{ color: "var(--text-2)", fontSize: 11 }}>{m.season_id == null ? m.round || "O‘rtoqlik o‘yini" : `United MFL 2026${m.round && m.stage?.kind === "group" ? ` · ${m.round}` : ""}`}</span>
         </div>
 
         <div className="mc-board">
@@ -181,6 +207,7 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
 
       <div role="tabpanel" id="panel-overview" aria-label="overview" hidden={tab !== "overview"}>
         <div className="grid" style={{ gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", alignItems: "start" }} data-mc-grid>
+          <div className="stack" style={{ minWidth: 0 }}>
           <section className="card card-pad">
             <h2 className="h4" style={{ marginBottom: 8 }}>Voqealar</h2>
             {events.length === 0 ? (
@@ -202,6 +229,8 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
               </div>
             )}
           </section>
+          {photos.length > 0 && <PhotoTeaser photos={photos} credit={credit} onOpen={setPhoto} onAll={openAll} />}
+          </div>
           <aside className="stack">
             <section className="card card-pad">
               <h2 className="h4" style={{ marginBottom: 16 }}>Match ma’lumotlari</h2>
@@ -250,7 +279,22 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
         </div>
       </div>
 
-      <div role="tabpanel" id="panel-video" aria-label="video" hidden={tab !== "video"}>
+      <div role="tabpanel" id="panel-media" aria-label="media" hidden={tab !== "media"}>
+        <div className="stack" style={{ gap: 48 }}>
+        {photos.length > 0 && (
+          <section>
+            <div className="ph-head">
+              <div>
+                <h2 className="h3">Foto hisobot</h2>
+                <p className="muted" style={{ marginTop: 6, fontSize: 14 }}>{[`${photos.length} ta foto`, credit, m.venue].filter(Boolean).join(" · ")}</p>
+              </div>
+            </div>
+            <PhotoGrid photos={photos} onOpen={setPhoto} />
+          </section>
+        )}
+        {(d.videos.length > 0 || !!m.video_url) && (
+          <section>
+            <h2 className="h3" style={{ marginBottom: 20 }}>Video</h2>
         <div className="grid grid-2">
           {[...(m.video_url ? [{ id: 0, title: "Videosharh", url: m.video_url, youtube_id: "" }] : []), ...d.videos].map((v) => {
             const yt = youtubeId(v.url, v.youtube_id);
@@ -265,8 +309,16 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
               </section>
             );
           })}
+            </div>
+          </section>
+        )}
         </div>
       </div>
+
+      {photo != null && photos[photo] && (
+        <Lightbox photos={photos} index={photo} onIndex={setPhoto} onClose={() => setPhoto(null)} credit={credit}
+          title={`${m.home?.name || "?"} — ${m.away?.name || "?"}${hasScore ? ` · ${m.home_score}:${m.away_score}` : ""}`} />
+      )}
     </>
   );
 }

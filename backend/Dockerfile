@@ -5,9 +5,10 @@ WORKDIR /src
 COPY . .
 RUN CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags="-s -w" -o /out/api ./cmd/api
 
-# ---- runtime: poppler (PDF text layer) + tesseract (scanned protocols / photos) ----
+# ---- runtime: poppler (PDF text layer) + tesseract (scanned protocols / photos)
+#      + libvips (match photo reports → WebP, HEIC from iPhones via vips-heif) ----
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata poppler-utils tesseract-ocr tesseract-ocr-data-eng \
+RUN apk add --no-cache ca-certificates tzdata poppler-utils tesseract-ocr tesseract-ocr-data-eng vips-tools vips-heif \
  && addgroup -S app && adduser -S app -G app \
  && mkdir -p /data/uploads && chown -R app:app /data
 ENV TZ=Asia/Tashkent UPLOAD_DIR=/data/uploads ADDR=:8080

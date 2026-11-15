@@ -11,6 +11,7 @@ import { Badge, Crest, Empty, ErrorBox, Loading, useConfirm, useToast } from "@/
 import { I } from "@/components/Icons";
 import { useAuth } from "@/lib/auth";
 import { LineupEditor } from "./Lineups";
+import { MatchPhotos } from "@/components/MatchPhotos";
 
 export function StageTag({ m }: { m: Pick<Match, "stage" | "round"> }) {
   if (!m.stage) return <span className="tag">—</span>;
@@ -91,7 +92,7 @@ export function MatchesPage() {
 }
 
 /* ---------- Edit ---------- */
-type Tab = "main" | "result" | "lineups" | "events";
+type Tab = "main" | "result" | "lineups" | "events" | "photos";
 
 export function MatchEditPage() {
   const { id } = useParams();
@@ -112,12 +113,13 @@ export function MatchEditPage() {
         </>} />
       {!isNew && (
         <div className="tabs" role="tablist">
-          {([["main", "Asosiy"], ["result", "Natija"], ["lineups", "Tarkiblar"], ["events", "Voqealar"]] as [Tab, string][]).map(([k, l]) => (
+          {([["main", "Asosiy"], ["result", "Natija"], ["lineups", "Tarkiblar"], ["events", "Voqealar"], ["photos", "Foto hisobot"]] as [Tab, string][]).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
       )}
       {(isNew || tab === "main" || tab === "result") && <MatchForm key={isNew ? "new" : tab} detail={d} mode={isNew ? "main" : (tab as "main" | "result")} onSaved={reload} />}
+      {!isNew && tab === "photos" && d && <MatchPhotos matchId={d.match.id} />}
       {!isNew && tab === "lineups" && d && <LineupEditor detail={d} onSaved={reload} />}
       {!isNew && tab === "events" && d && <EventsEditor detail={d} onChanged={reload} />}
     </>

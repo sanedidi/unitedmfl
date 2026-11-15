@@ -22,3 +22,5 @@ export const Youtube = ({ size, className }: P) => (<svg {...s(size)} className=
 export const Globe = ({ size, className }: P) => (<svg {...s(size)} className={className}><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.5 2.6 2.5 14.4 0 17M12 3.5c-2.5 2.6-2.5 14.4 0 17" /></svg>);
 export const ChevronDown = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M6 9l6 6 6-6" /></svg>);
 export const Info = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M14 3.5H7a1.5 1.5 0 00-1.5 1.5v14A1.5 1.5 0 007 20.5h10a1.5 1.5 0 001.5-1.5V8z" /><path d="M14 3.5V8h4.5M9 13h6M9 16.5h6" /></svg>);
+export const Download = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>);
+export const LinkIcon = ({ size, className }: P) => (<svg {...s(size)} className={className}><path d="M10 14a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1" /><path d="M14 10a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1" /></svg>);
