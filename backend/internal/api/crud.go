@@ -303,6 +303,9 @@ func dbError(err error) error {
 	if errors.As(err, &pqErr) {
 		switch pqErr.Code {
 		case "23505":
+			if pqErr.Constraint == "team_groups_code_key" {
+				return httpx.Validation(map[string]any{"code": "bu kod shu mavsumda boshqa guruhda band"})
+			}
 			if pqErr.Constraint == "users_phone_key" {
 				return httpx.Validation(map[string]any{"phone": "bu raqam boshqa foydalanuvchiga biriktirilgan"})
 			}
@@ -310,6 +313,12 @@ func dbError(err error) error {
 		case "23503":
 			return httpx.NewError(http.StatusConflict, "reference", "Bog‘liq yozuv topilmadi yoki ishlatilmoqda")
 		case "23514":
+			switch pqErr.Constraint {
+			case "team_groups_code_len":
+				return httpx.Validation(map[string]any{"code": "1–4 belgi"})
+			case "team_groups_name_len":
+				return httpx.Validation(map[string]any{"name": "40 belgidan oshmasin"})
+			}
 			return httpx.BadRequest("Qiymat ruxsat etilmagan: " + pqErr.Constraint)
 		}
 	}
@@ -441,8 +450,8 @@ var (
 )
 
 var teamsRes = &resource{table: "teams", entity: "team", touch: true, order: "group_label, name",
-	search: []string{"name", "slug"}, filters: map[string]string{"group": "group_label", "active": "is_active"},
-	fields: map[string]field{"slug": slugF, "name": reqTxt(80), "short_name": txt(8), "group_label": txt(4), "group_is_provisional": boolean,
+	search: []string{"name", "slug"}, filters: map[string]string{"group": "group_label", "group_id": "group_id", "active": "is_active"},
+	fields: map[string]field{"slug": slugF, "name": reqTxt(80), "short_name": txt(8), "group_id": optInt,
 		"crest_url": txt(500), "colors": textList, "leader": txt(120), "instagram": txt(200), "telegram": txt(200), "is_active": boolean,
 		"kit_url": txt(500), "kit_description": txt(2000), "kit_has_number": boolean, "kit_number_style": txt(300)},
 	afterWrite: teamKitChanged}

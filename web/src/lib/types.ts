@@ -10,6 +10,7 @@ export type TeamRef = {
 export type Team = TeamRef & {
   group_label: string;
   group_is_provisional: boolean;
+  group_name?: string;
   leader: string;
   instagram: string;
   telegram: string;
@@ -140,9 +141,20 @@ export type StandingRow = {
   form: string[];
 };
 
+export type GroupInfo = { name: string; ord: number; confirmed: boolean };
+/** Group heading: the admin's name, or «Guruh A» for older data. */
+export const groupName = (code: string, name?: string) => name || (code ? `Guruh ${code}` : "Guruhsiz");
+/** Standings group keys in the admin's order. */
+export const groupKeys = (st: Pick<Standings, "groups" | "group_info">) =>
+  Object.keys(st.groups).sort((a, b) => (st.group_info?.[a]?.ord ?? 999) - (st.group_info?.[b]?.ord ?? 999) || a.localeCompare(b));
+/** Per-group provisional flag, falling back to the season-wide one. */
+export const groupProvisional = (st: Pick<Standings, "groups_provisional" | "group_info">, code: string) =>
+  st.group_info?.[code] ? !st.group_info[code].confirmed : st.groups_provisional;
+
 export type Standings = {
   groups: Record<string, StandingRow[]>;
   groups_provisional: boolean;
+  group_info?: Record<string, GroupInfo>;
   playoff: Match[];
   rules: { win: number; draw: number; loss: number };
 };

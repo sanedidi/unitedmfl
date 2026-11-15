@@ -10,17 +10,17 @@ import type { Player, Team } from "@/lib/types";
 import { SITE_URL } from "@/components/Layout";
 import { TeamExtras } from "@/components/TeamExtras";
 import { PlayerPhotoCard, TeamKitSection } from "@/components/Kit";
+import { groupTitle, TeamGroupCard } from "@/pages/Groups";
 
-const GROUPS = ["A", "B", "C", "D", "E", "F", "G", "H"].map((g) => ({ value: g, label: `Guruh ${g}` }));
 
 /* ---------- Teams ---------- */
 export function TeamsPage() {
+  const { groups } = useRefs();
   const fields: FieldSpec[] = [
     { name: "name", label: "Nomi", required: true },
     { name: "slug", label: "Slug (URL)", type: "slug", slugFrom: "name", required: true, hint: "lotin harflari, raqamlar va «-»" },
     { name: "short_name", label: "Qisqa nomi", hint: "emblemada (3 belgigacha)" },
-    { name: "group_label", label: "Guruh", type: "select", nullable: true, options: GROUPS, side: true },
-    { name: "group_is_provisional", label: "Guruh taxminiy (rasman e’lon qilinmagan)", type: "bool", side: true },
+    { name: "group_id", label: "Guruh", type: "number", nullable: true, hidden: true },
     { name: "is_active", label: "Faol", type: "bool", side: true },
     { name: "crest_url", label: "Emblema", type: "image", side: true },
     { name: "colors", label: "Ranglar", type: "colors", hint: "#E5383B, #FFFFFF" },
@@ -30,8 +30,8 @@ export function TeamsPage() {
     { name: "kit_url", label: "Forma", hidden: true },
   ];
   return (
-    <CrudSection<Team & Record<string, any>> base="/teams" cards={(c) => <TeamKitSection c={c} />} onChanged={invalidateRefs} title="Jamoalar" resource="/admin/teams" singular="Jamoa" searchable fields={fields} defaults={{ is_active: true, group_is_provisional: true }}
-      filters={[{ param: "group", label: "Guruh", options: GROUPS }]}
+    <CrudSection<Team & Record<string, any>> base="/teams" cards={(c) => <TeamKitSection c={c} />} sideCards={(c) => <TeamGroupCard c={c} />} onChanged={invalidateRefs} title="Jamoalar" resource="/admin/teams" singular="Jamoa" searchable fields={fields} defaults={{ is_active: true, group_id: null }}
+      filters={[{ param: "group_id", label: "Guruh", options: groups.map((g) => ({ value: String(g.id), label: groupTitle(g) })) }]}
       columns={[
         { label: "Jamoa", render: (t) => <span className="row"><Crest team={t} /> <b>{t.name}</b></span> },
         { label: "Guruh", render: (t) => t.group_label ? <span>{t.group_label}{t.group_is_provisional && <span className="muted small"> · taxminiy</span>}</span> : <span className="muted">—</span> },

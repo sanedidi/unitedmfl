@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { api, type Page } from "@/lib/api";
 import { useDebounced, useLoad } from "@/lib/hooks";
 import { activeSeason, useRefs } from "@/lib/refs";
-import { EVENT_LABEL, MATCH_STATUS, fmtShort } from "@/lib/format";
+import { EVENT_LABEL, MATCH_STATUS, fmtShort, uid } from "@/lib/format";
 import type { Match, MatchDetail } from "@/lib/types";
 import { FormFields, useForm, type FieldSpec } from "@/components/Crud";
 import { PageHead, SITE_URL } from "@/components/Layout";
@@ -238,7 +238,7 @@ function EventsEditor({ detail, onChanged }: { detail: MatchDetail; onChanged: (
       await api.post(`/admin/matches/${m.id}/events`, {
         side: f.side, type: f.type, minute: Number(f.minute || 0), extra_minute: Number(f.extra_minute || 0),
         player_name: f.player_name, related_player_name: f.related_player_name, note: f.note, source: "manual",
-      }, { "Idempotency-Key": crypto.randomUUID() });
+      }, { "Idempotency-Key": uid() });
       setF({ ...f, minute: "", extra_minute: "", player_name: "", related_player_name: "", note: "" });
       toast("Voqea qo‘shildi");
       onChanged();

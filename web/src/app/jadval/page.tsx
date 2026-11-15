@@ -3,7 +3,7 @@ import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { api, safe } from "@/lib/api";
 import { fmtDate, fmtTime } from "@/lib/format";
-import type { Match, Standings, Team } from "@/lib/types";
+import { groupKeys, groupName, groupProvisional, type Match, type Standings, type Team } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { StandingsTable } from "@/components/Standings";
 import { Crest } from "@/components/Crest";
@@ -29,7 +29,7 @@ function BracketMatch({ m }: { m: Match }) {
 export default async function StandingsPage() {
   const [st, teams] = await Promise.all([safe(api<Standings | null>("/standings"), null), safe(api<Team[]>("/teams"), [])]);
   const teamMap = new Map(teams.map((t) => [t.id, t]));
-  const groups = st ? Object.keys(st.groups).sort() : [];
+  const groups = st ? groupKeys(st) : [];
   const order = ["round_of_16", "quarter", "semi", "final", "other"];
   const label: Record<string, string> = { round_of_16: "1/8 final", quarter: "Chorak final", semi: "Yarim final", final: "Final", other: "Boshqa" };
   const rounds = order.map((k) => ({ k, items: (st?.playoff || []).filter((m) => m.stage?.kind === k) })).filter((r) => r.items.length);
@@ -44,7 +44,7 @@ export default async function StandingsPage() {
           <div className="empty" style={{ marginTop: 32 }}>Jadval hali shakllanmagan.</div>
         ) : (
           <div className="grid grid-2" style={{ marginTop: 32 }}>
-            {groups.map((g) => <StandingsTable key={g} group={g} rows={st.groups[g]} provisional={st.groups_provisional} teams={teamMap} compact />)}
+            {groups.map((g) => <StandingsTable key={g} group={g} title={groupName(g, st.group_info?.[g]?.name)} rows={st.groups[g]} provisional={groupProvisional(st, g)} teams={teamMap} compact />)}
           </div>
         )}
 

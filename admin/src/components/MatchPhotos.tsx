@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, uploadWithProgress } from "@/lib/api";
+import { uid } from "@/lib/format";
 import { useLoad } from "@/lib/hooks";
 import { I } from "./Icons";
 import { ErrorBox, Loading, useConfirm, useToast } from "./ui";
@@ -74,7 +75,7 @@ export function MatchPhotos({ matchId }: { matchId: number }) {
     const list = [...files];
     if (!list.length) return;
     const fresh = list.map((file) => ({
-      job: { key: crypto.randomUUID(), name: file.name, size: file.size, share: 0, stage: "queued" as const },
+      job: { key: uid(), name: file.name, size: file.size, share: 0, stage: "queued" as const },
       file,
     }));
     setJobs((js) => [...js.filter((j) => j.stage !== "done"), ...fresh.map((f) => f.job)]);

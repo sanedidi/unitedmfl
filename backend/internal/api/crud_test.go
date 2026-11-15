@@ -83,7 +83,7 @@ func TestOptionalSeasonAndGroup(t *testing.T) {
 		GroupLabel string `json:"group_label"`
 	}
 	slug := "test-" + idStr(time.Now().UnixNano()%1e9)
-	if c := call("POST", "/teams", map[string]any{"name": "Test FC " + slug, "slug": slug, "group_label": nil}, &team); c != 201 || team.GroupLabel != "" {
+	if c := call("POST", "/teams", map[string]any{"name": "Test FC " + slug, "slug": slug, "group_id": nil}, &team); c != 201 || team.GroupLabel != "" {
 		t.Fatalf("team without group: %d %+v", c, team)
 	}
 	conn.Exec(`DELETE FROM teams WHERE id=$1`, team.ID)

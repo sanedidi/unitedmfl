@@ -14,6 +14,7 @@ const NAV: { group?: string; items: Item[] }[] = [
     { to: "/protocols", label: "Protokollar", icon: <I.doc />, perm: "protocols", count: "protocols" },
     { to: "/live", label: "Live-pult", icon: <I.radio />, perm: "live" },
     { to: "/teams", label: "Jamoalar", icon: <I.shirt />, perm: "teams" },
+    { to: "/groups", label: "Guruhlar", icon: <I.grid />, perm: "teams" },
     { to: "/players", label: "O‘yinchilar", icon: <I.user />, perm: "teams" },
     { to: "/standings", label: "Turnir jadvali", icon: <I.table />, perm: "standings" },
     { to: "/seasons", label: "Mavsumlar", icon: <I.trophy />, perm: "seasons" },

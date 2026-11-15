@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { Crest } from "./Crest";
-import type { StandingRow, TeamRef } from "@/lib/types";
+import { groupName, type StandingRow, type TeamRef } from "@/lib/types";
 
 const FORM_LABEL: Record<string, string> = { W: "G", D: "D", L: "M" };
 
-export function StandingsTable({ group, rows, provisional, qualify = 2, teams, compact = false }: { group: string; rows: StandingRow[]; provisional: boolean; qualify?: number; teams?: Map<number, TeamRef>; compact?: boolean }) {
+export function StandingsTable({ group, title, rows, provisional, qualify = 2, teams, compact = false }: { group: string; title?: string; rows: StandingRow[]; provisional: boolean; qualify?: number; teams?: Map<number, TeamRef>; compact?: boolean }) {
   return (
-    <section className="card" aria-label={`Guruh ${group}`}>
+    <section className="card" aria-label={title || groupName(group)}>
       <div className="card-head">
-        <h3 className="h4">Guruh {group}</h3>
+        <h3 className="h4">{title || groupName(group)}</h3>
         {provisional && <span className="badge badge-upcoming" title="Guruhlar tarkibi liga tomonidan rasman e’lon qilinmagan">dastlabki</span>}
       </div>
       <div className="table-wrap">

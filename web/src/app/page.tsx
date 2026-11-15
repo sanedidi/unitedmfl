@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { api, safe } from "@/lib/api";
 import { fmtPlainDate, isFinished, isLive } from "@/lib/format";
-import type { Banner, Leaders, Match, NewsItem, Product, Season, Standings, Team, Video } from "@/lib/types";
+import { groupKeys, groupName, groupProvisional, type Banner, type Leaders, type Match, type NewsItem, type Product, type Season, type Standings, type Team, type Video } from "@/lib/types";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { MatchCard } from "@/components/Match";
 import { SectionHead } from "@/components/SectionHead";
@@ -37,7 +37,7 @@ export default async function Home() {
   const featured = [...live, ...upcoming].slice(0, 3);
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const leagueTeams = teams.filter((t) => t.group_label);
-  const firstGroup = standings ? Object.keys(standings.groups).sort()[0] : undefined;
+  const firstGroup = standings ? groupKeys(standings)[0] : undefined;
   const scorers = (leaders?.scorers || []).slice(0, 5);
   const teamGoals = (leaders?.team_goals || []).filter((t) => t.group_label).slice(0, 8);
   const dates = Object.fromEntries(banners.map((b) => [b.id, fmtPlainDate(b.event_date)]));
@@ -78,7 +78,7 @@ export default async function Home() {
             <div className="grid" style={{ gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", alignItems: "start" }} data-split>
               <div>
                 <SectionHead title="Turnir jadvali" href="/jadval" linkLabel="To‘liq jadval" />
-                <StandingsTable group={firstGroup} rows={standings.groups[firstGroup]} provisional={standings.groups_provisional} teams={teamMap} />
+                <StandingsTable group={firstGroup} title={groupName(firstGroup, standings.group_info?.[firstGroup]?.name)} rows={standings.groups[firstGroup]} provisional={groupProvisional(standings, firstGroup)} teams={teamMap} />
               </div>
               <div>
                 <SectionHead title="Raqamlarda" href="/statistika" linkLabel="Statistika" />

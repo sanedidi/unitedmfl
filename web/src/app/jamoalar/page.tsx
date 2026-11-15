@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { api, safe } from "@/lib/api";
-import type { Team } from "@/lib/types";
+import { groupName, type Team } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { Crest } from "@/components/Crest";
 
@@ -11,7 +11,9 @@ export const metadata: Metadata = pageMeta({ title: "Jamoalar — United MFL ish
 export default async function TeamsPage() {
   const teams = await safe(api<Team[]>("/teams"), []);
   const league = teams.filter((t) => t.group_label);
-  const groups = [...new Set(league.map((t) => t.group_label))].sort();
+  // API order = the admin's group order, then position inside the group
+  const groups = [...new Set(league.map((t) => t.group_label))];
+  const title = (g: string) => groupName(g, league.find((t) => t.group_label === g)?.group_name);
   const others = teams.filter((t) => !t.group_label);
   const provisional = league.some((t) => t.group_is_provisional);
   return (
@@ -22,7 +24,7 @@ export default async function TeamsPage() {
       <div className="container">
         {groups.map((g) => (
           <section key={g} style={{ marginTop: 40 }}>
-            <h2 className="h3" style={{ marginBottom: 16 }}>Guruh {g}</h2>
+            <h2 className="h3" style={{ marginBottom: 16 }}>{title(g)}</h2>
             <div className="grid grid-4">
               {league.filter((t) => t.group_label === g).map((t) => (
                 <Link key={t.id} href={`/jamoalar/${t.slug}`} className="card card-hover team-tile">

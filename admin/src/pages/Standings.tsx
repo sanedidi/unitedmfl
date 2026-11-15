@@ -7,7 +7,8 @@ import { PageHead } from "@/components/Layout";
 import { Badge, Crest, ErrorBox, Loading } from "@/components/ui";
 
 type Row = { position: number; team_id: number; team: string; played: number; won: number; drawn: number; lost: number; goals_for: number; goals_against: number; goal_diff: number; adjustment: number; points: number; form: string[] };
-type St = { groups: Record<string, Row[]>; groups_provisional: boolean; rules: { win: number; draw: number; loss: number } };
+type GInfo = { name: string; ord: number; confirmed: boolean };
+type St = { groups: Record<string, Row[]>; groups_provisional: boolean; group_info?: Record<string, GInfo>; rules: { win: number; draw: number; loss: number } };
 
 export function StandingsPage() {
   return (
@@ -56,12 +57,12 @@ function StandingsOverview() {
     <div className="stack" style={{ gap: 32 }}>
       <div>
         <PageHead title="Turnir jadvali" sub={data ? `Avtomatik hisoblanadi: g‘alaba ${data.rules.win}, durang ${data.rules.draw}, mag‘lubiyat ${data.rules.loss}. Faqat e’lon qilingan, yakunlangan guruh matchlari.` : undefined} />
-        {data?.groups_provisional && <div className="alert warn" style={{ marginBottom: 16 }}>Guruhlar tarkibi taxminiy deb belgilangan. «Jamoalar» bo‘limida guruhni tasdiqlang.</div>}
+        {data?.groups_provisional && <div className="alert warn" style={{ marginBottom: 16 }}>Guruhlar tarkibi taxminiy deb belgilangan. «Guruhlar» bo‘limida tarkibni tasdiqlang.</div>}
         {error ? <ErrorBox error={error} retry={reload} /> : loading || !data ? <Loading /> : (
           <div className="grid g2" data-split>
-            {Object.keys(data.groups).sort().map((g) => (
+            {Object.keys(data.groups).sort((a, b) => (data.group_info?.[a]?.ord ?? 99) - (data.group_info?.[b]?.ord ?? 99) || a.localeCompare(b)).map((g) => (
               <div key={g} className="card">
-                <div className="card-head"><h3>Guruh {g}</h3></div>
+                <div className="card-head"><h3>{g ? data.group_info?.[g]?.name || `Guruh ${g}` : "Guruhsiz"}</h3>{g && data.group_info?.[g] && !data.group_info[g].confirmed && <Badge tone="warn">Taxminiy</Badge>}</div>
                 <div className="table-wrap"><table className="table">
                   <thead><tr><th>#</th><th>Jamoa</th><th>O</th><th>G</th><th>D</th><th>M</th><th>Gollar</th><th>±</th><th>Ochko</th></tr></thead>
                   <tbody>{data.groups[g].map((r) => (

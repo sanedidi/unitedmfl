@@ -142,6 +142,8 @@ func (s *Server) Routes() http.Handler {
 				r.Post("/protocols/{id}/reject", s.rejectProtocol)
 			})
 			s.mountCRUD(r, auth.PermTeams, "/teams", teamsRes)
+			s.mountCRUD(r, auth.PermTeams, "/groups", groupsRes)
+			r.With(s.can(auth.PermTeams)).Put("/groups/{id}/teams", s.setGroupTeams)
 			s.mountCRUD(r, auth.PermTeams, "/players", playersRes)
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermTeams))

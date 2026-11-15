@@ -76,9 +76,10 @@ func (s *Server) listSeasons(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) publicTeams(w http.ResponseWriter, r *http.Request) {
-	s.respondQuery(w, r, `SELECT coalesce(json_agg(t ORDER BY t.group_label, t.name), '[]') FROM (
-		SELECT id, slug, name, short_name, group_label, group_is_provisional, crest_url, colors, leader, instagram, telegram
-		FROM teams WHERE is_active) t`)
+	s.respondQuery(w, r, `SELECT coalesce(json_agg(t ORDER BY t.g_ord, t.group_label, t.group_ord, t.name), '[]') FROM (
+		SELECT t.id, t.slug, t.name, t.short_name, t.group_label, t.group_is_provisional, coalesce(g.name, '') AS group_name,
+		       t.crest_url, t.colors, t.leader, t.instagram, t.telegram, coalesce(g.ord, 1000000) AS g_ord, t.group_ord
+		FROM teams t LEFT JOIN team_groups g ON g.id = t.group_id WHERE t.is_active) t`)
 }
 
 func (s *Server) publicTeam(w http.ResponseWriter, r *http.Request) {
@@ -89,8 +90,9 @@ func (s *Server) publicTeam(w http.ResponseWriter, r *http.Request) {
 			(SELECT p.id, p.full_name, p.number, p.position, `+displayPhoto+` AS photo_url FROM players p WHERE p.team_id = t.id AND p.is_active) p),
 		'matches', (SELECT coalesce(json_agg(x ORDER BY x.kickoff_at), '[]') FROM (`+matchSelect+`
 			WHERE m.published AND (m.home_team_id = t.id OR m.away_team_id = t.id)) x))
-		FROM (SELECT id, slug, name, short_name, group_label, group_is_provisional, crest_url, colors, leader, instagram, telegram
-		      FROM teams WHERE slug = $1 AND is_active) t`, slug)
+		FROM (SELECT t.id, t.slug, t.name, t.short_name, t.group_label, t.group_is_provisional, coalesce(g.name, '') AS group_name,
+		             t.crest_url, t.colors, t.leader, t.instagram, t.telegram
+		      FROM teams t LEFT JOIN team_groups g ON g.id = t.group_id WHERE t.slug = $1 AND t.is_active) t`, slug)
 }
 
 func (s *Server) publicPlayers(w http.ResponseWriter, r *http.Request) {
@@ -298,6 +300,7 @@ func (s *Server) publicStandings(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, 200, map[string]any{
 		"groups":             tables,
 		"groups_provisional": provisional,
+		"group_info":         s.groupInfo(r.Context()),
 		"rules":              map[string]int{"win": s.Cfg.PointsWin, "draw": s.Cfg.PointsDraw, "loss": s.Cfg.PointsLoss},
 		"playoff":            rawJSON(playoff),
 	})

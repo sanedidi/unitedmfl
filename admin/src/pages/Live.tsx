@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api, ApiError, type Page } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
-import { EVENT_LABEL, fmtDate, fmtShort } from "@/lib/format";
+import { EVENT_LABEL, fmtDate, fmtShort, uid } from "@/lib/format";
 import type { LineupRow, Match, MatchDetail, Player } from "@/lib/types";
 import { Badge, Crest, Empty, ErrorBox, Loading, Modal, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
@@ -184,7 +184,7 @@ export function LiveConsolePage() {
   }
 
   async function submit(body: Record<string, unknown>, label: string) {
-    const item: Queued = { key: crypto.randomUUID(), matchId: m.id, body: { ...body, source: "live" }, label };
+    const item: Queued = { key: uid(), matchId: m.id, body: { ...body, source: "live" }, label };
     const q = [...loadQueue(), item];
     saveQueue(q);
     setQueue(q);

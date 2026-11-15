@@ -7,6 +7,7 @@ import { DashboardPage } from "@/pages/Dashboard";
 import { MatchEditPage, MatchesPage } from "@/pages/Matches";
 import { LiveConsolePage, LivePickPage } from "@/pages/Live";
 import { ProtocolReviewPage, ProtocolsPage } from "@/pages/Protocols";
+import { GroupsSection } from "@/pages/Groups";
 import { NewsPage, PlayersPage, ProductsPage, RequestsPage, SeasonsPage, TeamsPage, VideosPage } from "@/pages/Content";
 import { BannersPage } from "@/pages/Banners";
 import { InstagramPage } from "@/pages/Instagram";
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="protocols" element={<Guard perm="protocols"><ProtocolsPage /></Guard>} />
         <Route path="protocols/:id" element={<Guard perm="protocols"><ProtocolReviewPage /></Guard>} />
         <Route path="teams/*" element={<Guard perm="teams"><TeamsPage /></Guard>} />
+        <Route path="groups/*" element={<Guard perm="teams"><GroupsSection /></Guard>} />
         <Route path="players/*" element={<Guard perm="teams"><PlayersPage /></Guard>} />
         <Route path="standings/*" element={<Guard perm="standings"><StandingsPage /></Guard>} />
         <Route path="seasons" element={<Guard perm="seasons"><SeasonsPage /></Guard>} />
