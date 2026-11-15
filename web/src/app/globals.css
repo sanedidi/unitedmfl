@@ -272,8 +272,11 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
    WCAG AA-readable on dark, white and busy photos. Shade is the default above. */
 
 /* Panel — solid graphite panel across the bottom, photo above it */
-.hero--panel .hero-shade { background: linear-gradient(0deg, rgba(11, 13, 16, .5) 0%, rgba(11, 13, 16, 0) 40%); }
-.hero--panel .hero-slide img { object-position: 50% 30%; }
+/* the photo gets its own block above the panel: no copy ever sits on it */
+.hero--panel { min-height: 0; justify-content: flex-start; }
+.hero--panel .hero-bg { position: relative; inset: auto; z-index: 0; width: 100%; aspect-ratio: 24 / 11; min-height: 280px; max-height: calc(100svh - 64px - 200px); }
+.hero--panel .hero-shade { display: none; }
+.hero--panel .hero-slide img { object-position: 50% 50%; }
 .hero--panel .hero-stage { background: var(--bg-inverse); box-shadow: inset 0 2px 0 var(--accent); }
 .hero--panel .hero-inner { padding-top: 32px; }
 .hero--panel .hero-copy { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 24px 48px; }
@@ -328,6 +331,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 }
 @media (max-width: 720px) {
   .hero--panel .hero-inner { padding-top: 24px; }
+  .hero--panel .hero-bg { aspect-ratio: 4 / 5; min-height: 0; max-height: 64svh; }
   .hero--panel .hero-copy .display, .hero--glass .hero-copy .display, .hero--split .hero-copy .display { font-size: 30px; }
   .hero--poster .hero-copy .display { font-size: 34px; }
   .hero--poster .hero-shade { background:

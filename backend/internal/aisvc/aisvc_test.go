@@ -391,7 +391,7 @@ func TestCompositionHint(t *testing.T) {
 	}{
 		{"shade", "hero_desktop", desk, short, "0–48%"},
 		{"shade", "hero_desktop", desk, long, "0–58%"},
-		{"panel", "hero_desktop", desk, short, "pastki 40%"},
+		{"panel", "hero_desktop", desk, short, "rasmni hech qayerda yopmaydi"},
 		{"glass", "hero_desktop", desk, long, "0–52%"},
 		{"poster", "hero_desktop", desk, nil, "18–82%"},
 		{"split", "hero_mobile", mob, nil, "Diagonal» ko‘rinishi, mobil"},

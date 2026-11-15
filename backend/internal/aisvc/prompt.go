@@ -38,11 +38,11 @@ var layouts = map[string]layoutSpec{
 	"panel": {
 		name: "Pastki panel",
 		text: func(bool) string {
-			return "kadrning pastki 40% qismini to‘q panel butunlay yopadi, matn shu panelda; rasm yuqoriroq (50% 30%) tekislanadi"
+			return "matn rasm ostidagi alohida to‘q panelda — rasmni hech qayerda yopmaydi; kadr to‘liq ko‘rinadi, faqat chetlari biroz kesilishi mumkin"
 		},
-		subject: "asosiy obyektlar va yuzlar faqat yuqori 8–58% balandlikda, markazda; pastki qismda faqat ikkinchi darajali fon (maydon, o‘t)",
-		tone:    "yuqori qism yorqin va ta’sirli bo‘lishi mumkin — matn rasm ustida emas",
-		mobile:  "vertikal kadr: pastki 50% panel bilan yopiladi; asosiy obyektlar yuqori 8–48% oralig‘ida, markazda",
+		subject: "asosiy obyektlar va yuzlar markazda, kenglik bo‘yicha 15–85%, balandlik bo‘yicha 10–90%; chetlarda muhim narsa bo‘lmasin",
+		tone:    "butun kadr yorqin va ta’sirli bo‘lishi mumkin — matn rasm ustida emas, matn uchun bo‘sh joy qoldirish shart emas",
+		mobile:  "vertikal kadr 4:5 nisbatda markazdan kesiladi, matn pastdagi panelda; asosiy obyektlar markazda, balandlik bo‘yicha 20–80%",
 	},
 	"glass": {
 		name: "Shisha karta",
