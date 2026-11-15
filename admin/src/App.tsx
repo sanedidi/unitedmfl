@@ -14,6 +14,7 @@ import { InstagramPage } from "@/pages/Instagram";
 import { StandingsPage } from "@/pages/Standings";
 import { AuditPage, RolesPage, UsersPage } from "@/pages/System";
 import { AiPage } from "@/pages/Ai";
+import { ApplicationsSection } from "@/pages/Applications";
 
 function Guard({ perm, children }: { perm: string; children: React.ReactNode }) {
   const { can } = useAuth();
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="protocols" element={<Guard perm="protocols"><ProtocolsPage /></Guard>} />
         <Route path="protocols/:id" element={<Guard perm="protocols"><ProtocolReviewPage /></Guard>} />
         <Route path="teams/*" element={<Guard perm="teams"><TeamsPage /></Guard>} />
+        <Route path="applications/*" element={<Guard perm="applications"><ApplicationsSection /></Guard>} />
         <Route path="groups/*" element={<Guard perm="teams"><GroupsSection /></Guard>} />
         <Route path="players/*" element={<Guard perm="teams"><PlayersPage /></Guard>} />
         <Route path="standings/*" element={<Guard perm="standings"><StandingsPage /></Guard>} />

@@ -39,6 +39,13 @@ type Config struct {
 	AIServiceURL       string        // internal AI service (OpenAI / Gemini); empty = AI features off
 	AIInternalToken    string        // shared secret sent to the AI service
 	WebInternalURL     string        // the site container, for brand assets (logo) sent to the AI service
+	SiteURL            string        // public origin of the site (team page links in registration notices)
+	RegisterURL        string        // public origin of the team registration site; empty = admin shows only the code
+	EskizEmail         string        // SMS codes for the registration site (notify.eskiz.uz); empty = no SMS
+	EskizPassword      string
+	EskizFrom          string
+	EskizURL           string
+	SMSCodeText        string // %s is replaced by the code (Eskiz checks texts against approved templates)
 }
 
 func env(key, def string) string {
@@ -90,6 +97,13 @@ func Load() (*Config, error) {
 		AIServiceURL:       strings.TrimRight(env("AI_SERVICE_URL", ""), "/"),
 		AIInternalToken:    env("AI_INTERNAL_TOKEN", ""),
 		WebInternalURL:     strings.TrimRight(env("WEB_INTERNAL_URL", "http://web:3000"), "/"),
+		SiteURL:            strings.TrimRight(env("SITE_URL", ""), "/"),
+		RegisterURL:        strings.TrimRight(env("REGISTER_PUBLIC_URL", ""), "/"),
+		EskizEmail:         env("ESKIZ_EMAIL", ""),
+		EskizPassword:      env("ESKIZ_PASSWORD", ""),
+		EskizFrom:          env("ESKIZ_FROM", "4546"),
+		EskizURL:           strings.TrimRight(env("ESKIZ_URL", "https://notify.eskiz.uz"), "/"),
+		SMSCodeText:        env("SMS_CODE_TEXT", "United MFL: jamoa arizasi uchun tasdiqlash kodi %s"),
 	}
 	for _, o := range strings.Split(env("CORS_ORIGINS", "*"), ",") {
 		if o = strings.TrimSpace(o); o != "" {

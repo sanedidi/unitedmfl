@@ -59,7 +59,12 @@ export function PlayersPage() {
       requiredIf: (v) => !!byId.get(Number(v.team_id))?.kit_has_number,
       hintFor: (v) => byId.get(Number(v.team_id))?.kit_has_number ? "Jamoa formasida raqam bor — AI rasmda shu raqamni chizadi" : undefined },
     { name: "position", label: "Amplua", type: "select", nullable: true, options: posOpts },
+    { name: "jersey_name", label: "Futbolkada yozilishi", placeholder: "FAMILIYA" },
+    { name: "kit_size", label: "Forma o‘lchami", type: "select", nullable: true, options: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"].map((x) => ({ value: x, label: x })) },
+    { name: "birth_date", label: "Tug‘ilgan sana", type: "date", nullable: true },
+    { name: "workplace", label: "Ish joyi / faoliyati" },
     { name: "is_active", label: "Faol", type: "bool", side: true },
+    { name: "is_media", label: "Media shaxs", type: "bool", side: true, hint: "bloger yoki boshqa media shaxs" },
     { name: "photo_url", label: "Rasm", hidden: true },
     { name: "instagram", label: "Instagram", type: "url" },
   ];

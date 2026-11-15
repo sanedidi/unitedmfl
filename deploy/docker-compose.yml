@@ -53,6 +53,14 @@ services:
       AI_SERVICE_URL: http://ai:8090
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN:?set AI_INTERNAL_TOKEN in .env (deploy.sh generates it)}
       WEB_INTERNAL_URL: http://web:3000
+      # team self-registration site: its public address (links shown in the admin)
+      REGISTER_PUBLIC_URL: ${REGISTER_PUBLIC_URL:-}
+      SITE_URL: ${PUBLIC_BASE_URL:-}
+      # SMS codes for the registration site (notify.eskiz.uz); empty = no phone verification
+      ESKIZ_EMAIL: ${ESKIZ_EMAIL:-}
+      ESKIZ_PASSWORD: ${ESKIZ_PASSWORD:-}
+      ESKIZ_FROM: ${ESKIZ_FROM:-4546}
+      SMS_CODE_TEXT: ${SMS_CODE_TEXT:-}
     volumes:
       - uploads:/data/uploads
 
@@ -101,6 +109,7 @@ services:
       dockerfile: deploy/proxy.Dockerfile
       args:
         VITE_SITE_URL: ${PUBLIC_BASE_URL:-https://unitedmfl.com}
+        VITE_HELP_URL: ${REGISTER_HELP_URL:-https://t.me/united_mfl}
     restart: unless-stopped
     depends_on:
       - api
@@ -109,11 +118,13 @@ services:
       # plain HTTP inside the container; TLS is terminated by the host nginx
       SITE_ADDRESS: ":80"
       ADMIN_ADDRESS: ":81"
+      REGISTER_ADDRESS: ":82"
     ports:
       # bind to localhost: the host nginx proxies the domains here.
       # For a quick test by IP set SITE_BIND=0.0.0.0:8120 / ADMIN_BIND=0.0.0.0:8121.
       - "${SITE_BIND:-127.0.0.1:8120}:80"
       - "${ADMIN_BIND:-127.0.0.1:8121}:81"
+      - "${REGISTER_BIND:-127.0.0.1:8122}:82"
     volumes:
       - caddy_data:/data
       - caddy_config:/config

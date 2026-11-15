@@ -15,6 +15,7 @@ import (
 	"github.com/sanedidi/unitedmfl/backend/internal/config"
 	"github.com/sanedidi/unitedmfl/backend/internal/httpx"
 	"github.com/sanedidi/unitedmfl/backend/internal/live"
+	"github.com/sanedidi/unitedmfl/backend/internal/sms"
 )
 
 // Server holds dependencies.
@@ -30,6 +31,13 @@ type Server struct {
 	viewLimiter    *httpx.RateLimiter
 	ai             aiJobs
 	kit            *kitWorker
+
+	// team self-registration
+	sms              sms.Sender
+	regCreateLimiter *httpx.RateLimiter
+	regSaveLimiter   *httpx.RateLimiter
+	regOTPLimiter    *httpx.RateLimiter
+	regUploadLimiter *httpx.RateLimiter
 }
 
 func New(db *sql.DB, cfg *config.Config) *Server {
@@ -42,6 +50,12 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 		kit:            &kitWorker{wake: make(chan struct{}, 1), running: map[string]context.CancelFunc{}},
 		contactLimiter: httpx.NewRateLimiter(5, 10*time.Minute),
 		viewLimiter:    httpx.NewRateLimiter(1, 30*time.Minute), // one view per IP per article per 30 min
+
+		sms:              newSMSSender(cfg.Env, cfg.EskizURL, cfg.EskizEmail, cfg.EskizPassword, cfg.EskizFrom),
+		regCreateLimiter: httpx.NewRateLimiter(10, 10*time.Minute),
+		regSaveLimiter:   httpx.NewRateLimiter(600, 10*time.Minute), // autosave
+		regOTPLimiter:    httpx.NewRateLimiter(20, 10*time.Minute),
+		regUploadLimiter: httpx.NewRateLimiter(120, 10*time.Minute),
 	}
 }
 
@@ -83,6 +97,7 @@ func (s *Server) Routes() http.Handler {
 		r.Get("/sitemap", s.publicSitemap)
 		r.With(s.contactLimiter.Middleware).Post("/contact", s.createContact)
 		r.Get("/live/{id}", s.liveStream)
+		s.mountRegistration(r) // team self-registration site
 
 		// ---------- auth ----------
 		r.With(s.loginLimiter.Middleware).Post("/auth/login", s.login)
@@ -141,6 +156,7 @@ func (s *Server) Routes() http.Handler {
 				r.Post("/protocols/{id}/apply", s.applyProtocol)
 				r.Post("/protocols/{id}/reject", s.rejectProtocol)
 			})
+			s.mountRegistrationAdmin(r)
 			s.mountCRUD(r, auth.PermTeams, "/teams", teamsRes)
 			s.mountCRUD(r, auth.PermTeams, "/groups", groupsRes)
 			r.With(s.can(auth.PermTeams)).Put("/groups/{id}/teams", s.setGroupTeams)

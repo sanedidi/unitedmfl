@@ -565,3 +565,41 @@ a.group-card:hover { border-color: var(--border-strong); box-shadow: 0 2px 10px 
 .group-empty { padding: 16px; }
 .group-new { min-height: 120px; align-items: center; justify-content: center; gap: 8px; border: 1.5px dashed var(--border-strong); border-radius: var(--r-lg); background: transparent; color: var(--text-2); font: inherit; font-weight: 600; cursor: pointer; }
 .group-new:hover { color: var(--text); background: var(--n-25); }
+
+/* Team applications (Arizalar) */
+.badge.dark { background: var(--n-900); color: #fff; }
+.app-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+.app-layout > aside { display: flex; flex-direction: column; gap: 16px; }
+.link-banner { display: flex; align-items: center; gap: 16px; padding: 16px 20px; flex-wrap: wrap; }
+.link-banner .ic { width: 40px; height: 40px; border-radius: var(--r-sm); background: var(--lime-50); color: var(--lime-800); display: grid; place-items: center; flex: none; }
+.url-box { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: var(--r-sm); background: var(--n-50); font-size: 13px; min-width: 0; }
+.url-box b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kv-list > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 20px; border-top: 1px solid var(--n-100); font-size: 13px; }
+.kv-list > div:first-child { border-top: 0; }
+.kv-list > div > span:first-child { color: var(--text-2); font-weight: 500; }
+.kv-list > div > span:last-child { font-weight: 600; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.size-bars { display: flex; flex-direction: column; gap: 8px; }
+.size-bars > div { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; }
+.size-bars i { flex: 1; height: 6px; border-radius: 3px; background: var(--n-100); overflow: hidden; display: block; }
+.size-bars i b { display: block; height: 100%; background: var(--n-900); }
+.check-list { display: flex; flex-direction: column; gap: 10px; }
+.check-list > div { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+.check-list svg { flex: none; margin-top: 2px; }
+.check-list .error svg, .check-list .error { color: var(--red-600); }
+.check-list .warn svg { color: var(--amber-500); }
+.check-list .ok svg { color: var(--lime-800); }
+.events { display: flex; flex-direction: column; gap: 12px; }
+.events > div { display: flex; gap: 10px; font-size: 13px; }
+.events > div::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--n-300); margin-top: 5px; flex: none; }
+.num-box { display: inline-grid; place-items: center; width: 32px; height: 28px; border-radius: var(--r-sm); background: var(--n-50); border: 1px solid var(--border); font-weight: 700; font-variant-numeric: tabular-nums; }
+tr.row-warn td { background: #fef8ec; }
+tr.row-err td { background: var(--red-50); }
+.tag-mini { display: inline-flex; padding: 0 6px; border-radius: var(--r-xs); font-size: 11px; font-weight: 700; background: var(--lime-50); color: var(--lime-800); margin-left: 6px; }
+.tag-mini.dark { background: var(--n-900); color: #fff; }
+.dup-box { padding: 14px; border-radius: var(--r-md); background: #fef8ec; display: flex; flex-direction: column; gap: 10px; }
+.radio-line { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 13px; }
+.radio-line input { margin-top: 2px; accent-color: var(--n-900); }
+.qr-img { width: 220px; height: 220px; image-rendering: pixelated; margin: 0 auto; }
+.sec-item { border: 1px solid var(--border); border-radius: var(--r-md); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.sec-item.on { background: var(--n-25); }
+@media (max-width: 1100px) { .app-layout { grid-template-columns: minmax(0, 1fr); } }

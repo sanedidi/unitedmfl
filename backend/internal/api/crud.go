@@ -459,7 +459,9 @@ var teamsRes = &resource{table: "teams", entity: "team", touch: true, order: "gr
 var playersRes = &resource{table: "players", entity: "player", touch: true, order: "team_id, number NULLS LAST, full_name",
 	search: []string{"full_name"}, filters: map[string]string{"team_id": "team_id", "position": "position", "active": "is_active"},
 	fields: map[string]field{"team_id": optInt, "full_name": reqTxt(120), "number": optInt, "position": enum("", "GK", "DF", "MF", "FW"),
-		"photo_url": txt(500), "instagram": txt(200), "is_active": boolean},
+		"photo_url": txt(500), "instagram": txt(200), "is_active": boolean,
+		"birth_date": optDate, "jersey_name": txt(20), "kit_size": enum("", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"),
+		"workplace": txt(120), "is_media": boolean},
 	prepare:    playerNumberRequired,
 	afterWrite: playerPhotoChanged}
 

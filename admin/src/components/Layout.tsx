@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { ROLE_LABEL, initials } from "@/lib/format";
 import { Logo } from "./Logo";
 
-type Item = { to: string; label: string; icon: ReactNode; perm: string; count?: "protocols" | "requests" };
+type Item = { to: string; label: string; icon: ReactNode; perm: string; count?: "protocols" | "requests" | "applications" };
 const NAV: { group?: string; items: Item[] }[] = [
   { items: [{ to: "/", label: "Dashboard", icon: <I.grid />, perm: "dashboard" }] },
   { group: "Turnir", items: [
@@ -14,6 +14,7 @@ const NAV: { group?: string; items: Item[] }[] = [
     { to: "/protocols", label: "Protokollar", icon: <I.doc />, perm: "protocols", count: "protocols" },
     { to: "/live", label: "Live-pult", icon: <I.radio />, perm: "live" },
     { to: "/teams", label: "Jamoalar", icon: <I.shirt />, perm: "teams" },
+    { to: "/applications", label: "Arizalar", icon: <I.link />, perm: "applications", count: "applications" },
     { to: "/groups", label: "Guruhlar", icon: <I.grid />, perm: "teams" },
     { to: "/players", label: "O‘yinchilar", icon: <I.user />, perm: "teams" },
     { to: "/standings", label: "Turnir jadvali", icon: <I.table />, perm: "standings" },
@@ -42,13 +43,13 @@ export const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined) ||
 export function Layout() {
   const { user, can, logout } = useAuth();
   const [open, setOpen] = useState(false);
-  const [counts, setCounts] = useState<{ protocols: number; requests: number }>({ protocols: 0, requests: 0 });
+  const [counts, setCounts] = useState<{ protocols: number; requests: number; applications: number }>({ protocols: 0, requests: 0, applications: 0 });
   const loc = useLocation();
   useEffect(() => setOpen(false), [loc.pathname]);
   useEffect(() => {
     if (!can("dashboard")) return;
-    const load = () => api.get<{ kpi: { protocols_review: number; requests_new: number } }>("/admin/dashboard")
-      .then((d) => setCounts({ protocols: d.kpi.protocols_review, requests: d.kpi.requests_new }))
+    const load = () => api.get<{ kpi: { protocols_review: number; requests_new: number; applications_new?: number } }>("/admin/dashboard")
+      .then((d) => setCounts({ protocols: d.kpi.protocols_review, requests: d.kpi.requests_new, applications: d.kpi.applications_new || 0 }))
       .catch(() => {});
     load();
     const t = setInterval(load, 60000);

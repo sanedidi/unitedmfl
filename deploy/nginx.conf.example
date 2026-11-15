@@ -2,9 +2,10 @@
 # 1) copy to /etc/nginx/sites-available/unitedmfl, set the domains, then
 #    ln -s /etc/nginx/sites-available/unitedmfl /etc/nginx/sites-enabled/
 # 2) nginx -t && systemctl reload nginx
-# 3) certbot --nginx -d unitedmfl.uz -d www.unitedmfl.uz -d admin.unitedmfl.uz
+# 3) certbot --nginx -d unitedmfl.uz -d www.unitedmfl.uz -d admin.unitedmfl.uz -d ariza.unitedmfl.uz
 #    (certbot adds the 443 blocks and the http→https redirect)
-# 4) set PUBLIC_BASE_URL=https://unitedmfl.uz in deploy/.env and re-run deploy.sh
+# 4) set PUBLIC_BASE_URL=https://unitedmfl.uz and REGISTER_PUBLIC_URL=https://ariza.unitedmfl.uz
+#    in deploy/.env and re-run deploy.sh
 
 map $http_upgrade $connection_upgrade { default upgrade; '' close; }
 
@@ -59,5 +60,21 @@ server {
         proxy_set_header Connection "";
         proxy_buffering off;
         proxy_read_timeout 1h;
+    }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ariza.unitedmfl.uz;                     # <- team registration domain
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8122;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
     }
 }

@@ -54,6 +54,19 @@ for key in REVALIDATE_SECRET AI_MASTER_KEY AI_INTERNAL_TOKEN; do
   fi
 done
 
+# the registration site (added later): same bind host as the site, port 8122
+if ! grep -q '^REGISTER_BIND=' .env; then
+  site_bind="$(grep '^SITE_BIND=' .env | cut -d= -f2-)"
+  echo "REGISTER_BIND=${site_bind%:*}:8122" >> .env
+fi
+if ! grep -q '^REGISTER_PUBLIC_URL=' .env; then
+  base="$(grep '^PUBLIC_BASE_URL=' .env | cut -d= -f2-)"
+  case "$base" in
+    *:8120) echo "REGISTER_PUBLIC_URL=${base%:8120}:8122" >> .env ;;
+    *) echo "REGISTER_PUBLIC_URL=" >> .env ;;
+  esac
+fi
+
 log "Building and starting containers"
 docker compose up -d --build --remove-orphans
 docker image prune -f >/dev/null 2>&1 || true
@@ -64,5 +77,5 @@ for i in $(seq 1 60); do
   sleep 2
 done
 docker compose ps
-log "Done. Site: $(grep '^SITE_BIND=' .env | cut -d= -f2-)  Admin: $(grep '^ADMIN_BIND=' .env | cut -d= -f2-)"
+log "Done. Site: $(grep '^SITE_BIND=' .env | cut -d= -f2-)  Admin: $(grep '^ADMIN_BIND=' .env | cut -d= -f2-)  Registration: $(grep '^REGISTER_BIND=' .env | cut -d= -f2-)"
 [ -f "$DIR/deploy/FIRST_ADMIN.txt" ] && cat "$DIR/deploy/FIRST_ADMIN.txt" || true

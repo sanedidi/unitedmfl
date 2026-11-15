@@ -38,4 +38,9 @@ export const I = {
   alert: ({ size }: P) => <svg {...a(size)}><path d="M12 3l10 18H2z" /><path d="M12 10v4M12 17.5v.5" /></svg>,
   refresh: ({ size }: P) => <svg {...a(size)}><path d="M20 12a8 8 0 11-2.3-5.7M20 4v5h-5" /></svg>,
   eye: ({ size }: P) => <svg {...a(size)}><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>,
+  link: ({ size }: P) => <svg {...a(size)}><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" /></svg>,
+  download: ({ size }: P) => <svg {...a(size)}><path d="M12 4v12M7 11l5 5 5-5M4 20h16" /></svg>,
+  telegram: ({ size }: P) => <svg {...a(size)}><path d="M21 4L3 11l6 2 2 6 3-4 5 4z" /><path d="M9 13l12-9" /></svg>,
+  copy: ({ size }: P) => <svg {...a(size)}><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 012-2h10" /></svg>,
+  qr: ({ size }: P) => <svg {...a(size)}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h4v4h-4" /></svg>,
 };
