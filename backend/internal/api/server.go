@@ -90,6 +90,8 @@ func (s *Server) Routes() http.Handler {
 		r.Get("/news/{slug}", s.publicNewsItem)
 		r.Post("/news/{slug}/view", s.newsView)
 		r.Get("/banners", s.publicBanners)
+		r.Get("/homepage", s.publicHomepage)
+		r.Get("/homepage/preview", s.publicHomepagePreview)
 		r.Get("/videos", s.publicVideos)
 		r.Get("/instagram", s.publicInstagram)
 		r.Get("/products", s.publicProducts)
@@ -176,6 +178,7 @@ func (s *Server) Routes() http.Handler {
 			s.mountCRUD(r, auth.PermNews, "/news", newsRes)
 			s.mountCRUD(r, auth.PermBanners, "/banners", bannersRes)
 			r.With(s.can(auth.PermBanners)).Put("/banners/order", s.reorderBanners)
+			s.mountHomepage(r)
 			s.mountCRUD(r, auth.PermVideos, "/videos", videosRes)
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermVideos))

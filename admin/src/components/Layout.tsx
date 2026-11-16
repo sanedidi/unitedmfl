@@ -21,6 +21,7 @@ const NAV: { group?: string; items: Item[] }[] = [
     { to: "/seasons", label: "Mavsumlar", icon: <I.trophy />, perm: "seasons" },
   ] },
   { group: "Kontent", items: [
+    { to: "/homepage", label: "Bosh sahifa", icon: <I.globe />, perm: "homepage" },
     { to: "/news", label: "Yangiliklar", icon: <I.news />, perm: "news" },
     { to: "/banners", label: "Hero-bannerlar", icon: <I.image />, perm: "banners" },
     { to: "/videos", label: "Videolar", icon: <I.play />, perm: "videos" },

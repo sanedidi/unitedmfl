@@ -10,9 +10,12 @@
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
-		X-Frame-Options SAMEORIGIN
 		-Server
 	}
+}
+
+(noframe) {
+	header X-Frame-Options SAMEORIGIN
 }
 
 (api) {
@@ -31,6 +34,10 @@
 # Public site (Next.js SSR)
 {$SITE_ADDRESS} {
 	import security
+	# the homepage draft preview (/preview, token-protected) is shown in an
+	# iframe inside the admin's layout builder, which is another origin
+	@framed not path /preview /preview/*
+	header @framed X-Frame-Options SAMEORIGIN
 	# cache-purge hook is called by the API inside the Docker network only
 	respond /internal/* 404
 	import api
@@ -43,6 +50,7 @@
 # Admin panel (React SPA) — same-origin /api, so no CORS is needed
 {$ADMIN_ADDRESS} {
 	import security
+	import noframe
 	header X-Robots-Tag "noindex, nofollow"
 	import api
 	handle {
@@ -59,6 +67,7 @@
 # registration link active; otherwise it shows «registration is closed».
 {$REGISTER_ADDRESS} {
 	import security
+	import noframe
 	header X-Robots-Tag "noindex, nofollow"
 	import api
 	handle {

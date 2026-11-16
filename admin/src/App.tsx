@@ -15,6 +15,7 @@ import { StandingsPage } from "@/pages/Standings";
 import { AuditPage, RolesPage, UsersPage } from "@/pages/System";
 import { AiPage } from "@/pages/Ai";
 import { ApplicationsSection } from "@/pages/Applications";
+import { HomepageBuilder } from "@/pages/homepage/Builder";
 
 function Guard({ perm, children }: { perm: string; children: React.ReactNode }) {
   const { can } = useAuth();
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="seasons" element={<Guard perm="seasons"><SeasonsPage /></Guard>} />
         <Route path="news/*" element={<Guard perm="news"><NewsPage /></Guard>} />
         <Route path="banners/*" element={<Guard perm="banners"><BannersPage /></Guard>} />
+        <Route path="homepage" element={<Guard perm="homepage"><HomepageBuilder /></Guard>} />
         <Route path="videos/*" element={<Guard perm="videos"><VideosPage /></Guard>} />
         <Route path="instagram" element={<Guard perm="videos"><InstagramPage /></Guard>} />
         <Route path="products/*" element={<Guard perm="merch"><ProductsPage /></Guard>} />

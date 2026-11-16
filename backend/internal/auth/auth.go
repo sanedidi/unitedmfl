@@ -42,10 +42,12 @@ const (
 	PermUploads     = "uploads"
 	// team self-registration: links and applications
 	PermApplications = "applications"
+	// homepage layout builder (draft, publish, versions)
+	PermHomepage = "homepage"
 )
 
 var rolePerms = map[string][]string{
-	RoleEditor:   {PermDashboard, PermMatchesRead, PermTeams, PermApplications, PermNews, PermBanners, PermVideos, PermRequests, PermUploads},
+	RoleEditor:   {PermDashboard, PermMatchesRead, PermTeams, PermApplications, PermNews, PermBanners, PermHomepage, PermVideos, PermRequests, PermUploads},
 	RoleOperator: {PermDashboard, PermMatchesRead, PermMatchesEdit, PermLive, PermProtocols, PermUploads},
 	RoleShop:     {PermDashboard, PermMerch, PermRequests, PermUploads},
 }
@@ -76,7 +78,7 @@ func Can(role, perm string) bool {
 func PermissionsFor(role string) []string {
 	if role == RoleAdmin {
 		return []string{PermDashboard, PermMatchesRead, PermMatchesEdit, PermLive, PermProtocols, PermTeams,
-			PermApplications, PermStandings, PermSeasons, PermNews, PermBanners, PermVideos, PermMerch, PermRequests, PermUsers, PermUploads}
+			PermApplications, PermStandings, PermSeasons, PermNews, PermBanners, PermHomepage, PermVideos, PermMerch, PermRequests, PermUsers, PermUploads}
 	}
 	return append([]string(nil), rolePerms[role]...)
 }

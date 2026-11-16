@@ -6,8 +6,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [{
       userAgent: "*",
       allow: ["/", "/_next/static/", "/_next/image", "/uploads/"],
-      // internal search results, API (JSON/SSE) and the cache-purge hook have no search value
-      disallow: ["/qidiruv", "/api/", "/internal/"],
+      // internal search results, API (JSON/SSE), the cache-purge hook and draft previews have no search value
+      disallow: ["/qidiruv", "/api/", "/internal/", "/preview"],
     }],
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,
