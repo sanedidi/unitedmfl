@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type SyntheticEvent } from "react";
 import { getImageProps } from "next/image";
 import Link from "next/link";
 import { Calendar, Clock, Pin } from "./Icons";
@@ -11,14 +11,23 @@ const INTERVAL = 6000;
  * Full-bleed slide photo. Desktop image fills the whole hero; an optional
  * portrait image replaces it on phones. The first slide is the LCP image.
  */
-function HeroPicture({ desktop, mobile, alt, first }: { desktop: string; mobile: string; alt: string; first: boolean }) {
+function HeroPicture({ desktop, mobile, alt, first, onRatio }: { desktop: string; mobile: string; alt: string; first: boolean; onRatio?: (r: number) => void }) {
   const main = desktop || mobile;
   const local = (u: string) => u.startsWith("/uploads/");
   const common = { alt, fill: true, sizes: "100vw", priority: first, quality: 80 } as const;
+  // the natural proportions of the picture actually shown (desktop or mobile source):
+  // the panel layout sizes its photo block to them, so a poster is never cut off
+  const loaded = (e: SyntheticEvent<HTMLImageElement>) => {
+    const im = e.currentTarget;
+    if (im.naturalWidth && im.naturalHeight) onRatio?.(im.naturalWidth / im.naturalHeight);
+  };
+  const ref = (im: HTMLImageElement | null) => {
+    if (im?.complete && im.naturalWidth) onRatio?.(im.naturalWidth / im.naturalHeight);
+  };
   const img = local(main)
-    ? (() => { const { props } = getImageProps({ ...common, src: main }); return <img {...props} alt={alt} style={{ ...props.style, objectFit: "cover" }} />; })()
+    ? (() => { const { props } = getImageProps({ ...common, src: main }); return <img {...props} ref={ref} onLoad={loaded} alt={alt} className="hero-img" />; })()
     // eslint-disable-next-line @next/next/no-img-element
-    : <img src={main} alt={alt} fetchPriority={first ? "high" : "auto"} loading={first ? "eager" : "lazy"} decoding="async" />;
+    : <img src={main} ref={ref} onLoad={loaded} alt={alt} className="hero-img" fetchPriority={first ? "high" : "auto"} loading={first ? "eager" : "lazy"} decoding="async" />;
   if (!mobile || mobile === main) return img;
   const srcSet = local(mobile) ? getImageProps({ ...common, src: mobile }).props.srcSet : mobile;
   return (
@@ -50,6 +59,7 @@ export function HeroCarousel({ banners, dates, season = "United MFL 2026", layou
     return () => evs.forEach((e) => window.removeEventListener(e, go));
   }, []);
   const [tick, setTick] = useState(0);
+  const [ratios, setRatios] = useState<Record<number, number>>({});
   const touch = useRef<number | null>(null);
   const n = banners.length;
 
@@ -96,6 +106,7 @@ export function HeroCarousel({ banners, dates, season = "United MFL 2026", layou
     >
       <div
         className="hero-bg"
+        style={ratios[b.id] ? ({ ["--ratio" as string]: String(ratios[b.id]) } as CSSProperties) : undefined}
         onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
         onTouchEnd={(e) => {
           if (touch.current == null) return;
@@ -107,7 +118,8 @@ export function HeroCarousel({ banners, dates, season = "United MFL 2026", layou
         {banners.map((s, k) => (
           <div key={s.id} className={`hero-slide${k === i ? " active" : ""}`} aria-hidden={k !== i} role="group" aria-roledescription="slide" aria-label={`${k + 1} / ${n}`}>
             {s.image_desktop || s.image_mobile
-              ? <HeroPicture desktop={s.image_desktop} mobile={s.image_mobile} alt={s.title} first={k === 0} />
+              ? <HeroPicture desktop={s.image_desktop} mobile={s.image_mobile} alt={s.title} first={k === 0}
+                  onRatio={(r) => setRatios((m) => (Math.abs((m[s.id] || 0) - r) < 0.001 ? m : { ...m, [s.id]: r }))} />
               : <div className="hero-art" />}
           </div>
         ))}

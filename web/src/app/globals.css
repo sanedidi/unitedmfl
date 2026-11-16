@@ -274,9 +274,12 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 /* Panel — solid graphite panel across the bottom, photo above it */
 /* the photo gets its own block above the panel: no copy ever sits on it */
 .hero--panel { min-height: 0; justify-content: flex-start; }
-.hero--panel .hero-bg { position: relative; inset: auto; z-index: 0; width: 100%; aspect-ratio: 24 / 11; min-height: 280px; max-height: calc(100svh - 64px - 200px); }
+/* the photo block takes the picture's own proportions (--ratio, set from the loaded
+   image) and the picture is never cropped: posters often carry text on every edge.
+   On a very short screen the block is capped and the picture letterboxed instead. */
+.hero--panel .hero-bg { position: relative; inset: auto; z-index: 0; width: 100%; aspect-ratio: var(--ratio, 24 / 11); min-height: 240px; max-height: calc(100svh - 64px); background: var(--bg-inverse); }
 .hero--panel .hero-shade { display: none; }
-.hero--panel .hero-slide img { object-position: 50% 50%; }
+.hero--panel .hero-slide img { object-fit: contain; object-position: 50% 50%; }
 .hero--panel .hero-stage { background: var(--bg-inverse); box-shadow: inset 0 2px 0 var(--accent); }
 .hero--panel .hero-inner { padding-top: 32px; }
 .hero--panel .hero-copy { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 24px 48px; }
@@ -331,7 +334,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 14px; }
 }
 @media (max-width: 720px) {
   .hero--panel .hero-inner { padding-top: 24px; }
-  .hero--panel .hero-bg { aspect-ratio: 4 / 5; min-height: 0; max-height: 64svh; }
+  .hero--panel .hero-bg { aspect-ratio: var(--ratio, 4 / 5); min-height: 0; max-height: 80svh; }
   .hero--panel .hero-copy .display, .hero--glass .hero-copy .display, .hero--split .hero-copy .display { font-size: 30px; }
   .hero--poster .hero-copy .display { font-size: 34px; }
   .hero--poster .hero-shade { background:
