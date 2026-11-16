@@ -20,11 +20,13 @@ curl -fsSL https://raw.githubusercontent.com/sanedidi/unitedmfl/main/deploy/depl
 
 Стек работает за nginx, который уже установлен на сервере: Caddy внутри Docker слушает только порты 8120 (сайт), 8121 (админка) и 8122 (регистрация команд). Пока домены не настроены, сайт открывается на `http://IP:8120`, админка — на `http://IP:8121`, регистрация — на `http://IP:8122`.
 
-Как подключить домены:
-1. Скопируйте `deploy/nginx.conf.example` в `/etc/nginx/sites-available/unitedmfl` и впишите свои домены.
-2. Выполните `nginx -t && systemctl reload nginx`, затем `certbot --nginx -d … -d …`.
-3. В `deploy/.env` замените привязку портов на `127.0.0.1:8120` / `127.0.0.1:8121`, а `PUBLIC_BASE_URL` — на `https://домен`.
-4. Перезапустите `deploy.sh`.
+Как подключить домены — одной командой (DNS всех имён уже должен указывать на сервер):
+
+```
+cd /opt/unitedmfl && sudo ./deploy/domains.sh unitedmfl.uz unitedmfl.com
+```
+
+Первый домен — основной: `https://unitedmfl.uz` (сайт, `www.` → без www), `https://admin.unitedmfl.uz` (админка), `https://ariza.unitedmfl.uz` (регистрация команд). Остальные домены (`unitedmfl.com`, их `www.`, `admin.`, `ariza.`) делают 301-редирект на то же место основного. Скрипт ставит nginx и certbot, получает сертификаты Let's Encrypt, закрывает порты 8120–8122 снаружи (`127.0.0.1`), прописывает адреса в `deploy/.env` и пересобирает стек. Повторный запуск безопасен.
 
 Резервные копии (база и загруженные файлы): `deploy/backup.sh`. Пример строки для cron есть внутри скрипта.
 
