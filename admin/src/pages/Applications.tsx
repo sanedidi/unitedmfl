@@ -312,7 +312,6 @@ function ApplicationReview() {
               <div><h3 style={{ fontSize: 22 }}>{a.team.name}</h3><div className="muted">{[a.team.short_name, a.team.city].filter(Boolean).join(" · ")}</div></div>
             </div>
             <div className="kv-list">
-              <div><span>Forma ranglari</span><span className="row" style={{ gap: 6 }}>{a.team.colors.length ? a.team.colors.map((c) => <i key={c} title={c} style={{ width: 20, height: 20, borderRadius: 4, background: c, border: "1px solid var(--border)", display: "inline-block" }} />) : "—"}</span></div>
               <div><span>Logotip</span><span>{a.team.crest_url ? `${a.team.crest_w || "?"}×${a.team.crest_h || "?"}${a.team.crest_w && a.team.crest_w < 512 ? " (min 512)" : ""}` : "yuklanmagan"}</span></div>
               {a.team.instagram && <div><span>Instagram</span><span>{a.team.instagram}</span></div>}
               {a.team.about && <div><span>Jamoa haqida</span><span style={{ fontWeight: 400 }}>{a.team.about}</span></div>}
@@ -325,9 +324,20 @@ function ApplicationReview() {
               <div><span>Telefon</span><span className="row" style={{ gap: 8 }}>{a.rep.phone || "—"}{a.phone_verified ? <Badge tone="ok">SMS orqali tasdiqlangan</Badge> : a.rep.phone && <Badge tone="warn">Tasdiqlanmagan</Badge>}</span></div>
               {a.rep.telegram && <div><span>Telegram</span><span>{a.rep.telegram}</span></div>}
               {a.rep.email && <div><span>Email</span><span>{a.rep.email}</span></div>}
-              {a.rep_url && <div><span>Vakil sahifasi</span><span><button className="link-btn small" onClick={() => copy(a.rep_url, toast)}><I.copy size={14} /> Havolani nusxalash</button></span></div>}
             </div>
           </div>
+          {a.rep_url && (
+            <div className="card">
+              <div className="card-head"><h3>Vakil havolasi</h3><span className="muted small">Jamoa havolani yo‘qotsa — shuni yuboring</span></div>
+              <div className="card-pad stack" style={{ gap: 12 }}>
+                <a className="rep-url" href={a.rep_url} target="_blank" rel="noopener noreferrer">{a.rep_url}</a>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  <button className="btn btn-sm" onClick={() => copy(a.rep_url, toast)}><I.copy size={15} /> Nusxalash</button>
+                  <a className="btn btn-sm" href={tgShare(a.rep_url, `United MFL: «${a.team.name}» arizasi`)} target="_blank" rel="noopener noreferrer"><I.telegram size={15} /> Telegram orqali yuborish</a>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="card">
             <div className="card-head"><h3>O‘yinchilar <span className="muted small">· {field.length}</span></h3><span className="muted small">{media.length} media · {a.staff.length} murabbiy</span></div>
             {field.length ? table(field) : <div className="card-pad muted">O‘yinchi yo‘q</div>}
@@ -568,7 +578,7 @@ function LinksList() {
 /* ---------- link edit page ---------- */
 const LINK_DEFAULTS: Partial<RegLink> = {
   title: "", kind: "multi", is_active: false, is_default: false, opens_at: null, closes_at: null, max_teams: null,
-  min_players: 8, max_players: 20, min_age: null, require_logo: true, require_photo: false, require_medical: false, require_phone: true,
+  min_players: 8, max_players: 21, min_age: null, require_logo: true, require_photo: false, require_medical: false, require_phone: true,
   check_duplicates: true, heading: "", description: "", rules_url: "", season_id: null, stage_id: null,
 };
 
@@ -668,8 +678,8 @@ function LinkEdit() {
           </>)}
           {card("Talablar", <>
             <div className="form-grid" style={{ gridTemplateColumns: "repeat(3, minmax(0,1fr))" }}>
-              <Field label="Min. o‘yinchi" error={errs.min_players}><input className="input" inputMode="numeric" value={v.min_players ?? ""} onChange={(e) => set("min_players", num(e.target.value.replace(/\D/g, "")) ?? 0)} /></Field>
-              <Field label="Maks. kishi" hint="o‘yinchilar + media" error={errs.max_players}><input className="input" inputMode="numeric" value={v.max_players ?? ""} onChange={(e) => set("max_players", num(e.target.value.replace(/\D/g, "")) ?? 0)} /></Field>
+              <Field label="Min. kishi" error={errs.min_players}><input className="input" inputMode="numeric" value={v.min_players ?? ""} onChange={(e) => set("min_players", num(e.target.value.replace(/\D/g, "")) ?? 0)} /></Field>
+              <Field label="Maks. kishi" hint="o‘yinchilar + media + murabbiylar" error={errs.max_players}><input className="input" inputMode="numeric" value={v.max_players ?? ""} onChange={(e) => set("max_players", num(e.target.value.replace(/\D/g, "")) ?? 0)} /></Field>
               <Field label="Min. yosh" hint="bo‘sh — tekshirilmaydi" error={errs.min_age}><input className="input" inputMode="numeric" value={v.min_age ?? ""} onChange={(e) => set("min_age", num(e.target.value.replace(/\D/g, "")))} /></Field>
             </div>
             <Toggle label="Logotip majburiy" sub="PNG/JPG, kamida 512×512 tavsiya etiladi" checked={!!v.require_logo} onChange={(x) => set("require_logo", x)} />

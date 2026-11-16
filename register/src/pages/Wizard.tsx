@@ -257,19 +257,13 @@ function TeamStep({ token, doc, update, locked, checks, footer }: { token: strin
     }
   }
   const logoWarn = checks.find((c) => c.code === "team.crest_url");
-  const colors = [t.colors[0] || "", t.colors[1] || ""];
-  const setColor = (i: number, v: string) => {
-    const next = [...colors];
-    next[i] = v.toUpperCase();
-    set("colors", next.filter(Boolean).length ? [next[0] || "#1D4ED8", next[1]].filter(Boolean) as string[] : []);
-  };
   return (
     <FormCard n={1} title="Jamoa ma’lumotlari" sub="Bu ma’lumotlar saytdagi jamoa sahifasida, jadvalda va match kartochkalarida ko‘rinadi." footer={footer} locked={locked}>
       <div className="g-code">
         <Field label="Jamoa nomi" error={errFor(checks, "team.name")} hint={checks.find((c) => c.code === "team.name" && c.level === "warn")?.text || "Saytda shunday ko‘rinadi"}>
           <input className="input" value={t.name} onChange={(e) => set("name", e.target.value)} maxLength={80} disabled={locked} aria-invalid={!!errFor(checks, "team.name")} />
         </Field>
-        <Field label="Qisqa kod" error={errFor(checks, "team.short_name")} hint="2–4 lotin harfi">
+        <Field label="Qisqa kod" opt="ixtiyoriy" error={errFor(checks, "team.short_name")} hint="2–4 lotin harfi">
           <input className="input" value={t.short_name} onChange={(e) => set("short_name", e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))} disabled={locked} aria-invalid={!!errFor(checks, "team.short_name")} />
         </Field>
       </div>
@@ -291,22 +285,10 @@ function TeamStep({ token, doc, update, locked, checks, footer }: { token: strin
         {logoWarn && <span className={logoWarn.level === "error" ? "err" : "hint warn-text"}>{logoWarn.text}</span>}
       </div>
       <Field label="Shahar / tuman" opt="ixtiyoriy"><input className="input" value={t.city} onChange={(e) => set("city", e.target.value)} maxLength={80} placeholder="Toshkent sh., Chilonzor tumani" disabled={locked} /></Field>
-      <div className="field">
-        <span className="lbl">Forma ranglari <span className="opt">ixtiyoriy</span></span>
-        <div className="row" style={{ gap: 12 }}>
-          {["Asosiy forma", "Zaxira forma"].map((label, i) => (
-            <label key={label} className="color-pick">
-              <input type="color" value={colors[i] || (i ? "#FFFFFF" : "#1D4ED8")} onChange={(e) => setColor(i, e.target.value)} disabled={locked} />
-              <span className="grow"><b>{label}</b><span className="small sec">{colors[i] || "tanlanmagan"}</span></span>
-            </label>
-          ))}
-        </div>
-        <span className="hint">Tarkib sxemasida va match sahifasida jamoa rangi sifatida ishlatiladi.</span>
-      </div>
       <Field label="Jamoa haqida" opt="ixtiyoriy" hint={`${t.about.length} / 500`}>
         <textarea className="textarea" value={t.about} onChange={(e) => set("about", e.target.value)} maxLength={500} disabled={locked} />
       </Field>
-      <Field label="Instagram" opt="ixtiyoriy" hint="Jamoa sahifasida havola sifatida chiqadi"><input className="input" value={t.instagram} onChange={(e) => set("instagram", e.target.value)} maxLength={100} placeholder="@jamoa" disabled={locked} /></Field>
+      <Field label="Instagram" error={errFor(checks, "team.instagram")} hint="Jamoa sahifasida havola sifatida chiqadi"><input className="input" value={t.instagram} onChange={(e) => set("instagram", e.target.value)} maxLength={100} placeholder="@jamoa" disabled={locked} aria-invalid={!!errFor(checks, "team.instagram")} /></Field>
     </FormCard>
   );
 }
@@ -388,7 +370,7 @@ function RepStep({ app, setApp, doc, update, flush, locked, checks, footer }: {
           {codeErr && <span className="err">{codeErr}</span>}
         </div>
       )}
-      <Field label="Telegram" opt="ixtiyoriy" hint="Liga savollari shu yerga keladi"><input className="input" value={r.telegram} onChange={(e) => set("telegram", e.target.value)} maxLength={64} placeholder="@username" disabled={locked} /></Field>
+      <Field label="Telegram" error={errFor(checks, "rep.telegram")} hint="Liga savollari shu yerga keladi"><input className="input" value={r.telegram} onChange={(e) => set("telegram", e.target.value)} maxLength={64} placeholder="@username" disabled={locked} aria-invalid={!!errFor(checks, "rep.telegram")} /></Field>
       <Field label="Email" opt="ixtiyoriy" error={errFor(checks, "rep.email")}><input className="input" type="email" value={r.email} onChange={(e) => set("email", e.target.value)} maxLength={120} disabled={locked} autoComplete="email" /></Field>
       <label className="check"><input type="checkbox" checked={r.authorized} onChange={(e) => set("authorized", e.target.checked)} disabled={locked} /><span>Men jamoa nomidan ariza berishga vakolatliman</span></label>
     </FormCard>
@@ -463,8 +445,8 @@ function RosterStep({ token, app, doc, update, locked, canLogo, color, checks, f
     <FormCard n={3} title="Tarkib" sub="O‘yinchilar, media shaxslar va murabbiy. Futbolkadagi yozuv va o‘lcham forma tayyorlash uchun kerak." footer={footer} locked={locked}>
       <div className="row wrapx" style={{ justifyContent: "space-between" }}>
         <div>
-          <b style={{ fontSize: 18 }}>{doc.players.length}{r ? ` / ${r.max_players}` : ""} kishi</b>
-          <div className="small sec">{field.length} o‘yinchi · {media.length} media shaxs · {doc.staff.length} murabbiy{r ? ` · kamida ${r.min_players} o‘yinchi` : ""}</div>
+          <b style={{ fontSize: 18 }}>{doc.players.length + doc.staff.length}{r ? ` / ${r.max_players}` : ""} kishi</b>
+          <div className="small sec">{field.length} o‘yinchi · {media.length} media shaxs · {doc.staff.length} murabbiy{r ? ` · kamida ${r.min_players} kishi` : ""}</div>
         </div>
         <div className="row">
           <a className="btn btn-ghost" href={api.templateUrl}><I.download size={16} /> Shablon (.xlsx)</a>
@@ -535,7 +517,6 @@ export function Summary({ doc, onEdit }: { doc: Doc; onEdit?: (step: number) => 
         <div className="row" style={{ padding: 16, gap: 14 }}>
           <div className="logo-prev" style={{ width: 56, height: 56, fontSize: 14 }}>{t.crest_url ? <img src={t.crest_url} alt="" /> : t.short_name || "?"}</div>
           <div className="grow"><b style={{ fontSize: 18 }}>{t.name || "Nomsiz"}</b><div className="small sec">{[t.short_name, t.city].filter(Boolean).join(" · ")}</div></div>
-          <div className="row" style={{ gap: 6 }}>{t.colors.map((c) => <span key={c} style={{ width: 20, height: 20, borderRadius: 4, background: c, border: "1px solid var(--border)" }} />)}</div>
         </div>
         {t.instagram && <div className="kv"><span>Instagram</span><span>{t.instagram}</span></div>}
       </>)}

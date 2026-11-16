@@ -375,13 +375,16 @@ func checkApplication(a *application, l *regLink, env checkEnv) []appCheck {
 	case env.NamePending != "":
 		add("warn", "team", "team.name", "Shu nomli boshqa ariza ham bor ("+env.NamePending+") — admin hal qiladi", nil)
 	}
+	// the short code is optional; when given it must be valid and free
 	switch {
 	case t.ShortName == "":
-		add("error", "team", "team.short_name", "Qisqa kodni yozing (2–4 lotin harfi)", nil)
 	case !reShort.MatchString(t.ShortName):
 		add("error", "team", "team.short_name", "Qisqa kod — 2–4 lotin harfi", nil)
 	case env.ShortTaken:
 		add("error", "team", "team.short_name", "Bu qisqa kod boshqa jamoada band", nil)
+	}
+	if strings.TrimSpace(t.Instagram) == "" {
+		add("error", "team", "team.instagram", "Jamoaning Instagram sahifasini yozing", nil)
 	}
 	if t.CrestURL == "" {
 		if l == nil || l.RequireLogo {
@@ -402,6 +405,9 @@ func checkApplication(a *application, l *regLink, env checkEnv) []appCheck {
 	} else if env.OTPRequired && a.PhoneVerifiedAt == nil {
 		add("error", "rep", "rep.phone", "Telefon raqamini SMS-kod bilan tasdiqlang", nil)
 	}
+	if strings.TrimSpace(r.Telegram) == "" {
+		add("error", "rep", "rep.telegram", "Telegram manzilini yozing", nil)
+	}
 	if r.Email != "" && !reEmail.MatchString(r.Email) {
 		add("error", "rep", "rep.email", "Email noto‘g‘ri", nil)
 	}
@@ -409,26 +415,25 @@ func checkApplication(a *application, l *regLink, env checkEnv) []appCheck {
 		add("error", "rep", "rep.authorized", "Jamoa nomidan ariza berishga vakolatingizni tasdiqlang", nil)
 	}
 
-	minP, maxP := 8, 20
+	minP, maxP := 8, 21
 	var minAge *int
 	requirePhoto, requireMedical := false, false
 	if l != nil {
 		minP, maxP, minAge, requirePhoto, requireMedical = l.MinPlayers, l.MaxPlayers, l.MinAge, l.RequirePhoto, l.RequireMedical
 	}
-	field, gk, missingMedical := 0, 0, 0
+	gk, missingMedical := 0, 0
 	for _, p := range a.Players {
-		if p.Role != roster.RoleMedia {
-			field++
-		}
 		if p.Role == roster.RoleGoalkeeper {
 			gk++
 		}
 	}
-	if field < minP {
-		add("error", "roster", "roster.min", fmt.Sprintf("Kamida %d o‘yinchi kerak — hozir %d", minP, field), nil)
+	// limits count the whole roster: players, media people and coaching staff
+	total := len(a.Players) + len(a.Staff)
+	if total < minP {
+		add("error", "roster", "roster.min", fmt.Sprintf("Tarkibda kamida %d kishi bo‘lishi kerak (o‘yinchilar, media shaxslar, murabbiylar) — hozir %d", minP, total), nil)
 	}
-	if len(a.Players) > maxP {
-		add("error", "roster", "roster.max", fmt.Sprintf("Ko‘pi bilan %d kishi (o‘yinchilar va media shaxslar) — hozir %d", maxP, len(a.Players)), nil)
+	if total > maxP {
+		add("error", "roster", "roster.max", fmt.Sprintf("Tarkibda ko‘pi bilan %d kishi (o‘yinchilar, media shaxslar, murabbiylar) — hozir %d", maxP, total), nil)
 	}
 	if len(a.Players) > 0 && gk == 0 {
 		add("error", "roster", "roster.gk", "Kamida bitta darvozabon belgilang", nil)

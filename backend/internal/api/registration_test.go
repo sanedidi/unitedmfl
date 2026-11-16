@@ -188,8 +188,8 @@ func TestTeamRegistration(t *testing.T) {
 		{FirstName: "Tursun" + sfx, LastName: "Qodir", JerseyName: "QODIR", BirthDate: "2000-01-01", Number: n(1), KitSize: "L", Role: "player"},
 		{FirstName: "Blogger", LastName: "Media", JerseyName: "BLOG", BirthDate: "1999-05-05", Number: n(99), KitSize: "S", Role: "media", Medical: &roster.File{File: "../../etc/passwd"}},
 	}
-	team := map[string]any{"name": "Reg FC " + sfx, "short_name": "rgf", "colors": []string{"#1d4ed8", "red", "#ffffff"}, "crest_url": logo.URL, "crest_w": 256, "crest_h": 256}
-	if c := pub("PUT", base, map[string]any{"team": team, "rep": map[string]any{"name": "Jasur", "phone": "+998 90 123 45 67", "role": "captain", "authorized": true},
+	team := map[string]any{"name": "Reg FC " + sfx, "short_name": "rgf", "colors": []string{"#1d4ed8", "red", "#ffffff"}, "crest_url": logo.URL, "crest_w": 256, "crest_h": 256, "instagram": "@regfc"}
+	if c := pub("PUT", base, map[string]any{"team": team, "rep": map[string]any{"name": "Jasur", "phone": "+998 90 123 45 67", "telegram": "@jasur", "role": "captain", "authorized": true},
 		"players": players, "staff": []roster.Staff{{FirstName: "Jan", LastName: "Safarov", Role: "head_coach", KitSize: "L"}}}, &v); c != 200 {
 		t.Fatalf("save: %d", c)
 	}

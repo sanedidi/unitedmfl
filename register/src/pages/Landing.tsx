@@ -60,7 +60,7 @@ function LinkLanding({ link }: { link: PublicLink }) {
   }
   const r = link.requirements;
   const reqs = [
-    `${r.min_players} dan ${r.max_players} gacha kishi (o‘yinchilar va media shaxslar)`,
+    `${r.min_players} dan ${r.max_players} gacha kishi (o‘yinchilar, media shaxslar va murabbiylar)`,
     "Har bir o‘yinchi: ism, familiya, tug‘ilgan sana, raqam, futbolkadagi yozuv, forma o‘lchami",
     r.logo ? "Jamoa logotipi (PNG/JPG, kamida 512×512)" : "Jamoa logotipi — ixtiyoriy",
     r.medical ? "Har bir o‘yinchiga tibbiy ruxsatnoma" : "Tibbiy ruxsatnomalar — keyin ham yuklash mumkin",
