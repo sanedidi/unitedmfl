@@ -168,6 +168,8 @@ export type CrudProps<T extends Rec> = {
   sub?: ReactNode;
   resource: string;
   singular: string;
+  /** text of the delete confirmation; defaults to "can't be undone" */
+  deleteText?: string;
   columns: Col<T>[];
   fields: FieldSpec[];
   defaults?: Rec;
@@ -217,7 +219,7 @@ export function CrudPage<T extends Rec>(p: CrudProps<T>) {
   const { data, error, loading, reload } = useLoad(() => api.get<Page<T>>(`${p.resource}?${qs}`), [qs, p.resource, p.reloadKey]);
 
   async function remove(r: T) {
-    if (!(await confirm({ title: `${p.singular}ni o‘chirish`, text: "Bu amalni qaytarib bo‘lmaydi.", ok: "O‘chirish", danger: true }))) return;
+    if (!(await confirm({ title: `${p.singular}ni o‘chirish`, text: p.deleteText || "Bu amalni qaytarib bo‘lmaydi.", ok: "O‘chirish", danger: true }))) return;
     try {
       await api.del(`${p.resource}/${r.id}`);
       toast("O‘chirildi");
@@ -344,7 +346,7 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
     navigate(back);
   }
   async function remove() {
-    if (!item || !(await confirm({ title: `${p.singular}ni o‘chirish`, text: "Bu amalni qaytarib bo‘lmaydi.", ok: "O‘chirish", danger: true }))) return;
+    if (!item || !(await confirm({ title: `${p.singular}ni o‘chirish`, text: p.deleteText || "Bu amalni qaytarib bo‘lmaydi.", ok: "O‘chirish", danger: true }))) return;
     try {
       await api.del(`${p.resource}/${item.id}`);
       toast("O‘chirildi");
