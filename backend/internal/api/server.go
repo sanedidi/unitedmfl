@@ -30,6 +30,7 @@ type Server struct {
 	loginLimiter   *httpx.RateLimiter
 	contactLimiter *httpx.RateLimiter
 	viewLimiter    *httpx.RateLimiter
+	trackLimiter   *httpx.RateLimiter // site visitors: per visitor
 	ai             aiJobs
 	kit            *kitWorker
 
@@ -51,6 +52,7 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 		kit:            &kitWorker{wake: make(chan struct{}, 1), running: map[string]context.CancelFunc{}},
 		contactLimiter: httpx.NewRateLimiter(5, 10*time.Minute),
 		viewLimiter:    httpx.NewRateLimiter(1, 30*time.Minute), // one view per IP per article per 30 min
+		trackLimiter:   httpx.NewRateLimiter(300, 10*time.Minute),
 
 		sms:              newSMSSender(cfg.Env, cfg.EskizURL, cfg.EskizEmail, cfg.EskizPassword, cfg.EskizFrom),
 		regCreateLimiter: httpx.NewRateLimiter(10, 10*time.Minute),
@@ -92,6 +94,7 @@ func (s *Server) Routes() http.Handler {
 		r.Get("/news", s.publicNews)
 		r.Get("/news/{slug}", s.publicNewsItem)
 		r.Post("/news/{slug}/view", s.newsView)
+		r.Post("/track", s.track) // site visitors (views + heartbeat)
 		r.Get("/banners", s.publicBanners)
 		r.Get("/homepage", s.publicHomepage)
 		r.Get("/homepage/preview", s.publicHomepagePreview)
@@ -115,6 +118,8 @@ func (s *Server) Routes() http.Handler {
 			r.Use(s.requireAuth)
 			r.Get("/me", s.me)
 			r.With(s.can(auth.PermDashboard)).Get("/dashboard", s.dashboard)
+			r.With(s.can(auth.PermDashboard)).Get("/visitors", s.visitorStats)
+			r.With(s.can(auth.PermDashboard)).Get("/visitors/online", s.visitorsOnline)
 			r.With(s.can(auth.PermUploads)).Post("/uploads", s.uploadImage)
 			s.mountAI(r) // any signed-in user may generate; connections and settings need PermUsers
 

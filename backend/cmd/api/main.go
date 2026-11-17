@@ -57,6 +57,8 @@ func run() error {
 	}()
 	// Instagram feed for /media (no-op until a token is connected in the admin)
 	go server.RunInstagramSync(ctx)
+	// site visitors: forget quiet tabs, daily totals, raw hits kept 90 days
+	go server.RunVisitStats(ctx)
 
 	handler := server.Routes()
 	// Telegram Live-pult: runs inside the API and calls the same handlers in-process

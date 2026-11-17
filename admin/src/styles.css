@@ -1009,3 +1009,75 @@ video.pt-video { object-fit: contain; cursor: auto; }
   .pt-mode { flex-direction: column; align-items: stretch; }
   .pt-table .pt-c-kind, .pt-table .pt-c-logo { display: none; }
 }
+
+/* ---------- Dashboard: «Sayt tashriflari» + topbar «N onlayn» ---------- */
+.online-pill { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-surface); color: var(--text); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.online-pill:hover { border-color: var(--n-400); }
+.online-pill .dot, .vm-online .dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--n-400); flex-shrink: 0; }
+.online-pill.live .dot, .vm-online .dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.online-pill.live .dot::after, .vm-online .dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--accent); animation: visits-pulse 2s ease-out infinite; }
+@keyframes visits-pulse { from { transform: scale(1); opacity: .6; } to { transform: scale(2.6); opacity: 0; } }
+.visits { margin-bottom: 16px; overflow: hidden; scroll-margin-top: 80px; }
+.visits-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--border-subtle, var(--n-100)); }
+.visits-head h2 { font-size: 18px; font-weight: 600; }
+.visits-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--n-100); }
+.vm { display: flex; flex-direction: column; gap: 4px; padding: 20px; border-right: 1px solid var(--n-100); min-width: 0; }
+.vm:last-child { border-right: 0; }
+.vm-online { background: var(--bg-accent-subtle); }
+.vm-label { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); }
+.vm-val { font-family: var(--font-display); font-weight: 700; font-size: 40px; line-height: 1.1; letter-spacing: -.02em; margin: 4px 0 4px; }
+.vm .up { color: var(--win); }
+.vm .down { color: var(--loss); }
+.visits-lower { display: grid; grid-template-columns: minmax(0, 1fr) 380px; }
+.visits-chart { padding: 20px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.visits-side { padding: 20px; border-left: 1px solid var(--n-100); display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.legend { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.legend i { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.vc-body { display: flex; gap: 8px; flex: 1; min-height: 260px; }
+.vc-y { width: 40px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding-bottom: 22px; margin-top: -7px; }
+.vc-plot-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.vc-plot { position: relative; flex: 1; display: flex; align-items: flex-end; gap: 6px; border-bottom: 1px solid var(--n-200);
+  background: linear-gradient(var(--n-100), var(--n-100)) 0 0 / 100% 1px no-repeat, linear-gradient(var(--n-100), var(--n-100)) 0 50% / 100% 1px no-repeat; }
+.vc-bar { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; padding: 0; border: 0; background: none; cursor: default; min-width: 0; }
+.vc-bar i { display: block; width: 100%; max-width: 56px; min-height: 2px; background: var(--n-900); border-radius: 2px 2px 0 0; transition: opacity .12s; }
+.vc-bar.now i { background: var(--accent); }
+.vc-bar.future i { background: transparent; }
+.vc-plot:hover .vc-bar i { opacity: .45; }
+.vc-plot .vc-bar:hover i, .vc-plot .vc-bar:focus-visible i { opacity: 1; }
+.vc-tip { position: absolute; top: 0; padding: 6px 10px; border-radius: var(--r-sm); background: var(--n-900); color: #fff; font-size: 12px; white-space: nowrap; pointer-events: none; z-index: 2; }
+.vc-x { position: relative; height: 22px; }
+.vc-x span { position: absolute; top: 6px; transform: translateX(-50%); white-space: nowrap; }
+.vc-x .phone { display: none; }
+.vc-x span:first-child { transform: none; left: 0 !important; }
+.vc-x span:last-child { transform: translateX(-100%); left: 100% !important; }
+.vp-row { display: flex; flex-direction: column; gap: 6px; }
+.vp-row a.ellipsis { display: block; }
+.vp-track { height: 4px; border-radius: 999px; background: var(--n-50); overflow: hidden; }
+.vp-track i { display: block; height: 100%; background: var(--accent); }
+.vs-bar { display: flex; gap: 2px; height: 8px; border-radius: 999px; overflow: hidden; }
+.vs-bar i { flex-basis: 0; min-width: 4px; }
+.visits-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; text-align: center; }
+.visits-state .icon { width: 40px; height: 40px; border-radius: var(--r-md); background: var(--n-50); display: grid; place-items: center; color: var(--text-2); margin-bottom: 4px; }
+.visits-state .small { max-width: 420px; }
+.visits-skeleton { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px; }
+.visits-skeleton.short { grid-template-columns: 2fr 1fr; }
+.visits-skeleton i { height: 96px; border-radius: var(--r-sm); background: linear-gradient(90deg, var(--n-50), var(--n-100), var(--n-50)); background-size: 200% 100%; animation: visits-shimmer 1.2s linear infinite; }
+.visits-skeleton.short i { height: 260px; }
+@keyframes visits-shimmer { to { background-position: -200% 0; } }
+@media (max-width: 1100px) {
+  .visits-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vm:nth-child(2) { border-right: 0; }
+  .vm:nth-child(-n+2) { border-bottom: 1px solid var(--n-100); }
+  .visits-lower { grid-template-columns: minmax(0, 1fr); }
+  .visits-side { border-left: 0; border-top: 1px solid var(--n-100); }
+}
+@media (max-width: 520px) {
+  .vm { padding: 16px; }
+  .vm-val { font-size: 30px; }
+  .vc-plot { gap: 2px; }
+  .vc-x .desk { display: none; }
+  .vc-x .phone { display: inline; }
+  .vc-tip { white-space: normal; max-width: 220px; }
+  .online-pill { padding: 0 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .online-pill .dot::after, .vm-online .dot::after { display: none; } }

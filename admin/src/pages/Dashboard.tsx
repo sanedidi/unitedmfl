@@ -8,6 +8,7 @@ import { PageHead } from "@/components/Layout";
 import { Empty, ErrorBox, Loading, Crest } from "@/components/ui";
 import { I } from "@/components/Icons";
 import { StageTag, StatusBadge } from "./Matches";
+import { SiteVisits } from "@/components/SiteVisits";
 
 type Dash = {
   kpi: { matches_total: number; matches_planned: number | null; results_entered: number; teams: number; news_published: number; news_drafts: number; requests_new: number; protocols_review: number };
@@ -39,6 +40,7 @@ export function DashboardPage() {
         <Kpi icon={<I.news />} label="Yangiliklar" value={k.news_published} sub={k.news_drafts ? `${k.news_drafts} ta qoralama` : undefined} to="/news" />
         <Kpi icon={<I.inbox />} label="Yangi murojaatlar" value={k.requests_new} sub={k.protocols_review ? `${k.protocols_review} protokol tekshiruvda` : undefined} to={k.protocols_review ? "/protocols" : "/requests"} />
       </div>
+      <SiteVisits />
       <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1fr) 320px", alignItems: "start" }} data-split>
         <div className="stack">
           <div className="card">

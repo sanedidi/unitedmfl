@@ -91,6 +91,10 @@ func Logger(next http.Handler) http.Handler {
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w, status: 200}
 		next.ServeHTTP(sw, r)
+		// site visit beacons arrive every minute from every open tab
+		if r.URL.Path == "/api/v1/track" && sw.status < 400 {
+			return
+		}
 		slog.Info("http", "method", r.Method, "path", r.URL.Path, "status", sw.status, "ms", time.Since(start).Milliseconds())
 	})
 }

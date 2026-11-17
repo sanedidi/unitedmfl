@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { JsonLd } from "@/components/JsonLd";
 import { Intro, INTRO_BOOT } from "@/components/motion/Intro";
 import { PageTransition } from "@/components/motion/PageTransition";
+import { SiteTracker } from "@/components/SiteTracker";
 import nextDynamic from "next/dynamic";
 import { archivo, inter } from "@/lib/fonts";
 import { DEFAULT_OG, ORG_ID, SITE_NAME, SITE_URL } from "@/lib/seo";
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PageTransition />
         <JsonLd data={siteLd} />
         <Analytics />
+        <SiteTracker />
       </body>
     </html>
   );

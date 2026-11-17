@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { ROLE_LABEL, initials } from "@/lib/format";
 import { Logo } from "./Logo";
+import { OnlinePill } from "./SiteVisits";
 
 type Item = { to: string; label: string; icon: ReactNode; perm: string; count?: "protocols" | "requests" | "applications" };
 const NAV: { group?: string; items: Item[] }[] = [
@@ -92,6 +93,7 @@ export function Layout() {
           <button className="btn btn-ghost btn-icon menu-toggle" aria-label="Menyu" onClick={() => setOpen(true)}><I.menu /></button>
           <Logo size={30} className="mobile-brand" />
           <div className="grow" />
+          {can("dashboard") && <OnlinePill />}
           <span className="env hide-mobile">Mavsum 2026</span>
           <a className="btn btn-sm" href={SITE_URL} target="_blank" rel="noopener noreferrer"><I.globe size={16} /> <span className="hide-mobile">Saytni ochish</span></a>
         </header>
