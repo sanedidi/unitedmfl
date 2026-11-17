@@ -411,7 +411,7 @@ function AiGenerator({ bannerId, title, layout, banner, onApply }: { bannerId: n
           </div>
           <AssetsBlock withAssets={withAssets} setWithAssets={setWithAssets} assets={assets} setAssets={setAssets} max={max}
             onLogo={() => addAsset(logoAsset())} teams={teams} onCrest={(n, u) => addAsset(crestAsset(n, u))} onUpload={() => fileRef.current?.click()} />
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => uploadAsset(e.target.files?.[0])} />
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" hidden onChange={(e) => uploadAsset(e.target.files?.[0])} />
           <FormatsBlock settings={settings} enabled={enabledFormats} formats={formats} setFormats={setFormats} />
           <SettingsSummary settings={settings} provider={active?.provider} model={model} canEdit={can("users")} />
           {err && <div className="alert danger"><I.alert size={16} /><div>{err}</div></div>}

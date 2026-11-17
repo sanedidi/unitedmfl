@@ -217,21 +217,31 @@ func (s *Server) uploadPartnerLogo(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(string(data), "RIFF") && len(data) >= 12 && string(data[8:12]) == "WEBP" {
 		mime = "image/webp"
 	}
-	ext, ok := map[string]string{"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}[mime]
-	if !ok {
+	var name string
+	size := len(data)
+	if _, ok := map[string]bool{"image/png": true, "image/jpeg": true, "image/webp": true}[mime]; ok {
+		// raster logos are stored as WebP (PNG → lossless), see webp.go
+		if name, err = s.storeImageBytes(r.Context(), data, ""); err != nil || name == "" {
+			httpx.Fail(w, r, httpx.BadRequest("Logotipni o‘qib bo‘lmadi — fayl buzilgan"))
+			return
+		}
+		mime = "image/" + strings.TrimPrefix(filepath.Ext(name), ".")
+		if st, err := os.Stat(filepath.Join(s.imagesDir(), name)); err == nil {
+			size = int(st.Size())
+		}
+	} else {
 		if !checkSVG(data) {
 			httpx.Fail(w, r, httpx.BadRequest("Faqat SVG, PNG, JPG yoki WebP logotip yuklash mumkin (SVG ichida skript bo‘lmasin)"))
 			return
 		}
-		ext, mime = ".svg", "image/svg+xml"
-	}
-	name := randomName(ext)
-	if err := os.WriteFile(filepath.Join(s.imagesDir(), name), data, 0o644); err != nil {
-		httpx.Fail(w, r, err)
-		return
+		mime, name = "image/svg+xml", randomName(".svg")
+		if err := os.WriteFile(filepath.Join(s.imagesDir(), name), data, 0o644); err != nil {
+			httpx.Fail(w, r, err)
+			return
+		}
 	}
 	url := s.Cfg.PublicBaseURL + "/uploads/images/" + name
 	orig := sanitizeFilename(hdr.Filename)
 	s.audit(r, "upload", "partner_logo", 0, map[string]any{"name": orig, "url": url})
-	httpx.JSON(w, http.StatusCreated, map[string]any{"url": url, "size": len(data), "mime": mime, "name": orig})
+	httpx.JSON(w, http.StatusCreated, map[string]any{"url": url, "size": size, "mime": mime, "name": orig})
 }

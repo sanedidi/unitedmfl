@@ -294,7 +294,7 @@ export function VideoCoverCard({ c }: { c: CardCtx }) {
           JPG, PNG yoki WebP · 16:9 (masalan 1280×720) · {MAX_IMAGE_MB} MB gacha.{" "}
           {values.source === "link" ? "Bo‘sh bo‘lsa YouTube muqovasi olinadi." : "Bo‘sh bo‘lsa video yuklanganda kadr olinadi; «Shu kadrni muqova qilish» bilan boshqa kadrni tanlash mumkin."}
         </span>
-        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={(e) => pick(e.target.files?.[0])} />
+        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif" hidden onChange={(e) => pick(e.target.files?.[0])} />
       </div>
     </div>
   );

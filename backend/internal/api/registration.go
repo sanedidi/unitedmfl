@@ -1085,11 +1085,13 @@ func (s *Server) regUpload(w http.ResponseWriter, r *http.Request) {
 	var dir, ext string
 	switch kind {
 	case "logo", "photo":
-		if mime != "image/jpeg" && mime != "image/png" && mime != "image/webp" {
+		img := photoKind(head[:n])
+		if img != "jpg" && img != "png" && img != "webp" && img != "heic" {
 			httpx.Fail(w, r, httpx.BadRequest("Faqat JPG, PNG yoki WebP rasm"))
 			return
 		}
-		dir, ext = s.imagesDir(), imageTypes[mime]
+		s.regUploadImage(w, r, io.MultiReader(bytes.NewReader(head[:n]), file), img)
+		return
 	case "medical":
 		var ok bool
 		if ext, ok = medicalTypes[mime]; !ok {
@@ -1122,11 +1124,31 @@ func (s *Server) regUpload(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, r, httpx.BadRequest("Fayl 10 MB dan katta"))
 		return
 	}
-	if kind == "medical" {
-		httpx.JSON(w, http.StatusCreated, roster.File{File: name, Name: clip(sanitizeFilename(hdr.Filename), 120)})
+	httpx.JSON(w, http.StatusCreated, roster.File{File: name, Name: clip(sanitizeFilename(hdr.Filename), 120)})
+}
+
+// regUploadImage stores a team logo or player photo from the registration site as WebP.
+func (s *Server) regUploadImage(w http.ResponseWriter, r *http.Request, body io.Reader, kind string) {
+	tmp, err := os.CreateTemp(s.imagesDir(), tmpUpPrefix+"*")
+	if err != nil {
+		httpx.Fail(w, r, err)
 		return
 	}
-	wd, ht := imageSize(full, mime)
+	_, err = io.Copy(tmp, body)
+	tmp.Close()
+	if err != nil {
+		os.Remove(tmp.Name())
+		httpx.Fail(w, r, httpx.BadRequest("Fayl 10 MB dan katta"))
+		return
+	}
+	name, err := s.storeImage(r.Context(), tmp.Name(), kind, "")
+	if err != nil {
+		slog.Warn("registration image convert", "err", err)
+		httpx.Fail(w, r, httpx.BadRequest("Rasmni o‘qib bo‘lmadi — fayl buzilgan yoki format qo‘llab-quvvatlanmaydi"))
+		return
+	}
+	full := filepath.Join(s.imagesDir(), name)
+	wd, ht := imageSize(full, "image/"+strings.TrimPrefix(filepath.Ext(name), "."))
 	httpx.JSON(w, http.StatusCreated, map[string]any{"url": s.Cfg.PublicBaseURL + "/uploads/images/" + name, "width": wd, "height": ht})
 }
 
@@ -1192,18 +1214,19 @@ func (s *Server) regImport(w http.ResponseWriter, r *http.Request) {
 	}
 	out := map[string]any{"import": imp}
 	for _, img := range wb.Images {
-		mime := sniff(img.Data[:min(len(img.Data), 512)])
-		ext, ok := map[string]string{"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}[mime]
-		if !ok {
+		switch photoKind(img.Data[:min(len(img.Data), 512)]) {
+		case "jpg", "png", "webp":
+		default:
 			continue
 		}
-		name := randomName(ext)
-		full := filepath.Join(s.imagesDir(), name)
-		if os.WriteFile(full, img.Data, 0o644) == nil {
-			wd, ht := imageSize(full, mime)
-			out["logo"] = map[string]any{"url": s.Cfg.PublicBaseURL + "/uploads/images/" + name, "width": wd, "height": ht}
-			break
+		name, err := s.storeImageBytes(r.Context(), img.Data, "")
+		if err != nil || name == "" {
+			continue
 		}
+		full := filepath.Join(s.imagesDir(), name)
+		wd, ht := imageSize(full, "image/"+strings.TrimPrefix(filepath.Ext(name), "."))
+		out["logo"] = map[string]any{"url": s.Cfg.PublicBaseURL + "/uploads/images/" + name, "width": wd, "height": ht}
+		break
 	}
 	httpx.JSON(w, 200, out)
 }

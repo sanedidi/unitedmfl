@@ -10,6 +10,7 @@ import { ResultRow } from "@/components/Match";
 import { ChevronRight, Instagram, Telegram } from "@/components/Icons";
 import { JsonLd } from "@/components/JsonLd";
 import { abs, breadcrumbLd, clip, orgRef, pageMeta, playerPath, teamPath } from "@/lib/seo";
+import { sized } from "@/lib/img";
 
 type P = Promise<{ slug: string }>;
 const load = cache(async (slug: string) => apiOrNull<TeamDetail>(`/teams/${encodeURIComponent(slug)}`));
@@ -97,7 +98,7 @@ export default async function TeamPage({ params }: { params: P }) {
                   {g.items.map((p) => (
                     <Link key={p.id} href={playerPath(p)} className="card card-hover player-tile">
                       <span className="player-num">{p.number ?? "–"}</span>
-                      <span className="avatar">{p.photo_url ? <img src={p.photo_url} alt="" /> : p.full_name.slice(0, 1)}</span>
+                      <span className="avatar">{p.photo_url ? <img {...sized(p.photo_url, 64)} alt="" loading="lazy" decoding="async" /> : p.full_name.slice(0, 1)}</span>
                       <b style={{ fontSize: 14 }}>{p.full_name}</b>
                     </Link>
                   ))}

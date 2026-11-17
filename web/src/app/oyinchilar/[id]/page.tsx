@@ -9,6 +9,7 @@ import type { PlayerDetail } from "@/lib/types";
 import { ChevronRight, Instagram } from "@/components/Icons";
 import { JsonLd } from "@/components/JsonLd";
 import { ResultRow } from "@/components/Match";
+import { sized } from "@/lib/img";
 
 type P = Promise<{ id: string }>;
 const load = cache(async (param: string) => {
@@ -57,7 +58,7 @@ export default async function PlayerPage({ params }: { params: P }) {
         <div className="container">
           <nav className="crumbs" style={{ paddingTop: 0 }} aria-label="Breadcrumb"><Link href="/oyinchilar">O‘yinchilar</Link><ChevronRight size={12} />{team && <><Link href={teamPath(team)}>{team.name}</Link><ChevronRight size={12} /></>}<b>{p.full_name}</b></nav>
           <div className="row" style={{ gap: 28, flexWrap: "wrap" }}>
-            <span className="avatar" style={{ width: 140, height: 140, fontSize: 48 }}>{p.photo_url ? <img src={p.photo_url} alt={p.full_name} width={140} height={140} /> : p.full_name.slice(0, 1)}</span>
+            <span className="avatar" style={{ width: 140, height: 140, fontSize: 48 }}>{p.photo_url ? <img {...sized(p.photo_url, 140)} alt={p.full_name} width={140} height={140} /> : p.full_name.slice(0, 1)}</span>
             <div className="grow">
               <div className="overline">{POSITION_LABEL[p.position] || "O‘yinchi"}{p.number != null ? ` · №${p.number}` : ""}</div>
               <h1 className="h1">{p.full_name}</h1>

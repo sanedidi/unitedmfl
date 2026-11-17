@@ -102,7 +102,14 @@ func (s *Server) download(ctx context.Context, client *http.Client, raw string) 
 		}
 		return "", err
 	}
-	if err := os.Rename(tmp, filepath.Join(s.imagesDir(), name)); err != nil {
+	// stored as WebP like every other image (see webp.go)
+	kind := sniffFile(tmp)
+	if kind == "" {
+		os.Remove(tmp)
+		return "", fmt.Errorf("unsupported image %s", raw)
+	}
+	name, err = s.storeImage(ctx, tmp, kind, "")
+	if err != nil {
 		return "", err
 	}
 	return s.Cfg.PublicBaseURL + "/uploads/images/" + name, nil

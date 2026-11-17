@@ -5,6 +5,7 @@ import { FileVideoCard } from "./VideoPlayer";
 import { Img } from "./Img";
 import { newsPath, productPath } from "@/lib/seo";
 import type { NewsItem, Product, Video } from "@/lib/types";
+import { sized } from "@/lib/img";
 
 export function NewsCard({ item, feature = false, compact = false }: { item: NewsItem; feature?: boolean; compact?: boolean }) {
   const cover = (sizes: string) => (
@@ -69,7 +70,7 @@ export function VideoCard({ v }: { v: Video }) {
   return (
     <a href={v.url} target="_blank" rel="noopener noreferrer" className="video-card">
       <div className="video-thumb">
-        {thumb && <img src={thumb} alt="" loading="lazy" decoding="async" width={480} height={360} />}
+        {thumb && <img {...sized(thumb, 480)} alt="" loading="lazy" decoding="async" width={480} height={360} />}
         <span className="play"><Play size={20} /></span>
       </div>
       <div className="news-body">

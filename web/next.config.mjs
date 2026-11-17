@@ -8,7 +8,9 @@ const nextConfig = {
   // fonts read at runtime by the Open Graph image routes
   outputFileTracingIncludes: { "/**": ["./src/assets/og/**"] },
   images: {
-    formats: ["image/avif", "image/webp"],
+    // WebP only: AVIF encoding is several times slower and on our VPS the
+    // first visitor waited seconds for every picture after each deploy.
+    formats: ["image/webp"],
     deviceSizes: [390, 640, 828, 1080, 1440, 1920],
     imageSizes: [64, 128, 256, 384],
     minimumCacheTTL: 2592000,

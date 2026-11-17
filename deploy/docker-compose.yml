@@ -104,6 +104,9 @@ services:
       GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
       YANDEX_VERIFICATION: ${YANDEX_VERIFICATION:-}
       BING_SITE_VERIFICATION: ${BING_SITE_VERIFICATION:-}
+    volumes:
+      # resized images (next/image): kept across deploys, so they are not rebuilt on every visit after an update
+      - web_cache:/app/.next/cache
 
   proxy:
     build:
@@ -134,5 +137,6 @@ services:
 volumes:
   db:
   uploads:
+  web_cache:
   caddy_data:
   caddy_config:

@@ -3,13 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Close, Download, LinkIcon } from "./Icons";
 import type { MatchPhoto } from "@/lib/types";
+import { responsive } from "@/lib/img";
 
 /** One photo tile: 4:3 thumbnail, opens the viewer. */
 function Tile({ p, onOpen, more, big }: { p: MatchPhoto; onOpen: () => void; more?: number; big?: boolean }) {
   return (
     <button type="button" className={`ph-tile${big ? " big" : ""}`} onClick={onOpen} aria-label={more ? `Yana ${more} ta foto` : p.caption || "Fotoni ochish"}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={big ? p.url : p.thumb_url} alt={p.caption} loading="lazy" decoding="async" width={p.width || undefined} height={p.height || undefined} />
+      <img {...(big ? responsive(p.url, "(max-width: 720px) 100vw, 66vw") : { src: p.thumb_url })} alt={p.caption} loading="lazy" decoding="async" width={p.width || undefined} height={p.height || undefined} />
       {more ? <span className="ph-more">+{more}</span> : null}
     </button>
   );

@@ -10,6 +10,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { Img } from "@/components/Img";
 import { cache } from "react";
 import { abs, breadcrumbLd, clip, orgRef, pageMeta, productPath } from "@/lib/seo";
+import { sized } from "@/lib/img";
 
 type Variant = { id: number; size: string; sku: string; stock: number | null; available: boolean };
 type P = Promise<{ slug: string }>;
@@ -55,7 +56,7 @@ export default async function ProductPage({ params }: { params: P }) {
             {p.images?.[0] ? <Img src={p.images[0]} alt={p.name} sizes="(max-width: 720px) 100vw, 620px" priority /> : <div className="ph" style={{ fontSize: 64 }} aria-hidden>MFL</div>}
           </div>
           {p.images?.length > 1 && (
-            <div className="grid grid-4" style={{ gap: 10 }}>{p.images.slice(1, 5).map((src) => <img key={src} src={src} alt="" style={{ borderRadius: 12, aspectRatio: "1", objectFit: "cover" }} />)}</div>
+            <div className="grid grid-4" style={{ gap: 10 }}>{p.images.slice(1, 5).map((src) => <img key={src} {...sized(src, 384)} alt="" loading="lazy" decoding="async" style={{ borderRadius: 12, aspectRatio: "1", objectFit: "cover" }} />)}</div>
           )}
         </div>
         <div className="stack" style={{ gap: 20 }}>

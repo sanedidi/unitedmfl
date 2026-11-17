@@ -7,6 +7,7 @@ import { matchMinute, POSITION_LABEL } from "@/lib/format";
 import { minutesPlayed, roleText, slotPoint, surname, teamLineup, type LPlayer, type Side, type TeamLineup } from "@/lib/lineup";
 import { playerPath } from "@/lib/seo";
 import type { MatchDetail, MatchEvent, TeamRef } from "@/lib/types";
+import { sized } from "@/lib/img";
 
 type View = "both" | Side;
 type Mode = "start" | "current" | "bench";
@@ -45,7 +46,7 @@ function EventChips({ p, showIn = true }: { p: LPlayer; showIn?: boolean }) {
 
 function Avatar({ p, size = 32 }: { p: LPlayer; size?: number }) {
   return p.photo_url
-    ? <img className="lu-ava" src={p.photo_url} alt="" width={size} height={size} loading="lazy" style={{ width: size, height: size }} />
+    ? <img className="lu-ava" {...sized(p.photo_url, size)} alt="" width={size} height={size} loading="lazy" style={{ width: size, height: size }} />
     : <span className="lu-ava" style={{ width: size, height: size }} aria-hidden><svg viewBox="0 0 24 24" width={size * 0.5} height={size * 0.5} fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0116 0" /></svg></span>;
 }
 

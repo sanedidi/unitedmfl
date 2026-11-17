@@ -6,6 +6,7 @@ import type { Player, Team } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { Search } from "@/components/Icons";
 import { pageMeta, playerPath } from "@/lib/seo";
+import { sized } from "@/lib/img";
 
 export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
   const sp = await searchParams;
@@ -67,7 +68,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: SP }
             {players.map((p) => (
               <Link key={p.id} href={playerPath(p)} className="card card-hover player-tile">
                 <span className="player-num">{p.number ?? "–"}</span>
-                <span className="avatar">{p.photo_url ? <img src={p.photo_url} alt="" /> : p.full_name.slice(0, 1)}</span>
+                <span className="avatar">{p.photo_url ? <img {...sized(p.photo_url, 64)} alt="" loading="lazy" decoding="async" /> : p.full_name.slice(0, 1)}</span>
                 <span className="grow">
                   <b style={{ display: "block", fontSize: 14 }}>{p.full_name}</b>
                   <small className="muted">{p.team?.name || "—"} · {POSITION_LABEL[p.position] || p.position || "—"}</small>

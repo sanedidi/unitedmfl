@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Close, Play } from "./Icons";
 import { fmtDate } from "@/lib/format";
 import type { Video } from "@/lib/types";
+import { sized } from "@/lib/img";
 
 /** Card of an uploaded video file: opens our own player instead of leaving the site. */
 export function FileVideoCard({ v }: { v: Video }) {
@@ -13,7 +14,7 @@ export function FileVideoCard({ v }: { v: Video }) {
       <button type="button" className="video-card" onClick={() => setOpen(true)} aria-haspopup="dialog">
         <div className="video-thumb">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {v.thumbnail_url && <img src={v.thumbnail_url} alt="" loading="lazy" decoding="async" width={480} height={270} />}
+          {v.thumbnail_url && <img {...sized(v.thumbnail_url, 480)} alt="" loading="lazy" decoding="async" width={480} height={270} />}
           <span className="play"><Play size={20} /></span>
         </div>
         <div className="news-body">

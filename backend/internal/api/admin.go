@@ -1,11 +1,14 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -401,43 +404,49 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 
 var imageTypes = map[string]string{"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}
 
-// uploadImage stores an image and returns its public URL.
+// uploadImage stores an image as WebP (see webp.go) and returns its public URL.
 func (s *Server) uploadImage(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, imageMaxMB<<20)
 	file, hdr, err := r.FormFile("file")
 	if err != nil {
-		httpx.Fail(w, r, httpx.BadRequest("«file» maydoni topilmadi yoki fayl 10 MB dan katta"))
+		httpx.Fail(w, r, httpx.BadRequest(fmt.Sprintf("«file» maydoni topilmadi yoki fayl %d MB dan katta", imageMaxMB)))
 		return
 	}
 	defer file.Close()
 	head := make([]byte, 512)
 	n, _ := io.ReadFull(file, head)
-	mime := http.DetectContentType(head[:n])
-	if strings.HasPrefix(string(head[:n]), "RIFF") && strings.Contains(string(head[:min(n, 16)]), "WEBP") {
-		mime = "image/webp"
-	}
-	ext, ok := imageTypes[mime]
-	if !ok {
-		httpx.Fail(w, r, httpx.BadRequest("Faqat JPG, PNG, WebP yoki GIF"))
+	kind := photoKind(head[:n])
+	if kind == "" {
+		httpx.Fail(w, r, httpx.BadRequest("Faqat JPG, PNG, WebP, GIF yoki HEIC"))
 		return
 	}
-	name := randomName(ext)
-	dst, err := os.Create(filepath.Join(s.imagesDir(), name))
+	tmp, err := os.CreateTemp(s.imagesDir(), tmpUpPrefix+"*")
 	if err != nil {
 		httpx.Fail(w, r, err)
 		return
 	}
-	defer dst.Close()
-	if _, err := dst.Write(head[:n]); err != nil {
-		httpx.Fail(w, r, err)
+	orig, err := io.Copy(tmp, io.MultiReader(bytes.NewReader(head[:n]), file))
+	tmp.Close()
+	if err != nil {
+		os.Remove(tmp.Name())
+		httpx.Fail(w, r, httpx.BadRequest(fmt.Sprintf("Fayl %d MB dan katta", imageMaxMB)))
 		return
 	}
-	size, err := io.Copy(dst, file)
+	name, err := s.storeImage(r.Context(), tmp.Name(), kind, "")
 	if err != nil {
-		httpx.Fail(w, r, err)
+		slog.Warn("image convert", "name", hdr.Filename, "err", err)
+		httpx.Fail(w, r, httpx.BadRequest("Rasmni WebP ga o‘tkazib bo‘lmadi — fayl buzilgan yoki format qo‘llab-quvvatlanmaydi"))
 		return
+	}
+	var size int64
+	if st, err := os.Stat(filepath.Join(s.imagesDir(), name)); err == nil {
+		size = st.Size()
+	}
+	mime := "image/webp"
+	if !strings.HasSuffix(name, ".webp") {
+		mime = "image/" + strings.TrimPrefix(filepath.Ext(name), ".")
 	}
 	url := s.Cfg.PublicBaseURL + "/uploads/images/" + name
-	s.audit(r, "upload", "image", 0, map[string]any{"name": sanitizeFilename(hdr.Filename), "url": url})
-	httpx.JSON(w, http.StatusCreated, map[string]any{"url": url, "size": size + int64(n), "mime": mime})
+	s.audit(r, "upload", "image", 0, map[string]any{"name": sanitizeFilename(hdr.Filename), "url": url, "bytes": size, "original_bytes": orig})
+	httpx.JSON(w, http.StatusCreated, map[string]any{"url": url, "size": size, "original_size": orig, "mime": mime})
 }

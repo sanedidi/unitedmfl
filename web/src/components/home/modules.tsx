@@ -14,6 +14,7 @@ import { Img } from "@/components/Img";
 import { ArrowRight, Instagram, Play, Telegram, Youtube } from "@/components/Icons";
 import { PartnerLink } from "@/components/Partners";
 import { PARTNER_CONTACT, partnerGroups } from "@/lib/partners";
+import { sized, responsive } from "@/lib/img";
 
 /** Everything the homepage modules may need, fetched once per request. */
 export type HomeData = {
@@ -315,7 +316,7 @@ function Social({ b, d }: Ctx) {
             <li key={p.id}>
               <a className="ig-tile" href={p.permalink} target="_blank" rel="noopener noreferrer" aria-label={p.caption.slice(0, 80) || "Instagram"}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.image_url} alt="" loading="lazy" decoding="async" />
+                <img {...sized(p.image_url, 384)} alt="" loading="lazy" decoding="async" />
                 {(p.media_type === "VIDEO" || p.is_reel) && <span className="ig-mark"><Play size={14} /></span>}
               </a>
             </li>
@@ -404,7 +405,7 @@ function Partners({ b, d }: Ctx) {
                 {g.list.map((p) => (
                   <PartnerLink key={p.id} p={p} className="ptile">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {p.logo_url ? <img src={p.logo_url} alt={p.name} loading="lazy" decoding="async" /> : <span className="ptile-name">{p.name}</span>}
+                    {p.logo_url ? <img {...sized(p.logo_url, 256)} alt={p.name} loading="lazy" decoding="async" /> : <span className="ptile-name">{p.name}</span>}
                     {p.video_url && <i className="ptile-play" aria-hidden><Play size={g.kind === "main" ? 14 : 12} /></i>}
                   </PartnerLink>
                 ))}
@@ -429,9 +430,9 @@ function PromoBanner({ b }: Ctx) {
     <div className={`hp-banner${image ? "" : " plain"}${b.variant === "compact" ? " compact" : ""}`}>
       {image && (
         <picture className="hp-banner-bg">
-          {imageM && <source media="(max-width: 720px)" srcSet={imageM} />}
+          {imageM && <source media="(max-width: 720px)" srcSet={responsive(imageM, "100vw").srcSet || imageM} sizes="100vw" />}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={image} alt="" loading="lazy" decoding="async" />
+          <img {...responsive(image, "(max-width: 1280px) 100vw, 1280px")} alt="" loading="lazy" decoding="async" />
         </picture>
       )}
       <div className="hp-banner-copy">

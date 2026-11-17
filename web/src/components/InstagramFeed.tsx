@@ -1,6 +1,7 @@
 import type { InstagramFeed as Feed, InstagramPost } from "@/lib/types";
 import { Instagram, Play } from "./Icons";
 import { fmtDate } from "@/lib/format";
+import { sized } from "@/lib/img";
 
 /** Carousel marker: two stacked squares. */
 const Stack = () => (
@@ -44,7 +45,7 @@ export function InstagramFeed({ feed }: { feed: Feed }) {
             <li key={p.id}>
               <a className="ig-tile" href={p.permalink} target="_blank" rel="noopener noreferrer"
                  aria-label={`${label(p)}, ${fmtDate(p.posted_at)}${text ? `: ${text}` : ""} — Instagram’da ochish`}>
-                <img src={p.image_url} alt="" loading="lazy" decoding="async" width={540} height={540} />
+                <img {...sized(p.image_url, 384)} alt="" loading="lazy" decoding="async" width={540} height={540} />
                 {video && <span className="ig-mark"><Play size={14} /></span>}
                 {!video && p.media_type === "CAROUSEL_ALBUM" && <span className="ig-mark"><Stack /></span>}
                 <span className="ig-over">

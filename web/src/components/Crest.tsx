@@ -1,5 +1,6 @@
 import { initials } from "@/lib/format";
 import type { TeamRef } from "@/lib/types";
+import { sized } from "@/lib/img";
 
 /** Team crest: the uploaded emblem, or a neutral circle with the team code (no invented club colours). */
 export function Crest({ team, size = 40, unknownLabel = "?" }: { team: Partial<TeamRef> & { id?: number; name?: string } | null; size?: number; unknownLabel?: string }) {
@@ -13,7 +14,7 @@ export function Crest({ team, size = 40, unknownLabel = "?" }: { team: Partial<T
   }
   return (
     <span className="crest" style={{ width: size, height: size, fontSize: fs }} aria-hidden>
-      {team.crest_url ? <img src={team.crest_url} alt="" /> : initials(team.name, team.short_name)}
+      {team.crest_url ? <img {...sized(team.crest_url, size)} alt="" loading="lazy" decoding="async" /> : initials(team.name, team.short_name)}
     </span>
   );
 }

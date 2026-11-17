@@ -49,8 +49,12 @@ func run() error {
 	server.ResetStaleAIJobs(ctx)
 	// dresses players in their team kit (AI service), two at a time
 	server.StartKitWorker(ctx)
-	// copy hero images from the old site into /uploads (no-op once done)
-	go server.MirrorRemoteImages(ctx)
+	// copy hero images from the old site into /uploads (no-op once done), then
+	// turn images uploaded before WebP conversion into WebP (no-op once done)
+	go func() {
+		server.MirrorRemoteImages(ctx)
+		server.ConvertLegacyImages(ctx)
+	}()
 	// Instagram feed for /media (no-op until a token is connected in the admin)
 	go server.RunInstagramSync(ctx)
 

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { uploadPath } from "@/lib/img";
 
 type Props = { src: string; alt: string; sizes: string; priority?: boolean; className?: string; width?: number; height?: number; fill?: boolean };
 
@@ -6,8 +7,10 @@ type Props = { src: string; alt: string; sizes: string; priority?: boolean; clas
  * Uploaded images (/uploads/...) go through next/image: resized per device,
  * served as AVIF/WebP and cached. Anything else falls back to a plain <img>.
  */
-export function Img({ src, alt, sizes, priority, className, width, height, fill = true }: Props) {
-  if (src.startsWith("/uploads/")) {
+export function Img({ src: raw, alt, sizes, priority, className, width, height, fill = true }: Props) {
+  const local = uploadPath(raw);
+  const src = local || raw;
+  if (local) {
     return fill ? (
       <Image src={src} alt={alt} fill sizes={sizes} priority={priority} className={className} style={{ objectFit: "cover" }} />
     ) : (

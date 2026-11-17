@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { ArrowRight, Close, Play } from "./Icons";
 import type { Partner } from "@/lib/types";
 import { partnerHost, partnerKindLabel } from "@/lib/partners";
+import { sized } from "@/lib/img";
 
 const fmtClock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
@@ -70,7 +71,7 @@ export function PartnerVideoModal({ p, onClose }: { p: Partner; onClose: () => v
           <div className="pv-brand">
             <span className="pv-chip">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {p.logo_url ? <img src={p.logo_url} alt="" /> : p.name}
+              {p.logo_url ? <img {...sized(p.logo_url, 256)} alt="" /> : p.name}
             </span>
             <div className="pv-title"><b>{p.name}</b><span>{partnerKindLabel(p.kind)}</span></div>
           </div>

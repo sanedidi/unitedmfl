@@ -6,6 +6,7 @@ import type { Partner, PartnersData } from "@/lib/types";
 import { fmtVideoLength, PARTNER_CONTACT, PARTNER_KINDS, partnerGroups, partnerHost, partnerKindLabel } from "@/lib/partners";
 import { PartnerLink, PartnerVideoButton } from "@/components/Partners";
 import { ArrowRight, Play } from "@/components/Icons";
+import { sized } from "@/lib/img";
 
 type SP = Promise<{ tur?: string }>;
 
@@ -32,7 +33,7 @@ function Featured({ p }: { p: Partner }) {
     <article className="pfeat">
       <PartnerLink p={p} className="pfeat-logo">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {p.logo_url ? <img src={p.logo_url} alt={p.name} decoding="async" /> : <span className="pfeat-name">{p.name}</span>}
+        {p.logo_url ? <img {...sized(p.logo_url, 384)} alt={p.name} decoding="async" /> : <span className="pfeat-name">{p.name}</span>}
         {p.video_url && <i className="ptile-play" aria-hidden><Play size={20} /></i>}
       </PartnerLink>
       <div className="pfeat-info">
@@ -56,7 +57,7 @@ function Card({ p }: { p: Partner }) {
     <article className="pcard">
       <PartnerLink p={p} className="pcard-logo">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {p.logo_url ? <img src={p.logo_url} alt={p.name} loading="lazy" decoding="async" /> : <span className="pcard-name">{p.name}</span>}
+        {p.logo_url ? <img {...sized(p.logo_url, 256)} alt={p.name} loading="lazy" decoding="async" /> : <span className="pcard-name">{p.name}</span>}
         {p.video_url && <i className="ptile-play" aria-hidden><Play size={14} /></i>}
       </PartnerLink>
       <div className="pcard-info">

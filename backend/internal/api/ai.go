@@ -425,14 +425,17 @@ type aiImagesResult struct {
 	Warnings []string `json:"warnings"`
 }
 
+// saveAIImage stores a generated image as WebP (see webp.go).
 func (s *Server) saveAIImage(mime string, data []byte) (string, error) {
-	ext, ok := imageTypes[mime]
-	if !ok {
+	if _, ok := imageTypes[mime]; !ok {
 		return "", fmt.Errorf("format %s", mime)
 	}
-	name := "ai-" + randomName(ext)
-	if err := os.WriteFile(filepath.Join(s.imagesDir(), name), data, 0o644); err != nil {
+	name, err := s.storeImageBytes(context.Background(), data, "ai-")
+	if err != nil {
 		return "", err
+	}
+	if name == "" {
+		return "", fmt.Errorf("format %s", mime)
 	}
 	return s.Cfg.PublicBaseURL + "/uploads/images/" + name, nil
 }

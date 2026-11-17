@@ -143,7 +143,7 @@ export function ImageInput({ value, onChange, wide }: { value: string; onChange:
           {value && <button type="button" className="btn btn-sm btn-ghost" onClick={() => onChange("")}>Olib tashlash</button>}
         </div>
       </div>
-      <input ref={ref} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={(e) => pick(e.target.files?.[0])} />
+      <input ref={ref} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif" hidden onChange={(e) => pick(e.target.files?.[0])} />
     </div>
   );
 }
