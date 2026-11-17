@@ -25,6 +25,7 @@ const NAV: { group?: string; items: Item[] }[] = [
     { to: "/news", label: "Yangiliklar", icon: <I.news />, perm: "news" },
     { to: "/banners", label: "Hero-bannerlar", icon: <I.image />, perm: "banners" },
     { to: "/videos", label: "Videolar", icon: <I.play />, perm: "videos" },
+    { to: "/partners", label: "Hamkorlar", icon: <I.link />, perm: "partners" },
     { to: "/instagram", label: "Instagram", icon: <I.camera />, perm: "videos" },
   ] },
   { group: "Do‘kon va aloqa", items: [
@@ -100,10 +101,10 @@ export function Layout() {
   );
 }
 
-export function PageHead({ title, sub, actions }: { title: string; sub?: ReactNode; actions?: ReactNode }) {
+export function PageHead({ title, sub, actions, pre }: { title: string; sub?: ReactNode; actions?: ReactNode; pre?: ReactNode }) {
   return (
     <div className="page-head">
-      <div><h1>{title}</h1>{sub && <p>{sub}</p>}</div>
+      <div>{pre && <div className="page-pre">{pre}</div>}<h1>{title}</h1>{sub && <p>{sub}</p>}</div>
       {actions && <div className="row wrap">{actions}</div>}
     </div>
   );

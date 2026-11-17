@@ -524,7 +524,8 @@ func (s *Server) publicSitemap(w http.ResponseWriter, r *http.Request) {
 			SELECT slug, published_at, updated_at FROM news WHERE status IN ('published','scheduled') AND published_at <= now()) x),
 		'products', (SELECT coalesce(json_agg(x ORDER BY x.slug), '[]') FROM (
 			SELECT slug, updated_at FROM products WHERE visible AND status <> 'hidden') x),
-		'videos_updated_at', (SELECT max(coalesce(published_at, created_at)) FROM videos WHERE status = 'published'))`)
+		'videos_updated_at', (SELECT max(coalesce(published_at, created_at)) FROM videos WHERE status = 'published'),
+		'partners_updated_at', (SELECT max(updated_at) FROM partners WHERE is_active))`)
 }
 
 // newsView counts a page view. The site caches article data, so views are

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { api, safe } from "@/lib/api";
 import { num, resolveBlock, str, usesMatchSchedule, type Block, type Layout, type Row } from "@/lib/layout";
-import type { Banner, InstagramFeed, Leaders, Match, MatchDetail, NewsItem, PlayerDetail, Product, Season, Standings, Team, TeamDetail, Video } from "@/lib/types";
+import type { Banner, InstagramFeed, Leaders, Match, MatchDetail, NewsItem, PartnersData, PlayerDetail, Product, Season, Standings, Team, TeamDetail, Video } from "@/lib/types";
 import { renderModule, type HomeData } from "./modules";
 
 const NEEDS: Record<string, Block["type"][]> = {
@@ -13,6 +13,7 @@ const NEEDS: Record<string, Block["type"][]> = {
   videos: ["video"],
   products: ["shop"],
   instagram: ["social"],
+  partners: ["partners"],
 };
 
 /**
@@ -38,7 +39,7 @@ export async function HomeLayout({ layout, now, fresh = false }: { layout: Layou
   // 2. data — only what is on the page
   const newsLimit = Math.max(5, ...all.filter((b) => b.type === "news").map((b) => num(b.props?.count, 5, 1, 12) + 4));
   const videoLimit = Math.max(3, ...all.filter((b) => b.type === "video").map((b) => num(b.props?.count, 3, 1, 12)));
-  const [banners, matches, standings, leaders, news, videos, products, teams, seasons, instagram] = await Promise.all([
+  const [banners, matches, standings, leaders, news, videos, products, teams, seasons, instagram, partners] = await Promise.all([
     has("banners") ? safe(api<Banner[]>("/banners", o), []) : [],
     firstMatches ?? (has("matches") ? safe(api<Match[]>("/matches?limit=200", o), []) : []),
     has("standings") ? safe(api<Standings | null>("/standings", o), null) : null,
@@ -49,6 +50,7 @@ export async function HomeLayout({ layout, now, fresh = false }: { layout: Layou
     any("standings", "stats", "intro", "team") ? safe(api<Team[]>("/teams", o), []) : [],
     safe(api<Season[]>("/seasons", o), []),
     has("instagram") ? safe(api<InstagramFeed>("/instagram", o), null) : null,
+    has("partners") ? safe(api<PartnersData | null>("/partners", o), null) : null,
   ]);
 
   // per-block extras: pinned news, spotlight player/team, match photos
@@ -92,7 +94,7 @@ export async function HomeLayout({ layout, now, fresh = false }: { layout: Layou
   // a pinned story stays out of the news lists
   if (!any("fnews")) pinnedSlugs.clear();
 
-  const data: HomeData = { banners, matches, standings, leaders, news, pinnedNews, videos, products, teams, seasons, instagram, players, teamDetails, galleries, pinnedSlugs, now };
+  const data: HomeData = { banners, matches, standings, leaders, news, pinnedNews, videos, products, teams, seasons, instagram, partners, players, teamDetails, galleries, pinnedSlugs, now };
 
   // 3. render; blocks with nothing to show drop out
   const rendered = rows.map(({ row, blocks }) => ({

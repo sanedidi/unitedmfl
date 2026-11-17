@@ -74,9 +74,14 @@ func (s *Server) serveVideos() http.Handler {
 
 // uploadVideo streams one multipart «file» part straight to disk (no temp copy).
 func (s *Server) uploadVideo(w http.ResponseWriter, r *http.Request) {
+	s.receiveVideo(w, r, s.Cfg.MaxVideoBytes, "video_file")
+}
+
+// receiveVideo stores an uploaded video of at most limit bytes and answers
+// with its public URL; entity names the upload in the audit log.
+func (s *Server) receiveVideo(w http.ResponseWriter, r *http.Request, limit int64, entity string) {
 	// a large file over a slow line takes much longer than the server's ReadTimeout
 	_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(3 * time.Hour))
-	limit := s.Cfg.MaxVideoBytes
 	tooBig := httpx.BadRequest(fmt.Sprintf("Video %d MB dan katta bo‘lmasligi kerak", limit>>20))
 	if r.ContentLength > limit+1<<20 {
 		httpx.Fail(w, r, tooBig)
@@ -166,7 +171,7 @@ func (s *Server) uploadVideo(w http.ResponseWriter, r *http.Request) {
 	done = true
 	url := s.Cfg.PublicBaseURL + videoURLPrefix + name
 	orig := sanitizeFilename(part.FileName())
-	s.audit(r, "upload", "video_file", 0, map[string]any{"name": orig, "url": url, "size": size})
+	s.audit(r, "upload", entity, 0, map[string]any{"name": orig, "url": url, "size": size})
 	httpx.JSON(w, http.StatusCreated, map[string]any{"url": url, "size": size, "mime": videoMIME[ext], "name": orig})
 }
 
@@ -208,7 +213,7 @@ func videoDeleted(s *Server, _ int64, old map[string]any) {
 	}
 }
 
-// removeVideoFile deletes an uploaded file once no video row points to it any more.
+// removeVideoFile deletes an uploaded file once no video or partner row points to it any more.
 func (s *Server) removeVideoFile(url string) {
 	name, ok := videoFileName(url)
 	if !ok {
@@ -217,7 +222,8 @@ func (s *Server) removeVideoFile(url string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var used bool
-	if err := s.DB.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM videos WHERE url LIKE '%' || $1)`, videoURLPrefix+name).Scan(&used); err != nil || used {
+	if err := s.DB.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM videos WHERE url LIKE '%' || $1)
+		OR EXISTS (SELECT 1 FROM partners WHERE video_url LIKE '%' || $1)`, videoURLPrefix+name).Scan(&used); err != nil || used {
 		return
 	}
 	_ = os.Remove(filepath.Join(s.videosDir(), name))

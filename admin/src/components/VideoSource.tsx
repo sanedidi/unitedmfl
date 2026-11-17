@@ -35,7 +35,7 @@ function frameBlob(v: HTMLVideoElement): Promise<Blob | undefined> {
 const coverFile = (b: Blob) => new File([b], "muqova.jpg", { type: "image/jpeg" });
 
 /** Reads the duration and grabs a cover frame in the browser (no ffmpeg on the server). */
-async function probe(file: File): Promise<{ duration?: number; cover?: Blob }> {
+export async function probe(file: File): Promise<{ duration?: number; cover?: Blob }> {
   const src = URL.createObjectURL(file);
   const v = document.createElement("video");
   v.muted = true;

@@ -86,7 +86,7 @@ function UserDrawer({ item, onClose, onSaved }: { item: U | null; onClose: () =>
 
 const PERM: Record<string, string> = {
   dashboard: "Dashboard", "matches:read": "Matchlarni ko‘rish", "matches:edit": "Matchlarni tahrirlash", live: "Live-pult", protocols: "Protokollar",
-  teams: "Jamoalar va o‘yinchilar", applications: "Jamoa arizalari", standings: "Turnir jadvali", seasons: "Mavsumlar", news: "Yangiliklar", banners: "Bannerlar", homepage: "Bosh sahifa konstruktori", videos: "Videolar",
+  teams: "Jamoalar va o‘yinchilar", applications: "Jamoa arizalari", standings: "Turnir jadvali", seasons: "Mavsumlar", news: "Yangiliklar", banners: "Bannerlar", homepage: "Bosh sahifa konstruktori", partners: "Hamkorlar", videos: "Videolar",
   merch: "Merch", requests: "Murojaatlar", users: "Foydalanuvchilar", uploads: "Fayl yuklash",
 };
 export function RolesPage() {

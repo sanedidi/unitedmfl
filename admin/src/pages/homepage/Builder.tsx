@@ -694,8 +694,8 @@ function Thumb({ b }: { b: Block }) {
       return <div className="hb-th spot"><span className="av" /><div><b>{b.type === "team" ? t?.name || "Jamoa" : "O‘yinchi"}</b><Lines n={2} w={[60, 40]} /></div></div>;
     }
     case "partners": {
-      const items = Array.isArray(p.items) ? (p.items as { name?: string }[]) : [];
-      return <div className="hb-th partners">{items.slice(0, 5).map((x, i) => <span key={i}>{x.name || "Logo"}</span>)}{p.cta !== false && <span className="muted">+ Brend</span>}</div>;
+      // partners come from Kontent → Hamkorlar; the thumbnail only sketches the row
+      return <div className="hb-th partners">{["Logo", "Logo", "Logo"].map((x, i) => <span key={i}>{x}</span>)}<span className="muted">+ Brend</span></div>;
     }
     case "banner":
       return <div className="hb-th dark banner" style={p.image ? { backgroundImage: `linear-gradient(90deg, rgba(11,13,16,.85), rgba(11,13,16,.3)), url("${p.image as string}")` } : undefined}><span className="ov">{(p.eyebrow as string) || "BANNER"}</span><b className="big">{(p.title as string) || "Sarlavha"}</b>{p.ctaLabel ? <span className="cta">{p.ctaLabel as string}</span> : null}</div>;

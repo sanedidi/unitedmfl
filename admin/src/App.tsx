@@ -10,6 +10,7 @@ import { ProtocolReviewPage, ProtocolsPage } from "@/pages/Protocols";
 import { GroupsSection } from "@/pages/Groups";
 import { NewsPage, PlayersPage, ProductsPage, RequestsPage, SeasonsPage, TeamsPage, VideosPage } from "@/pages/Content";
 import { BannersPage } from "@/pages/Banners";
+import { PartnersPage } from "@/pages/Partners";
 import { InstagramPage } from "@/pages/Instagram";
 import { StandingsPage } from "@/pages/Standings";
 import { AuditPage, RolesPage, UsersPage } from "@/pages/System";
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="banners/*" element={<Guard perm="banners"><BannersPage /></Guard>} />
         <Route path="homepage" element={<Guard perm="homepage"><HomepageBuilder /></Guard>} />
         <Route path="videos/*" element={<Guard perm="videos"><VideosPage /></Guard>} />
+        <Route path="partners/*" element={<Guard perm="partners"><PartnersPage /></Guard>} />
         <Route path="instagram" element={<Guard perm="videos"><InstagramPage /></Guard>} />
         <Route path="products/*" element={<Guard perm="merch"><ProductsPage /></Guard>} />
         <Route path="requests/*" element={<Guard perm="requests"><RequestsPage /></Guard>} />

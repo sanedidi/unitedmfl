@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { fmtDate, fmtPlainDate, fmtTime, fmtWeekday, isFinished, isLive } from "@/lib/format";
-import { groupKeys, groupName, groupProvisional, type Banner, type InstagramFeed, type Leaders, type Match, type MatchDetail, type NewsItem, type PlayerDetail, type Product, type Season, type Standings, type Team, type TeamDetail, type TeamRef, type Video } from "@/lib/types";
+import { groupKeys, groupName, groupProvisional, type Banner, type InstagramFeed, type Leaders, type Match, type MatchDetail, type NewsItem, type PartnersData, type PlayerDetail, type Product, type Season, type Standings, type Team, type TeamDetail, type TeamRef, type Video } from "@/lib/types";
 import { bool, num, str, type Block } from "@/lib/layout";
 import { matchPath, newsPath, playerPath, teamPath } from "@/lib/seo";
 import { HeroCarousel } from "@/components/HeroCarousel";
@@ -12,6 +12,8 @@ import { NewsCard, ProductCard, VideoCard } from "@/components/Cards";
 import { Crest } from "@/components/Crest";
 import { Img } from "@/components/Img";
 import { ArrowRight, Instagram, Play, Telegram, Youtube } from "@/components/Icons";
+import { PartnerLink } from "@/components/Partners";
+import { PARTNER_CONTACT, partnerGroups } from "@/lib/partners";
 
 /** Everything the homepage modules may need, fetched once per request. */
 export type HomeData = {
@@ -26,6 +28,7 @@ export type HomeData = {
   teams: Team[];
   seasons: Season[];
   instagram: InstagramFeed | null;
+  partners: PartnersData | null;
   players: Record<string, PlayerDetail>;
   teamDetails: Record<string, TeamDetail>;
   galleries: Record<string, MatchDetail>;
@@ -371,21 +374,46 @@ function TeamSpot({ b, d }: Ctx) {
   );
 }
 
-type PartnerItem = { name?: string; logo?: string; url?: string };
+/** Columns per group for a block `span` columns wide: the main sponsor is wide, media logos are small. */
+const partnerCols = { main: (span: number) => Math.max(1, Math.floor(span / 6)), official: (span: number) => cols(span, 3, 4), media: (span: number) => Math.max(2, Math.min(6, Math.floor(span / 2))) };
 
-function Partners({ b }: Ctx) {
-  const items = (Array.isArray(b.props?.items) ? (b.props!.items as PartnerItem[]) : []).filter((p) => p && (p.name || p.logo));
-  const cta = bool(b.props?.cta, true);
-  if (!items.length && !cta) return null;
+/**
+ * Sponsors from Kontent → Hamkorlar, grouped by kind (no group titles when
+ * there is only one kind). Logos are grey until hovered; a tile with ▶ opens
+ * the partner's video, any other tile the partner's site.
+ */
+function Partners({ b, d }: Ctx) {
+  const data = d.partners;
+  if (!data || !data.settings.show_block) return null;
+  const groups = partnerGroups(data.items);
+  const cta = data.settings.show_cta;
+  if (!groups.length && !cta) return null;
+  const labelled = groups.length > 1;
+  const ctaTile = <Link href={PARTNER_CONTACT} className="ptile ptile-cta">+ Sizning brendingiz</Link>;
   return (
     <>
-      <Head b={b} />
-      <div className="partners hp-partners" style={{ ["--cols" as string]: cols(b.span, 3, 4) }}>
-        {items.map((p, i) => {
-          const inner = p.logo ? <img src={p.logo} alt={p.name || ""} loading="lazy" decoding="async" /> : p.name;
-          return p.url ? <a key={i} href={p.url} target="_blank" rel="noopener noreferrer sponsored" className="partner">{inner}</a> : <div key={i} className="partner">{inner}</div>;
+      {!b.hideTitle && <SectionHead title={data.settings.title || "Hamkorlar"} href={b.linkHref || PARTNER_CONTACT} linkLabel={b.linkLabel || "Hamkor bo‘lish"} />}
+      <div className="hp-partners">
+        {groups.map((g, gi) => {
+          const last = gi === groups.length - 1;
+          const n = Math.min(partnerCols[g.kind](b.span), g.list.length + (last && cta ? 1 : 0));
+          return (
+            <div key={g.kind} className="hp-partners-group">
+              {labelled && <div className="overline">{g.group}</div>}
+              <div className={`ptiles k-${g.kind}`} style={{ ["--cols" as string]: n }}>
+                {g.list.map((p) => (
+                  <PartnerLink key={p.id} p={p} className="ptile">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {p.logo_url ? <img src={p.logo_url} alt={p.name} loading="lazy" decoding="async" /> : <span className="ptile-name">{p.name}</span>}
+                    {p.video_url && <i className="ptile-play" aria-hidden><Play size={g.kind === "main" ? 14 : 12} /></i>}
+                  </PartnerLink>
+                ))}
+                {last && cta && ctaTile}
+              </div>
+            </div>
+          );
         })}
-        {cta && <Link href="/biz-haqimizda#aloqa" className="partner" style={{ fontSize: 14, fontFamily: "var(--font-ui)", fontWeight: 600, color: "var(--text-2)" }}>+ Sizning brendingiz</Link>}
+        {!groups.length && <div className="ptiles k-official" style={{ ["--cols" as string]: 1 }}>{ctaTile}</div>}
       </div>
     </>
   );

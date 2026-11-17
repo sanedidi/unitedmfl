@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -95,6 +96,7 @@ func (s *Server) Routes() http.Handler {
 		r.Get("/homepage", s.publicHomepage)
 		r.Get("/homepage/preview", s.publicHomepagePreview)
 		r.Get("/videos", s.publicVideos)
+		r.Get("/partners", s.publicPartners)
 		r.Get("/instagram", s.publicInstagram)
 		r.Get("/products", s.publicProducts)
 		r.Get("/products/{slug}", s.publicProduct)
@@ -181,6 +183,7 @@ func (s *Server) Routes() http.Handler {
 			s.mountCRUD(r, auth.PermBanners, "/banners", bannersRes)
 			r.With(s.can(auth.PermBanners)).Put("/banners/order", s.reorderBanners)
 			s.mountHomepage(r)
+			s.mountPartners(r)
 			s.mountCRUD(r, auth.PermVideos, "/videos", videosRes)
 			r.With(s.can(auth.PermVideos)).Post("/video-uploads", s.uploadVideo)
 			r.Group(func(r chi.Router) {
@@ -229,6 +232,10 @@ func noDirListing(h http.Handler) http.Handler {
 			return
 		}
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		if strings.HasSuffix(r.URL.Path, ".svg") {
+			// partner logos: an SVG opened directly must not run anything
+			w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+		}
 		h.ServeHTTP(w, r)
 	})
 }

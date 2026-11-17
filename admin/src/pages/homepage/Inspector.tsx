@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { I } from "@/components/Icons";
 import { ImageInput } from "@/components/ui";
@@ -130,11 +130,12 @@ function LookTab({ b, set }: { b: Block; set: (p: Partial<Block>) => void }) {
   const noHead = b.type === "hero" || b.type === "intro" || b.type === "banner";
   return (
     <>
+      {b.type === "partners" && <p className="muted small">Sarlavha «Kontent → Hamkorlar» sahifasida, «Bosh sahifadagi blok» kartochkasida o‘zgartiriladi.</p>}
       {!noHead && (
         <>
-          <F label="Sarlavha" hint="Bo‘sh qoldirilsa, modul nomi ishlatiladi.">
+          {b.type !== "partners" && <F label="Sarlavha" hint="Bo‘sh qoldirilsa, modul nomi ishlatiladi.">
             <input className="input input-sm" value={b.title || ""} placeholder={defaultTitle(b.type) || m.name} maxLength={120} onChange={(e) => set({ title: e.target.value || undefined })} />
-          </F>
+          </F>}
           <Switch label="Sarlavhani yashirish" checked={!!b.hideTitle} onChange={(v) => set({ hideTitle: v || undefined })} />
           <F label="«Barchasi» havolasi">
             <div className="hb-2">
@@ -437,7 +438,7 @@ function PropsEditor({ b, setProps, set }: { b: Block; setProps: (p: Record<stri
         </F>
       );
     case "partners":
-      return <PartnersEditor b={b} setProps={setProps} />;
+      return <PartnersEditor />;
     case "banner":
       return (
         <>
@@ -497,42 +498,29 @@ function PlayerPick({ value, onChange, label, setLabel }: { value: number; onCha
   );
 }
 
-type Partner = { name?: string; logo?: string; url?: string };
-function PartnersEditor({ b, setProps }: { b: Block; setProps: (p: Record<string, unknown>) => void }) {
-  const items = useMemo(() => (Array.isArray(b.props?.items) ? (b.props!.items as Partner[]) : []), [b.props]);
-  const put = (list: Partner[]) => setProps({ items: list });
-  const edit = (i: number, patch: Partner) => put(items.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-  const move = (i: number, d: number) => {
-    const j = i + d;
-    if (j < 0 || j >= items.length) return;
-    const l = items.slice();
-    [l[i], l[j]] = [l[j], l[i]];
-    put(l);
-  };
+/** Partners are managed on their own page (Kontent → Hamkorlar): logos, order, video, title and the CTA card. */
+function PartnersEditor() {
+  const { data } = usePartnersSummary();
   return (
-    <>
-      <F label="Hamkorlar" value={items.length}>
-        <div className="stack" style={{ gap: 10 }}>
-          {items.map((it, i) => (
-            <div key={i} className="hb-partner">
-              <div className="hb-2">
-                <input className="input input-sm" value={it.name || ""} placeholder="Nomi" maxLength={60} onChange={(e) => edit(i, { name: e.target.value })} />
-                <div className="row" style={{ gap: 2 }}>
-                  <button className="btn btn-ghost btn-sm btn-icon" title="Yuqoriga" onClick={() => move(i, -1)} disabled={i === 0}><I.up size={14} /></button>
-                  <button className="btn btn-ghost btn-sm btn-icon" title="Pastga" onClick={() => move(i, 1)} disabled={i === items.length - 1}><I.down size={14} /></button>
-                  <button className="btn btn-ghost btn-sm btn-icon" title="O‘chirish" onClick={() => put(items.filter((_, j) => j !== i))}><I.trash size={14} /></button>
-                </div>
-              </div>
-              <input className="input input-sm" value={it.url || ""} placeholder="Sayt havolasi (ixtiyoriy)" maxLength={500} onChange={(e) => edit(i, { url: e.target.value })} />
-              <ImageInput value={it.logo || ""} onChange={(v) => edit(i, { logo: v })} />
-            </div>
-          ))}
-          <button className="btn btn-sm" onClick={() => put([...items, { name: "" }])} disabled={items.length >= 24}><I.plus size={14} /> Hamkor qo‘shish</button>
-        </div>
-      </F>
-      <Switch label="«+ Sizning brendingiz» kartasi" checked={b.props?.cta !== false} onChange={(v) => setProps({ cta: v })} />
-    </>
+    <div className="hint-box">
+      Hamkorlar, ularning tartibi, logotip va videolari, blok sarlavhasi va «+ Sizning brendingiz» kartochkasi{" "}
+      <Link to="/partners"><b>Kontent → Hamkorlar</b></Link> bo‘limida boshqariladi.
+      {data && <> Hozir saytda: <b>{data.active}</b> ta hamkor{data.title ? <>, sarlavha «{data.title}»</> : null}{data.show_block ? "" : " — blok o‘chirilgan"}.</>}
+    </div>
   );
+}
+
+function usePartnersSummary() {
+  const [data, setData] = useState<{ active: number; title: string; show_block: boolean } | null>(null);
+  useEffect(() => {
+    let live = true;
+    Promise.all([
+      api.get<{ items: { is_active: boolean }[] }>("/admin/partners?limit=200"),
+      api.get<{ title: string; show_block: boolean }>("/admin/partner-settings"),
+    ]).then(([l, st]) => live && setData({ active: l.items.filter((x) => x.is_active).length, title: st.title, show_block: st.show_block }), () => {});
+    return () => { live = false; };
+  }, []);
+  return { data };
 }
 
 // ---------------- row ----------------

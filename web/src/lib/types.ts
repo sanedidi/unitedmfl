@@ -248,3 +248,22 @@ export type InstagramPost = {
 };
 
 export type InstagramFeed = { username: string; posts: InstagramPost[] };
+
+/** Sponsors and partners (admin: Kontent → Hamkorlar). */
+export type PartnerKind = "main" | "official" | "media";
+export type Partner = {
+  id: number;
+  name: string;
+  url: string;
+  kind: PartnerKind;
+  description: string;
+  logo_url: string;
+  /** empty when there is no video or the admin chose «Faqat logotip» */
+  video_url: string;
+  video_duration_sec: number | null;
+  ord: number;
+};
+export type PartnersData = {
+  settings: { title: string; show_cta: boolean; show_block: boolean };
+  items: Partner[];
+};

@@ -8,6 +8,7 @@ type Src = {
   news: { slug: string; published_at: string; updated_at: string }[];
   products: { slug: string; updated_at: string }[];
   videos_updated_at: string | null;
+  partners_updated_at?: string | null;
 };
 export type Url = { loc: string; lastmod?: string };
 
@@ -39,6 +40,7 @@ export async function sectionUrls(section: Section): Promise<Url[]> {
         { loc: abs("/yangiliklar"), lastmod: iso(max(s.news.map((n) => n.updated_at))) },
         { loc: abs("/merch"), lastmod: iso(max(s.products.map((p) => p.updated_at))) },
         { loc: abs("/biz-haqimizda") },
+        { loc: abs("/hamkorlar"), lastmod: iso(s.partners_updated_at || undefined) },
       ];
       // /media is noindex while it has no videos
       if (s.videos_updated_at) pages.push({ loc: abs("/media"), lastmod: iso(s.videos_updated_at) });

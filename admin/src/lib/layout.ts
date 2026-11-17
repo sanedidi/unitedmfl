@@ -182,7 +182,7 @@ export const MODULES: ModuleMeta[] = [
   { type: "player", name: "Player Spotlight", desc: "O‘yinchi kartasi", group: "Kontent", variant: "standard", span: 6, spans: [4, 6, 8, 12], props: { playerId: 0 } },
   { type: "team", name: "Team Spotlight", desc: "Jamoa kartasi", group: "Kontent", variant: "standard", span: 6, spans: [4, 6, 8, 12], props: { slug: "" } },
   { type: "banner", name: "Custom Banner", desc: "Reklama yoki e’lon banneri", group: "Tijorat", variant: "featured", span: 12, spans: ALL, props: { title: "", eyebrow: "", text: "", image: "", imageMobile: "", ctaLabel: "", ctaUrl: "" } },
-  { type: "partners", name: "Partners", desc: "Hamkorlar logotiplari", group: "Tijorat", variant: "featured", span: 12, spans: ALL, props: { items: [], cta: true } },
+  { type: "partners", name: "Partners", desc: "Hamkorlar logotiplari", group: "Tijorat", variant: "featured", span: 12, spans: ALL, props: {} },
   { type: "shop", name: "Shop", desc: "Rasmiy do‘kon mahsulotlari", group: "Tijorat", variant: "featured", span: 12, spans: ALL, props: { count: 4 } },
   { type: "custom", name: "Custom Content", desc: "Matn, rasm va tugma", group: "Tijorat", variant: "standard", span: 6, spans: ALL, props: { text: "", image: "", ctaLabel: "", ctaUrl: "" } },
 ];

@@ -48,7 +48,7 @@ export function Footer() {
             <h4>Liga</h4>
             <ul>
               <li><Link href="/biz-haqimizda">Liga haqida</Link></li>
-              <li><Link href="/biz-haqimizda#aloqa">Hamkorlik</Link></li>
+              <li><Link href="/hamkorlar">Hamkorlar</Link></li>
               <li><Link href="/biz-haqimizda#aloqa">Aloqa</Link></li>
             </ul>
           </div>
