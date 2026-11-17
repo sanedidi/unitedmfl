@@ -324,4 +324,72 @@ func TestTeamRegistration(t *testing.T) {
 	if re["code"] == code || pub("GET", "/api/v1/register/links/"+code, nil, nil) != 404 {
 		t.Fatalf("regenerate: %+v", re)
 	}
+
+	// 7. deleting the approved application together with its team: an editor
+	// may not, the admin has to type the number, the moved player stays
+	delPath := fmt.Sprintf("/api/v1/admin/applications/%d", appID)
+	var info struct {
+		Number        string       `json:"number"`
+		ConfirmNumber bool         `json:"confirm_number"`
+		CanDeleteTeam bool         `json:"can_delete_team"`
+		Team          *appTeamInfo `json:"team"`
+	}
+	if c := admin("GET", delPath+"/delete-info", nil, &info); c != 200 || info.Team == nil {
+		t.Fatalf("delete-info: %d %+v", c, info)
+	}
+	if !info.ConfirmNumber || !info.CanDeleteTeam || info.Team.ID != teamID || info.Team.Players+info.Team.Media != 2 ||
+		info.Team.Kept != 1 || info.Team.Staff != 1 || info.Team.Played != 0 {
+		t.Fatalf("delete-info: %+v %+v", info, info.Team)
+	}
+	edTok, _, _ := s.Tokens.Sign(uid, "editor", "Editor")
+	req = httptest.NewRequest("DELETE", delPath+"?team=1&confirm="+info.Number, nil)
+	req.Header.Set("Authorization", "Bearer "+edTok)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != 403 {
+		t.Fatalf("editor deletes approved: %d", rec.Code)
+	}
+	if c := admin("DELETE", delPath+"?team=1", nil, nil); c != 400 {
+		t.Fatalf("delete without number: %d", c)
+	}
+	var del map[string]any
+	if c := admin("DELETE", delPath+"?team=1&confirm="+strings.ToLower(info.Number), nil, &del); c != 200 || del["team_deleted"] != true || del["players_detached"].(float64) != 1 {
+		t.Fatalf("delete: %d %+v", c, del)
+	}
+	var left, events int
+	var oldTeamOf *int64
+	conn.QueryRow(`SELECT count(*) FROM teams WHERE id = $1`, teamID).Scan(&left)
+	conn.QueryRow(`SELECT count(*) FROM application_events WHERE application_id = $1`, appID).Scan(&events)
+	if err := conn.QueryRow(`SELECT team_id FROM players WHERE id = $1`, oldPlayer).Scan(&oldTeamOf); err != nil || oldTeamOf != nil {
+		t.Fatalf("moved player after delete: %v %v", err, oldTeamOf)
+	}
+	if left != 0 || events != 0 || admin("GET", delPath, nil, nil) != 404 || pub("GET", base, nil, nil) != 404 {
+		t.Fatalf("after delete: team %d events %d", left, events)
+	}
+
+	// a team that has played keeps living: only the application can go
+	var season, played, app2, m int64
+	conn.QueryRow(`INSERT INTO seasons (name, slug) VALUES ($1, $1) RETURNING id`, "del-"+sfx).Scan(&season)
+	defer conn.Exec(`DELETE FROM seasons WHERE id = $1`, season)
+	conn.QueryRow(`INSERT INTO teams (slug, name) VALUES ($1, $1) RETURNING id`, "played-"+sfx).Scan(&played)
+	defer conn.Exec(`DELETE FROM teams WHERE id = $1`, played)
+	conn.QueryRow(`INSERT INTO matches (season_id, home_team_id, status) VALUES ($1, $2, 'finished') RETURNING id`, season, played).Scan(&m)
+	conn.QueryRow(`INSERT INTO team_applications (token, status, team_id, decided_at) VALUES ($1, 'approved', $2, now()) RETURNING id`, "del-"+sfx, played).Scan(&app2)
+	defer conn.Exec(`DELETE FROM team_applications WHERE id = $1`, app2)
+	p2 := fmt.Sprintf("/api/v1/admin/applications/%d", app2)
+	num := fmt.Sprintf("UMF-%04d", app2)
+	admin("GET", p2+"/delete-info", nil, &info)
+	if info.CanDeleteTeam || info.Team == nil || info.Team.Played != 1 {
+		t.Fatalf("played delete-info: %+v", info)
+	}
+	if c := admin("DELETE", p2+"?team=1&confirm="+num, nil, nil); c != 409 {
+		t.Fatalf("delete played team: %d", c)
+	}
+	if c := admin("DELETE", p2+"?confirm="+num, nil, &del); c != 200 || del["team_deleted"] != false {
+		t.Fatalf("delete application only: %d %+v", c, del)
+	}
+	conn.QueryRow(`SELECT count(*) FROM teams WHERE id = $1`, played).Scan(&left)
+	if left != 1 {
+		t.Fatal("played team was deleted")
+	}
 }

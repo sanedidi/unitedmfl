@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { Link, Route, Routes, useNavigate, useParams } from "react-router";
 import QRCode from "qrcode";
 import { api, blobUrl } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { useDebounced, useLoad } from "@/lib/hooks";
 import { fmtDateTime, fmtShort, fromLocalInput, initials, toLocalInput } from "@/lib/format";
 import { invalidateRefs, useRefs } from "@/lib/refs";
@@ -114,8 +115,164 @@ function LinkActions({ link, small }: { link: RegLink; small?: boolean }) {
 }
 
 /* ---------- applications list ---------- */
+/* ---------- deleting applications ---------- */
+type DeleteInfo = {
+  id: number; number: string; status: string; team_name: string; players: number; staff: number; medical_files: number;
+  frees_slot: boolean; can_delete: boolean; confirm_number: boolean; can_delete_team: boolean;
+  team: { id: number; name: string; players: number; media: number; staff: number; kept: number; played: number; scheduled: number } | null;
+};
+type ToastFn = (t: string, k?: "ok" | "error") => void;
+
+// drafts and rejected applications: anyone with «Jamoa arizalari»; the rest — administrators
+const mayDelete = (can: (perm: string) => boolean, status: string) => can("applications:delete") || status === "draft" || status === "rejected";
+
+async function downloadXlsx(id: number, name: string, toast: ToastFn) {
+  try {
+    const u = await blobUrl(`/admin/applications/${id}/export.xlsx`);
+    const el = document.createElement("a");
+    el.href = u;
+    el.download = `TARKIB-${name}.xlsx`;
+    el.click();
+  } catch (e) {
+    toast(e instanceof Error ? e.message : "Yuklab bo‘lmadi", "error");
+  }
+}
+
+type MenuItem = { label: string; icon: ReactNode; onClick: () => void; danger?: boolean } | "sep";
+/** «⋯» button with a small menu; the menu is fixed-positioned so the table does not clip it. */
+function RowMenu({ items }: { items: MenuItem[] }) {
+  const btn = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
+  useEffect(() => {
+    if (!pos) return;
+    const close = () => setPos(null);
+    const down = (e: MouseEvent) => {
+      const t = e.target as Element;
+      if (!t.closest?.(".row-menu-pop") && !btn.current?.contains(t)) close();
+    };
+    const key = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("mousedown", down);
+    window.addEventListener("keydown", key);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("mousedown", down);
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [pos]);
+  function toggle(e: ReactMouseEvent) {
+    e.stopPropagation();
+    if (pos || !btn.current) return setPos(null);
+    const r = btn.current.getBoundingClientRect();
+    const right = window.innerWidth - r.right;
+    setPos(window.innerHeight - r.bottom > 200 ? { top: r.bottom + 6, right } : { bottom: window.innerHeight - r.top + 6, right });
+  }
+  return (
+    <>
+      <button ref={btn} type="button" className="btn btn-ghost btn-sm btn-icon" aria-label="Amallar" aria-haspopup="menu" aria-expanded={!!pos} onClick={toggle}><I.more size={16} /></button>
+      {pos && (
+        <div className="row-menu-pop" role="menu" style={pos} onClick={(e) => e.stopPropagation()}>
+          {items.map((it, i) => it === "sep" ? <hr key={i} /> : (
+            <button key={i} type="button" role="menuitem" className={it.danger ? "danger" : undefined} onClick={() => { setPos(null); it.onClick(); }}>{it.icon}{it.label}</button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Confirmation for deleting an application (design A7/A8): an approved one can take its team along and needs its number typed. */
+function DeleteModal({ id, onClose, onDone }: { id: number; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const d = useLoad(() => api.get<DeleteInfo>(`/admin/applications/${id}/delete-info`), [id]);
+  const [withTeam, setWithTeam] = useState(true);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const info = d.data;
+  const team = info?.team || null;
+  const teamOn = !!team && !!info?.can_delete_team && withTeam;
+  const numberOk = !info?.confirm_number || typed.trim().toUpperCase() === info.number;
+  const name = info?.team_name || "Nomsiz jamoa";
+
+  async function go() {
+    if (!info) return;
+    setBusy(true);
+    try {
+      const q = new URLSearchParams();
+      if (teamOn) q.set("team", "1");
+      if (info.confirm_number) q.set("confirm", typed.trim());
+      const qs = q.toString();
+      const res = await api.del<{ team_deleted: boolean; players_detached: number }>(`/admin/applications/${id}${qs ? `?${qs}` : ""}`);
+      if (res?.team_deleted) invalidateRefs();
+      toast(`«${name}» arizasi o‘chirildi${res?.team_deleted ? " — jamoa ham o‘chirildi" : ""}`);
+      onDone();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "O‘chirilmadi", "error");
+      setBusy(false);
+    }
+  }
+
+  const teamText = team ? `${team.players} o‘yinchi${team.media ? `, ${team.media} media shaxs` : ""}${team.staff ? ` va ${team.staff} murabbiy` : ""} bilan birga. ` +
+    (team.played ? `Jamoa ${team.played} ta matchda o‘ynagan.` : "Jamoa hali birorta matchda o‘ynamagan.") : "";
+  return (
+    <Modal title={info?.confirm_number ? "Tasdiqlangan arizani o‘chirish" : "Arizani o‘chirish"} onClose={onClose} footer={<>
+      <button className="btn btn-ghost" onClick={onClose}>Bekor qilish</button>
+      <button className="btn btn-destructive" onClick={go} disabled={!info || !info.can_delete || !numberOk || busy}>
+        {busy ? "O‘chirilmoqda…" : teamOn ? "Ariza va jamoani o‘chirish" : "Arizani o‘chirish"}
+      </button>
+    </>}>
+      {d.error ? <ErrorBox error={d.error} retry={d.reload} /> : !info ? <Loading /> : (
+        <div className="stack" style={{ gap: 16 }}>
+          {!info.can_delete && <div className="alert danger"><I.lock size={16} /><div>Bu arizani faqat administrator o‘chira oladi.</div></div>}
+          {!info.confirm_number ? (
+            <>
+              <div className="muted">«{name}» ({info.number}) arizasi butunlay o‘chiriladi. Bu amalni qaytarib bo‘lmaydi.</div>
+              <b className="small">O‘chiriladi:</b>
+              <div className="del-list">
+                <div><I.trash size={16} /><span>Ariza va tarkib — {info.players} kishi{info.staff ? `, ${info.staff} murabbiy` : ""}</span></div>
+                <div><I.trash size={16} /><span>Yuklangan logotip, fotolar{info.medical_files ? ` va ${info.medical_files} ta tibbiy ruxsatnoma` : ""}</span></div>
+                <div><I.trash size={16} /><span>Tarix va ichki izoh</span></div>
+              </div>
+              {!team && <div className="muted small">Jamoa yaratilmagan: ariza hali tasdiqlanmagan, saytga hech narsa chiqmagan.</div>}
+            </>
+          ) : (
+            <>
+              {team ? (
+                <div className="alert danger"><I.alert size={16} /><div><b>Ariza asosida «{team.name}» jamoasi yaratilgan.</b><div>Faqat ariza o‘chirilsa, jamoa, o‘yinchilar va shtab saytda qoladi.</div></div></div>
+              ) : (
+                <div className="del-note"><I.alert size={16} />Ariza asosida yaratilgan jamoa allaqachon o‘chirilgan.</div>
+              )}
+              <b className="small">Nimani o‘chiramiz?</b>
+              <label className="del-opt locked"><input type="checkbox" checked disabled /><span><b>Arizani o‘chirish</b><small>{info.number}, tarkib, fayllar, tarix va ichki izoh. Doim o‘chiriladi.</small></span></label>
+              {team && (
+                <label className={`del-opt${teamOn ? " on" : ""}${info.can_delete_team ? "" : " locked"}`}>
+                  <input type="checkbox" checked={teamOn} disabled={!info.can_delete_team} onChange={(e) => setWithTeam(e.target.checked)} />
+                  <span><b>«{team.name}» jamoasini ham o‘chirish</b><small>{teamText}</small></span>
+                </label>
+              )}
+              {team && team.played > 0 && <div className="del-note"><I.lock size={16} />Jamoa matchlarda o‘ynagan — statistika buzilmasligi uchun jamoa o‘chirilmaydi, faqat ariza o‘chadi.</div>}
+              {teamOn && team && team.kept > 0 && <div className="del-note"><I.users size={16} />{team.kept} ta o‘yinchi boshqa jamoadan ko‘chirilgan yoki keyin qo‘shilgan — ular o‘chirilmaydi, jamoasiz qoladi.</div>}
+              {teamOn && team && team.scheduled > 0 && <div className="del-note"><I.calendar size={16} />{team.scheduled} ta rejadagi matchda bu jamoa o‘rni bo‘sh qoladi.</div>}
+              {info.frees_slot && <div className="del-note"><I.link size={16} />Havolada 1 joy bo‘shaydi.</div>}
+              <Field label={`Tasdiqlash uchun ariza raqamini yozing: ${info.number}`} hint="Raqam to‘g‘ri yozilmaguncha «O‘chirish» tugmasi faol bo‘lmaydi">
+                <input className="input" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={info.number} autoFocus
+                  onKeyDown={(e) => e.key === "Enter" && numberOk && info.can_delete && !busy && go()} />
+              </Field>
+            </>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 function ApplicationsList() {
   const nav = useNavigate();
+  const toast = useToast();
+  const { can } = useAuth();
+  const [delId, setDelId] = useState<number | null>(null);
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -178,7 +335,11 @@ function ApplicationsList() {
                 <td className="hide-mobile">{a.errors ? <span className="danger-text small row" style={{ gap: 6 }}><I.alert size={14} /> {a.errors} xato</span> : a.warnings ? <span className="small row" style={{ gap: 6 }}><span style={{ color: "var(--amber-500)" }}><I.alert size={14} /></span> {a.warnings} ogohlantirish</span> : <span className="small row" style={{ gap: 6, color: "var(--text-accent)" }}><I.check size={14} /> Muammo yo‘q</span>}</td>
                 <td className="hide-mobile nowrap">{fmtShort(a.submitted_at || a.updated_at)}</td>
                 <td><Badge tone={STATUS[a.status]?.tone}>{STATUS[a.status]?.label || a.status}</Badge>{a.status === "changes" && a.changes_deadline && <div className="muted small">{fmtShort(a.changes_deadline)} gacha</div>}</td>
-                <td className="actions"><I.arrow size={16} /></td>
+                <td className="actions"><RowMenu items={[
+                  { label: "Ko‘rish", icon: <I.eye size={16} />, onClick: () => nav(`/applications/${a.id}`) },
+                  { label: "TARKIB.xlsx yuklab olish", icon: <I.download size={16} />, onClick: () => downloadXlsx(a.id, a.team.short_name || String(a.id), toast) },
+                  ...(mayDelete(can, a.status) ? ["sep" as const, { label: "O‘chirish…", icon: <I.trash size={16} />, danger: true, onClick: () => setDelId(a.id) }] : []),
+                ]} /></td>
               </tr>
             ))}</tbody>
           </table></div>
@@ -190,6 +351,7 @@ function ApplicationsList() {
           </div>
         )}
       </div>
+      {delId != null && <DeleteModal id={delId} onClose={() => setDelId(null)} onDone={() => { setDelId(null); data.reload(); links.reload(); }} />}
     </>
   );
 }
@@ -198,11 +360,11 @@ function ApplicationsList() {
 function ApplicationReview() {
   const { id } = useParams();
   const toast = useToast();
-  const confirm = useConfirm();
   const nav = useNavigate();
+  const { can } = useAuth();
   const d = useLoad(() => api.get<AppDetail>(`/admin/applications/${id}`), [id]);
   const cfg = useRegConfig();
-  const [modal, setModal] = useState<"" | "approve" | "changes" | "reject">("");
+  const [modal, setModal] = useState<"" | "approve" | "changes" | "reject" | "delete">("");
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -244,15 +406,6 @@ function ApplicationReview() {
       toast(e instanceof Error ? e.message : "Saqlanmadi", "error");
     }
   }
-  async function del() {
-    if (!(await confirm({ title: "Arizani o‘chirish?", text: "Ariza va yuklangan fayllar butunlay o‘chadi.", ok: "O‘chirish", danger: true }))) return;
-    try {
-      await api.del(`/admin/applications/${a.id}`);
-      nav("/applications");
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "O‘chirilmadi", "error");
-    }
-  }
 
   const field = a.players.map((p, i) => ({ p, i })).filter((x) => x.p.role !== "media");
   const media = a.players.map((p, i) => ({ p, i })).filter((x) => x.p.role === "media");
@@ -292,6 +445,7 @@ function ApplicationReview() {
       <div className="crumbs small" style={{ marginBottom: 8 }}><Link to="/applications">Arizalar</Link> / <b>{a.number}</b></div>
       <PageHead title={a.team.name || "Nomsiz jamoa"} sub={<>{a.submitted_at ? `Yuborilgan ${fmtDateTime(a.submitted_at)}` : `Yaratilgan ${fmtDateTime(a.created_at)}`}{a.link ? ` · havola «${a.link.title}»` : ""}</>}
         actions={<>
+          {mayDelete(can, a.status) && <button className="btn btn-icon danger-text" title="Arizani o‘chirish" aria-label="Arizani o‘chirish" onClick={() => setModal("delete")}><I.trash size={16} /></button>}
           <button className="btn btn-ghost" onClick={exportXlsx}><I.download size={16} /> TARKIB.xlsx</button>
           {canDecide && <>
             <button className="btn btn-ghost danger-text" onClick={() => setModal("reject")}>Rad etish</button>
@@ -300,7 +454,6 @@ function ApplicationReview() {
           </>}
           {a.status === "changes" && <button className="btn btn-ghost danger-text" onClick={() => setModal("reject")}>Rad etish</button>}
           {a.created_team && <Link className="btn btn-primary" to={`/teams/${a.created_team.id}`}>Jamoani ochish</Link>}
-          {(a.status === "draft" || a.status === "rejected") && <button className="btn btn-ghost danger-text" onClick={del}><I.trash size={16} /> O‘chirish</button>}
         </>} />
       {canDecide && errors.length > 0 && <div className="alert danger" style={{ marginBottom: 16 }}><I.alert size={16} /><div>Arizada {errors.length} ta xato bor — tasdiqlash mumkin emas. Tuzatishga qaytaring yoki rad eting.</div></div>}
       <div className="app-layout">
@@ -397,6 +550,7 @@ function ApplicationReview() {
       </div>
       {modal === "approve" && <ApproveModal app={a} sms={!!cfg?.sms} onClose={() => setModal("")} onDone={() => { setModal(""); d.reload(); invalidateRefs(); }} />}
       {modal === "changes" && <ChangesModal app={a} sms={!!cfg?.sms} onClose={() => setModal("")} onDone={() => { setModal(""); d.reload(); }} />}
+      {modal === "delete" && <DeleteModal id={a.id} onClose={() => setModal("")} onDone={() => nav("/applications")} />}
       {modal === "reject" && <RejectModal app={a} sms={!!cfg?.sms} onClose={() => setModal("")} onDone={() => { setModal(""); d.reload(); }} />}
     </>
   );

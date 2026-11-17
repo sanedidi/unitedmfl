@@ -42,6 +42,9 @@ const (
 	PermUploads     = "uploads"
 	// team self-registration: links and applications
 	PermApplications = "applications"
+	// deleting sent or approved applications (and the team an approval created);
+	// drafts and rejected applications only need PermApplications
+	PermApplicationsDelete = "applications:delete"
 	// homepage layout builder (draft, publish, versions)
 	PermHomepage = "homepage"
 )
@@ -78,7 +81,7 @@ func Can(role, perm string) bool {
 func PermissionsFor(role string) []string {
 	if role == RoleAdmin {
 		return []string{PermDashboard, PermMatchesRead, PermMatchesEdit, PermLive, PermProtocols, PermTeams,
-			PermApplications, PermStandings, PermSeasons, PermNews, PermBanners, PermHomepage, PermVideos, PermMerch, PermRequests, PermUsers, PermUploads}
+			PermApplications, PermApplicationsDelete, PermStandings, PermSeasons, PermNews, PermBanners, PermHomepage, PermVideos, PermMerch, PermRequests, PermUsers, PermUploads}
 	}
 	return append([]string(nil), rolePerms[role]...)
 }

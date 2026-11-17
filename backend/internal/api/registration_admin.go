@@ -42,6 +42,7 @@ func (s *Server) mountRegistrationAdmin(r chi.Router) {
 		r.Get("/applications", s.adminApplications)
 		r.Get("/applications/{id}", s.adminApplication)
 		r.Patch("/applications/{id}", s.patchApplication)
+		r.Get("/applications/{id}/delete-info", s.applicationDeleteInfo)
 		r.Delete("/applications/{id}", s.deleteApplication)
 		r.Post("/applications/{id}/review", s.reviewApplication)
 		r.Post("/applications/{id}/approve", s.approveApplication)
@@ -486,24 +487,187 @@ func (s *Server) patchApplication(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ---------- deleting applications ----------
+
+// appTeamInfo is what deleting an application would do to the team its
+// approval created.
+type appTeamInfo struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Players   int    `json:"players"` // created by the approval
+	Media     int    `json:"media"`   // media people created by the approval
+	Staff     int    `json:"staff"`
+	Kept      int    `json:"kept"`      // moved from another team or added later: they stay, without a team
+	Played    int    `json:"played"`    // matches that started or finished: the team cannot be deleted
+	Scheduled int    `json:"scheduled"` // upcoming matches lose this team
+}
+
+type rowQuerier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// Players created by the approval share its transaction time, so their
+// created_at equals the application's decided_at; everyone else in the team
+// was moved in from another team or added later.
+const appCreatedPlayer = `p.created_at = (SELECT decided_at FROM team_applications WHERE id = $2)`
+
+func loadAppTeam(ctx context.Context, q rowQuerier, teamID, appID int64) (*appTeamInfo, error) {
+	t := appTeamInfo{ID: teamID}
+	err := q.QueryRowContext(ctx, `SELECT t.name,
+		count(p.id) FILTER (WHERE `+appCreatedPlayer+` AND NOT p.is_media),
+		count(p.id) FILTER (WHERE `+appCreatedPlayer+` AND p.is_media),
+		count(p.id) FILTER (WHERE p.id IS NOT NULL AND NOT coalesce(`+appCreatedPlayer+`, false))
+		FROM teams t LEFT JOIN players p ON p.team_id = t.id WHERE t.id = $1 GROUP BY t.id`, teamID, appID).
+		Scan(&t.Name, &t.Players, &t.Media, &t.Kept)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil // the team was already deleted
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := q.QueryRowContext(ctx, `SELECT count(*) FROM team_staff WHERE team_id = $1`, teamID).Scan(&t.Staff); err != nil {
+		return nil, err
+	}
+	err = q.QueryRowContext(ctx, `SELECT count(*) FILTER (WHERE status IN ('live', 'halftime', 'finished')),
+		count(*) FILTER (WHERE status IN ('scheduled', 'postponed'))
+		FROM matches WHERE home_team_id = $1 OR away_team_id = $1`, teamID).Scan(&t.Played, &t.Scheduled)
+	return &t, err
+}
+
+// canDeleteApp: drafts and rejected applications may be removed by anyone who
+// works with applications; anything else, and the created team, only by an
+// administrator.
+func canDeleteApp(r *http.Request, status string, withTeam bool) bool {
+	c := claimsFrom(r.Context())
+	if c == nil {
+		return false
+	}
+	if auth.Can(c.Role, auth.PermApplicationsDelete) {
+		return true
+	}
+	return !withTeam && (status == "draft" || status == "rejected")
+}
+
+func (s *Server) applicationDeleteInfo(w http.ResponseWriter, r *http.Request) {
+	id, err := idParam(r, "id")
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	ctx := r.Context()
+	a, _, err := s.loadApp(ctx, id)
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	var team *appTeamInfo
+	if a.TeamID != nil {
+		if team, err = loadAppTeam(ctx, s.DB, *a.TeamID, a.ID); err != nil {
+			httpx.Fail(w, r, err)
+			return
+		}
+	}
+	files := 0
+	for _, p := range a.Players {
+		if p.Medical != nil && p.Medical.File != "" {
+			files++
+		}
+	}
+	httpx.JSON(w, 200, map[string]any{
+		"id": a.ID, "number": a.number(), "status": a.Status, "team_name": a.Team.Name,
+		"players": len(a.Players), "staff": len(a.Staff), "medical_files": files,
+		"frees_slot": a.Status == "approved" && a.LinkID != nil,
+		"can_delete": canDeleteApp(r, a.Status, false), "confirm_number": a.Status == "approved",
+		"team": team, "can_delete_team": team != nil && team.Played == 0 && canDeleteApp(r, a.Status, true),
+	})
+}
+
+// deleteApplication removes an application with its history and files.
+// ?team=1 also deletes the team its approval created (with the players and
+// staff the approval created) unless that team has already played; players
+// moved in from other teams or added later stay, without a team. An approved
+// application needs ?confirm=<its number>.
 func (s *Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
 	id, err := idParam(r, "id")
 	if err != nil {
 		httpx.Fail(w, r, err)
 		return
 	}
-	res, err := s.DB.ExecContext(r.Context(), `DELETE FROM team_applications WHERE id = $1 AND status IN ('draft', 'rejected')`, id)
+	ctx := r.Context()
+	withTeam := r.URL.Query().Get("team") == "1"
+	a, _, err := s.loadApp(ctx, id)
 	if err != nil {
 		httpx.Fail(w, r, err)
 		return
 	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		httpx.Fail(w, r, httpx.NewError(http.StatusConflict, "in_use", "Faqat qoralama yoki rad etilgan arizani o‘chirish mumkin"))
+	if !canDeleteApp(r, a.Status, withTeam) {
+		httpx.Fail(w, r, httpx.NewError(http.StatusForbidden, "forbidden", "Bu arizani faqat administrator o‘chira oladi"))
+		return
+	}
+	if a.Status == "approved" && !strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("confirm")), a.number()) {
+		httpx.Fail(w, r, httpx.BadRequest("Tasdiqlash uchun ariza raqamini kiriting: "+a.number()))
+		return
+	}
+
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	defer tx.Rollback()
+	var status string
+	var teamID *int64
+	if err := tx.QueryRowContext(ctx, `SELECT status, team_id FROM team_applications WHERE id = $1 FOR UPDATE`, id).Scan(&status, &teamID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			err = httpx.ErrNotFound
+		}
+		httpx.Fail(w, r, err)
+		return
+	}
+	if status != a.Status {
+		httpx.Fail(w, r, httpx.NewError(http.StatusConflict, "state", "Ariza holati o‘zgardi — sahifani yangilang"))
+		return
+	}
+	var team *appTeamInfo
+	var detached int64
+	if withTeam && teamID != nil {
+		if team, err = loadAppTeam(ctx, tx, *teamID, id); err != nil {
+			httpx.Fail(w, r, err)
+			return
+		}
+		if team != nil {
+			if team.Played > 0 {
+				httpx.Fail(w, r, httpx.NewError(http.StatusConflict, "played", "Jamoa matchlarda o‘ynagan — uni o‘chirib bo‘lmaydi, faqat arizani o‘chiring"))
+				return
+			}
+			res, err := tx.ExecContext(ctx, `UPDATE players p SET team_id = NULL, updated_at = now()
+				WHERE p.team_id = $1 AND NOT coalesce(`+appCreatedPlayer+`, false)`, *teamID, id)
+			if err != nil {
+				httpx.Fail(w, r, err)
+				return
+			}
+			detached, _ = res.RowsAffected()
+			if _, err := tx.ExecContext(ctx, `DELETE FROM teams WHERE id = $1`, *teamID); err != nil {
+				httpx.Fail(w, r, dbError(err))
+				return
+			}
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM team_applications WHERE id = $1`, id); err != nil {
+		httpx.Fail(w, r, dbError(err))
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		httpx.Fail(w, r, err)
 		return
 	}
 	_ = os.RemoveAll(s.appDir(id))
-	s.audit(r, "delete", "application", id, nil)
-	w.WriteHeader(http.StatusNoContent)
+	s.audit(r, "delete", "application", id, map[string]any{"number": a.number(), "status": a.Status, "team": a.Team.Name,
+		"team_deleted": team != nil, "players_detached": detached})
+	if team != nil {
+		s.audit(r, "delete", "team", team.ID, map[string]any{"name": team.Name, "application": a.number(), "players_detached": detached})
+	}
+	httpx.JSON(w, 200, map[string]any{"team_deleted": team != nil, "players_detached": detached})
 }
 
 func userID(r *http.Request) *int64 {

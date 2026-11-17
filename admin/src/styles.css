@@ -893,3 +893,22 @@ button.hb-item:hover { background: var(--n-50); }
 .cover-drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .cover-tag, .cover-busy { position: absolute; left: 8px; bottom: 8px; padding: 3px 7px; border-radius: 3px; background: rgba(0, 0, 0, .65); color: #fff; font-size: 11px; font-weight: 600; }
 .cover-busy { left: auto; right: 8px; background: var(--accent); color: var(--n-950); }
+
+/* ---------- deleting applications: row menu, destructive button, options ---------- */
+.btn-destructive { background: var(--red-600); border-color: var(--red-600); color: #fff; }
+.btn-destructive:hover:not(:disabled) { background: var(--red-500); border-color: var(--red-500); }
+.row-menu-pop { position: fixed; z-index: 60; min-width: 232px; padding: 6px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 2px; animation: fade .12s; }
+.row-menu-pop button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; background: none; border-radius: var(--r-sm); font: inherit; font-size: 14px; font-weight: 500; color: var(--text); text-align: left; cursor: pointer; }
+.row-menu-pop button:hover { background: var(--bg-hover); }
+.row-menu-pop button.danger { color: var(--red-600); }
+.row-menu-pop hr { border: 0; border-top: 1px solid var(--border); margin: 4px 2px; }
+.del-list { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.del-list > div { display: flex; gap: 10px; align-items: center; }
+.del-list svg { flex: none; color: var(--text-muted); }
+.del-note { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: var(--r-sm); background: var(--bg-surface-2); color: var(--text-2); font-size: 13px; }
+.del-note svg { flex: none; }
+.del-opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer; font-size: 14px; }
+.del-opt.on { border-color: var(--red-500); }
+.del-opt.locked { cursor: default; }
+.del-opt input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--red-600); flex: none; }
+.del-opt small { display: block; margin-top: 2px; color: var(--text-muted); font-size: 12px; }

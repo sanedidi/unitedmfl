@@ -20,6 +20,7 @@ export const I = {
   log: ({ size }: P) => <svg {...a(size)}><path d="M4 6h16M4 12h16M4 18h10" /></svg>,
   plus: ({ size }: P) => <svg {...a(size)}><path d="M12 5v14M5 12h14" /></svg>,
   edit: ({ size }: P) => <svg {...a(size)}><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M14 6l4 4" /></svg>,
+  more: ({ size }: P) => <svg width={size || 18} height={size || 18} viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>,
   trash: ({ size }: P) => <svg {...a(size)}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>,
   x: ({ size }: P) => <svg {...a(size)}><path d="M6 6l12 12M18 6L6 18" /></svg>,
   search: ({ size }: P) => <svg {...a(size)}><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>,
