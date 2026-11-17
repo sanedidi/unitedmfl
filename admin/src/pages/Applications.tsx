@@ -9,6 +9,7 @@ import { invalidateRefs, useRefs } from "@/lib/refs";
 import { PageHead } from "@/components/Layout";
 import { Badge, Empty, ErrorBox, Field, Loading, Modal, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
+import { PhotoThumb, PhotoViewer, type PhotoItem } from "@/components/PlayerPhotos";
 
 /* ---------- types ---------- */
 type LinkState = "open" | "paused" | "soon" | "closed" | "full" | "used";
@@ -64,6 +65,7 @@ const SECTIONS: Record<string, string> = { team: "Jamoa", rep: "Vakil", roster: 
 const STAFF_ROLES: Record<string, string> = { head_coach: "Bosh murabbiy", assistant: "Yordamchi", gk_coach: "Darvozabonlar murabbiyi", fitness: "Jismoniy tayyorgarlik", doctor: "Shifokor", manager: "Menejer", other: "Boshqa" };
 const KIT_ORDER = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
 const fullName = (p: { first_name: string; last_name: string }) => `${p.first_name} ${p.last_name}`.trim();
+const ROLE_NAME: Record<Player["role"], string> = { player: "Maydon o‘yinchisi", goalkeeper: "Darvozabon", media: "Media shaxs" };
 const fmtBirth = (d: string) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? d.split("-").reverse().join(".") : d || "—");
 
 function useRegConfig() {
@@ -366,6 +368,7 @@ function ApplicationReview() {
   const cfg = useRegConfig();
   const [modal, setModal] = useState<"" | "approve" | "changes" | "reject" | "delete">("");
   const [note, setNote] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<number | null>(null); // index into photos
 
   useEffect(() => {
     if (d.data?.status === "submitted") api.post(`/admin/applications/${id}/review`).then(() => d.reload()).catch(() => {});
@@ -418,17 +421,26 @@ function ApplicationReview() {
   })();
   const maxSize = Math.max(1, ...sizes.map(([, n]) => n));
   const medical = a.players.filter((p) => p.medical).length;
+  // the viewer walks through the photos in the order the tables show them
+  const ordered = [...field, ...media];
+  const photos: (PhotoItem & { i: number })[] = ordered.filter((x) => x.p.photo_url).map(({ p, i }) => ({
+    i,
+    src: p.photo_url,
+    name: fullName(p),
+    meta: [p.number != null ? `№${p.number}` : "", ROLE_NAME[p.role], p.jersey_name ? `futbolkada ${p.jersey_name}` : "", p.birth_date ? fmtBirth(p.birth_date) : ""].filter(Boolean).join(" · "),
+    file: `${a.team.short_name || "jamoa"}-${p.number ?? ""}-${fullName(p)}`.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") + (p.photo_url.match(/\.(webp|jpe?g|png|gif)(\?|$)/i)?.[0].replace("?", "") || ".webp"),
+  }));
 
   const table = (rows: { p: Player; i: number }[]) => (
     <div className="table-wrap"><table className="table">
-      <thead><tr><th>№</th><th>O‘yinchi · ish joyi</th><th>Futbolkada</th><th className="hide-mobile">Tug‘ilgan</th><th>O‘lcham</th><th>Tibbiy</th><th>Tekshiruv</th></tr></thead>
+      <thead><tr><th>№</th><th>Foto · o‘yinchi · ish joyi</th><th>Futbolkada</th><th className="hide-mobile">Tug‘ilgan</th><th>O‘lcham</th><th>Tibbiy</th><th>Tekshiruv</th></tr></thead>
       <tbody>{rows.map(({ p, i }) => {
         const c = rowCheck(i);
         const dup = dupFor(i);
         return (
           <tr key={i} className={c?.level === "error" ? "row-err" : c || dup ? "row-warn" : ""}>
             <td><span className="num-box">{p.number ?? "—"}</span></td>
-            <td><b>{fullName(p)}</b>{p.role === "goalkeeper" && <span className="tag-mini">GK</span>}{p.role === "media" && <span className="tag-mini dark">Media</span>}<div className="muted small">{p.workplace || "ish joyi yo‘q"}</div></td>
+            <td><div className="pl-cell"><PhotoThumb src={p.photo_url} name={fullName(p)} onOpen={() => setPhoto(photos.findIndex((x) => x.i === i))} /><div><b>{fullName(p)}</b>{p.role === "goalkeeper" && <span className="tag-mini">GK</span>}{p.role === "media" && <span className="tag-mini dark">Media</span>}<div className="muted small">{p.workplace || "ish joyi yo‘q"}</div></div></div></td>
             <td className="small"><b>{p.jersey_name || "—"}</b></td>
             <td className="hide-mobile nowrap">{fmtBirth(p.birth_date)}</td>
             <td>{p.kit_size ? <Badge plain>{p.kit_size}</Badge> : "—"}</td>
@@ -522,6 +534,7 @@ function ApplicationReview() {
             <div className="card-head"><h3>Forma va hujjatlar</h3></div>
             <div className="card-pad stack" style={{ gap: 12 }}>
               <div className="size-bars">{sizes.length ? sizes.map(([s, n]) => <div key={s}><span style={{ width: 34 }}>{s}</span><i><b style={{ width: `${(n / maxSize) * 100}%` }} /></i><span className="muted">{n}</span></div>) : <span className="muted small">O‘lchamlar kiritilmagan</span>}</div>
+              <div className="row" style={{ justifyContent: "space-between" }}><span className="muted small">O‘yinchi fotosi</span><Badge tone={photos.length === a.players.length && photos.length > 0 ? "ok" : "warn"}>{photos.length} / {a.players.length}</Badge></div>
               <div className="row" style={{ justifyContent: "space-between" }}><span className="muted small">Tibbiy ruxsatnoma</span><Badge tone={medical === a.players.length && medical > 0 ? "ok" : "warn"}>{medical} / {a.players.length}</Badge></div>
               <button className="btn btn-block" onClick={exportXlsx}><I.download size={16} /> TARKIB.xlsx yuklab olish</button>
             </div>
@@ -548,6 +561,7 @@ function ApplicationReview() {
           </div>
         </aside>
       </div>
+      {photo != null && photo >= 0 && <PhotoViewer items={photos} start={photo} onClose={() => setPhoto(null)} />}
       {modal === "approve" && <ApproveModal app={a} sms={!!cfg?.sms} onClose={() => setModal("")} onDone={() => { setModal(""); d.reload(); invalidateRefs(); }} />}
       {modal === "changes" && <ChangesModal app={a} sms={!!cfg?.sms} onClose={() => setModal("")} onDone={() => { setModal(""); d.reload(); }} />}
       {modal === "delete" && <DeleteModal id={a.id} onClose={() => setModal("")} onDone={() => nav("/applications")} />}

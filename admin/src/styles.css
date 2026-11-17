@@ -1081,3 +1081,18 @@ video.pt-video { object-fit: contain; cursor: auto; }
   .online-pill { padding: 0 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .online-pill .dot::after, .vm-online .dot::after { display: none; } }
+
+/* ---------- Application review: player photos ---------- */
+.pl-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pl-photo { width: 40px; height: 40px; flex-shrink: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--n-50); overflow: hidden; display: grid; place-items: center; color: var(--text-muted); cursor: zoom-in; transition: box-shadow .12s, border-color .12s; }
+.pl-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pl-photo:hover, .pl-photo:focus-visible { border-color: var(--n-900); box-shadow: 0 0 0 2px var(--accent); }
+.pl-photo.empty { cursor: default; box-shadow: none; border-color: var(--border); }
+.photo-viewer { width: min(560px, 100%); }
+.pv-stage { position: relative; aspect-ratio: 4 / 5; max-height: calc(100vh - 260px); margin: 0 auto; width: 100%; border-radius: var(--r-md); background: var(--n-950); overflow: hidden; display: grid; place-items: center; }
+.pv-stage img { width: 100%; height: 100%; object-fit: contain; }
+.pv-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .92); color: var(--n-900); display: grid; place-items: center; cursor: pointer; box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.2)); }
+.pv-nav:hover { background: #fff; }
+.pv-nav.prev { left: 12px; }
+.pv-nav.next { right: 12px; }
+.pv-count { position: absolute; left: 12px; bottom: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(11, 13, 16, .72); color: #fff; font-size: 12px; font-weight: 600; }
