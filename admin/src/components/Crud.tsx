@@ -195,6 +195,8 @@ export type CrudProps<T extends Rec> = {
   /** Edit page: cards after the main card (left) and before the status card (right). */
   cards?: (c: CardCtx) => ReactNode;
   sideCards?: (c: CardCtx) => ReactNode;
+  /** Edit page: cards after the status card (right). */
+  sideCardsAfter?: (c: CardCtx) => ReactNode;
   /** Edit page: a reason why saving must wait (e.g. a file is still uploading). */
   saveBlocked?: (values: Rec) => string | undefined;
 };
@@ -390,6 +392,7 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
               <div className="card-pad side-fields"><FormFields fields={side} values={form.values} set={form.set} errors={form.errors} /></div>
             </div>
           )}
+          {p.sideCardsAfter?.(ctx)}
           {item && p.canDelete !== false && <button type="button" className="btn btn-ghost danger-text" style={{ alignSelf: "flex-start" }} onClick={remove}><I.trash size={16} /> {p.singular}ni o‘chirish</button>}
         </aside>
       </div>

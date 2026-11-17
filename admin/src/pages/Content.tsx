@@ -12,7 +12,7 @@ import { TeamExtras } from "@/components/TeamExtras";
 import { PlayerPhotoCard, TeamKitSection } from "@/components/Kit";
 import { groupTitle, TeamGroupCard } from "@/pages/Groups";
 import { useMatchOptions } from "@/lib/matchOptions";
-import { isUploadedVideo, VideoSourceCard, youtubeId } from "@/components/VideoSource";
+import { isUploadedVideo, VideoCoverCard, VideoSourceCard, youtubeId } from "@/components/VideoSource";
 
 
 /* ---------- Teams ---------- */
@@ -174,6 +174,7 @@ export function VideosPage() {
     <CrudSection base="/videos" title="Videolar" resource="/admin/videos" singular="Video" defaults={{ kind: "highlight", status: "draft", source: "file" }}
       filters={[{ param: "status", label: "Holat", options: [{ value: "draft", label: "Qoralama" }, { value: "published", label: "Nashr etilgan" }] }]}
       cards={(c) => <VideoSourceCard c={c} />}
+      sideCardsAfter={(c) => <VideoCoverCard c={c} />}
       saveBlocked={(v) => (v.__uploading ? "Video yuklanmoqda — tugashini kuting" : undefined)}
       fields={[
         { name: "title", label: "Sarlavha", required: true, full: true },
@@ -184,7 +185,7 @@ export function VideosPage() {
         { name: "duration_sec", label: "Davomiyligi (soniya)", type: "number", nullable: true, hint: "Fayl yuklanganda avtomatik to‘ladi" },
         { name: "status", label: "Holat", type: "select", options: [{ value: "draft", label: "Qoralama" }, { value: "published", label: "Nashr etilgan" }], side: true },
         { name: "published_at", label: "Nashr vaqti", type: "datetime", side: true },
-        { name: "thumbnail_url", label: "Muqova (ixtiyoriy)", type: "image", hint: "Bo‘sh bo‘lsa videodan kadr yoki YouTube muqovasi olinadi", side: true },
+        { name: "thumbnail_url", label: "Muqova", hidden: true },
       ]}
       columns={[
         { label: "Video", render: (v) => <div><b>{v.title}</b><div className="muted small">{v.source === "file" || isUploadedVideo(v.url) ? "Fayl" : youtubeId(v.url) ? "YouTube" : "Havola"}</div></div> },
