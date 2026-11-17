@@ -105,6 +105,11 @@ export function teamColor(t: { id: number; colors?: string[] } | null | undefine
   return PALETTE[(t.id - 1 + PALETTE.length) % PALETTE.length];
 }
 
+/** An uploaded video file (played with our own player, not YouTube). */
+export function isFileVideo(v: { url: string; source?: string }) {
+  return v.source === "file" || /\/uploads\/videos\/[0-9a-f]{32}\.(mp4|mov|webm)$/.test(v.url);
+}
+
 export function youtubeId(url: string, id?: string) {
   if (id) return id;
   const m = url.match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/);

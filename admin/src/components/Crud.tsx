@@ -28,7 +28,7 @@ export type FieldSpec = {
   hintFor?: (v: Rec) => string | undefined;
 };
 /** Extra cards on the edit page; they edit hidden fields through set(). */
-export type CardCtx = { item: Rec | null; values: Rec; set: (k: string, v: any) => void; version: number };
+export type CardCtx = { item: Rec | null; values: Rec; set: (k: string, v: any) => void; version: number; errors: Record<string, string> };
 export type Rec = Record<string, any>;
 export type Col<T> = { label: string; render: (r: T) => ReactNode; className?: string };
 
@@ -78,7 +78,8 @@ export function FormFields({ fields, values, set, errors }: { fields: FieldSpec[
           case "select":
             input = (
               <select {...common} className="select" value={v} onChange={(e) => set(f.name, e.target.value)}>
-                {f.nullable && <option value="">—</option>}
+                {f.nullable && <option value="">{f.placeholder || "—"}</option>}
+                {v !== "" && v != null && !f.options?.some((o) => o.value === String(v)) && <option value={v}>#{v}</option>}
                 {f.options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             );
@@ -194,6 +195,8 @@ export type CrudProps<T extends Rec> = {
   /** Edit page: cards after the main card (left) and before the status card (right). */
   cards?: (c: CardCtx) => ReactNode;
   sideCards?: (c: CardCtx) => ReactNode;
+  /** Edit page: a reason why saving must wait (e.g. a file is still uploading). */
+  saveBlocked?: (values: Rec) => string | undefined;
 };
 
 export function CrudPage<T extends Rec>(p: CrudProps<T>) {
@@ -311,7 +314,8 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
   const [version, setVersion] = useState(0);
   const dirty = JSON.stringify(form.values) !== saved;
   const back = p.listPath || p.base;
-  const ctx: CardCtx = { item, values: form.values, set: form.set, version };
+  const ctx: CardCtx = { item, values: form.values, set: form.set, version, errors: form.errors };
+  const blocked = p.saveBlocked?.(form.values);
   useEffect(() => {
     if (!dirty) return;
     const h = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -325,6 +329,10 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
 
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
+    if (blocked) {
+      toast(blocked, "error");
+      return;
+    }
     setBusy(true);
     try {
       const body = form.payload();
@@ -361,7 +369,7 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
       <PageHead title={title} sub={<span className="crumbs"><a href={back} onClick={(e) => { e.preventDefault(); cancel(); }}>{p.title}</a> / <b>{item ? "Tahrirlash" : "Yangi"}</b>{dirty && <span className="muted small"> · saqlanmagan o‘zgarishlar</span>}</span>}
         actions={<>
           <button type="button" className="btn btn-ghost" onClick={cancel}>Bekor qilish</button>
-          <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
+          <button type="submit" className="btn btn-primary" disabled={busy || !!blocked} title={blocked}>{busy ? "Saqlanmoqda…" : blocked ? "Kuting…" : "Saqlash"}</button>
         </>} />
       <div className="edit-layout">
         <div className="stack" style={{ gap: 24 }}>

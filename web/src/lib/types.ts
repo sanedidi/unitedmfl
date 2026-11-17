@@ -84,6 +84,8 @@ export type Video = {
   id: number;
   title: string;
   url: string;
+  /** "file" = uploaded to /uploads/videos/ and played on the site */
+  source?: "link" | "file";
   youtube_id: string;
   kind: string;
   match_id: number | null;

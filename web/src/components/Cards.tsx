@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Play } from "./Icons";
-import { fmtDate, fmtUZS, youtubeId } from "@/lib/format";
+import { fmtDate, fmtUZS, isFileVideo, youtubeId } from "@/lib/format";
+import { FileVideoCard } from "./VideoPlayer";
 import { Img } from "./Img";
 import { newsPath, productPath } from "@/lib/seo";
 import type { NewsItem, Product, Video } from "@/lib/types";
@@ -62,6 +63,7 @@ export function ProductCard({ p }: { p: Product }) {
 }
 
 export function VideoCard({ v }: { v: Video }) {
+  if (isFileVideo(v)) return <FileVideoCard v={v} />;
   const yt = youtubeId(v.url, v.youtube_id);
   const thumb = v.thumbnail_url || (yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : "");
   return (

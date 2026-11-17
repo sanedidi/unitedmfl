@@ -51,6 +51,8 @@ type resource struct {
 	prepare func(ctx context.Context, s *Server, body map[string]any, creating bool) error
 	// afterWrite runs after a successful create (old == nil) or update with both row versions.
 	afterWrite func(s *Server, id int64, old, cur map[string]any)
+	// afterDelete runs after a successful delete with the removed row.
+	afterDelete func(s *Server, id int64, old map[string]any)
 }
 
 func rowMap(raw []byte) map[string]any {
@@ -421,6 +423,22 @@ func (h crudHandlers) delete(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, r, err)
 		return
 	}
+	if h.res.afterDelete != nil {
+		var oldRaw []byte
+		err := h.s.DB.QueryRowContext(r.Context(), fmt.Sprintf(`DELETE FROM %s t WHERE t.id=$1 RETURNING to_jsonb(t)`, h.res.table), id).Scan(&oldRaw)
+		if errors.Is(err, sql.ErrNoRows) {
+			httpx.Fail(w, r, httpx.ErrNotFound)
+			return
+		}
+		if err != nil {
+			httpx.Fail(w, r, dbError(err))
+			return
+		}
+		h.s.audit(r, "delete", h.res.entity, id, nil)
+		h.res.afterDelete(h.s, id, rowMap(oldRaw))
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	res, err := h.s.DB.ExecContext(r.Context(), fmt.Sprintf(`DELETE FROM %s WHERE id=$1`, h.res.table), id)
 	if err != nil {
 		httpx.Fail(w, r, dbError(err))
@@ -502,8 +520,9 @@ var bannersRes = &resource{table: "banners", entity: "banner", touch: true, orde
 
 var videosRes = &resource{table: "videos", entity: "video", order: "coalesce(published_at, created_at) DESC",
 	filters: map[string]string{"status": "status", "match_id": "match_id"},
-	fields: map[string]field{"title": reqTxt(200), "url": reqTxt(500), "youtube_id": txt(20), "kind": enum("highlight", "interview", "announcement", "full"),
-		"match_id": optInt, "duration_sec": optInt, "thumbnail_url": txt(500), "status": enum("draft", "published"), "published_at": optTime}}
+	fields: map[string]field{"title": reqTxt(200), "url": reqTxt(500), "source": enum("link", "file"), "youtube_id": txt(20), "kind": enum("highlight", "interview", "announcement", "full"),
+		"match_id": optInt, "duration_sec": optInt, "thumbnail_url": txt(500), "status": enum("draft", "published"), "published_at": optTime},
+	prepare: prepareVideo, afterWrite: videoChanged, afterDelete: videoDeleted}
 
 var productsRes = &resource{table: "products", entity: "product", touch: true, order: "ord, id",
 	search: []string{"name"}, filters: map[string]string{"status": "status", "category": "category"},

@@ -11,6 +11,8 @@ import { SITE_URL } from "@/components/Layout";
 import { TeamExtras } from "@/components/TeamExtras";
 import { PlayerPhotoCard, TeamKitSection } from "@/components/Kit";
 import { groupTitle, TeamGroupCard } from "@/pages/Groups";
+import { useMatchOptions } from "@/lib/matchOptions";
+import { isUploadedVideo, VideoSourceCard, youtubeId } from "@/components/VideoSource";
 
 
 /* ---------- Teams ---------- */
@@ -135,6 +137,7 @@ export function SeasonsPage() {
 /* ---------- News ---------- */
 const NEWS_STATUS = [{ value: "draft", label: "Qoralama" }, { value: "published", label: "Nashr etilgan" }, { value: "scheduled", label: "Rejalashtirilgan" }];
 export function NewsPage() {
+  const matchOpts = useMatchOptions();
   return (
     <CrudSection base="/news" title="Yangiliklar" resource="/admin/news" singular="Yangilik" searchable defaults={{ status: "draft", category: "LIGA" }}
       filters={[{ param: "status", label: "Holat", options: NEWS_STATUS }]}
@@ -149,7 +152,7 @@ export function NewsPage() {
         { name: "body", label: "Matn", type: "markdown" },
         { name: "cover_url", label: "Muqova", type: "image", side: true },
         { name: "tags", label: "Teglar", type: "tags", hint: "vergul bilan" },
-        { name: "match_id", label: "Bog‘langan match ID", type: "number", nullable: true },
+        { name: "match_id", label: "Bog‘langan match", type: "select", numeric: true, nullable: true, placeholder: "Match bilan bog‘lanmagan", options: matchOpts },
         { name: "seo_description", label: "SEO tavsif (160 belgi)", type: "textarea" },
       ]}
       columns={[
@@ -166,21 +169,25 @@ export function NewsPage() {
 /* ---------- Videos ---------- */
 const VIDEO_KIND = [{ value: "highlight", label: "Sharh" }, { value: "interview", label: "Intervyu" }, { value: "announcement", label: "Anons" }, { value: "full", label: "To‘liq o‘yin" }];
 export function VideosPage() {
+  const matchOpts = useMatchOptions();
   return (
-    <CrudSection base="/videos" title="Videolar" resource="/admin/videos" singular="Video" defaults={{ kind: "highlight", status: "draft" }}
+    <CrudSection base="/videos" title="Videolar" resource="/admin/videos" singular="Video" defaults={{ kind: "highlight", status: "draft", source: "file" }}
       filters={[{ param: "status", label: "Holat", options: [{ value: "draft", label: "Qoralama" }, { value: "published", label: "Nashr etilgan" }] }]}
+      cards={(c) => <VideoSourceCard c={c} />}
+      saveBlocked={(v) => (v.__uploading ? "Video yuklanmoqda — tugashini kuting" : undefined)}
       fields={[
         { name: "title", label: "Sarlavha", required: true, full: true },
-        { name: "url", label: "Havola (YouTube)", type: "url", required: true, full: true },
+        { name: "source", label: "Manba", hidden: true },
+        { name: "url", label: "Video", hidden: true },
         { name: "kind", label: "Turi", type: "select", options: VIDEO_KIND },
+        { name: "match_id", label: "Match", type: "select", numeric: true, nullable: true, placeholder: "Match bilan bog‘lanmagan", options: matchOpts },
+        { name: "duration_sec", label: "Davomiyligi (soniya)", type: "number", nullable: true, hint: "Fayl yuklanganda avtomatik to‘ladi" },
         { name: "status", label: "Holat", type: "select", options: [{ value: "draft", label: "Qoralama" }, { value: "published", label: "Nashr etilgan" }], side: true },
-        { name: "match_id", label: "Match ID", type: "number", nullable: true },
         { name: "published_at", label: "Nashr vaqti", type: "datetime", side: true },
-        { name: "duration_sec", label: "Davomiyligi (soniya)", type: "number", nullable: true },
-        { name: "thumbnail_url", label: "Muqova (ixtiyoriy)", type: "image", hint: "Bo‘sh bo‘lsa YouTube muqovasi", side: true },
+        { name: "thumbnail_url", label: "Muqova (ixtiyoriy)", type: "image", hint: "Bo‘sh bo‘lsa videodan kadr yoki YouTube muqovasi olinadi", side: true },
       ]}
       columns={[
-        { label: "Video", render: (v) => <b>{v.title}</b> },
+        { label: "Video", render: (v) => <div><b>{v.title}</b><div className="muted small">{v.source === "file" || isUploadedVideo(v.url) ? "Fayl" : youtubeId(v.url) ? "YouTube" : "Havola"}</div></div> },
         { label: "Turi", render: (v) => VIDEO_KIND.find((k) => k.value === v.kind)?.label },
         { label: "Holat", render: (v) => v.status === "published" ? <Badge tone="ok">Nashr etilgan</Badge> : <Badge>Qoralama</Badge> },
         { label: "Sana", render: (v) => fmtDate(v.published_at), className: "hide-mobile" },

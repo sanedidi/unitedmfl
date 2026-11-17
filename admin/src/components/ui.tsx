@@ -138,7 +138,7 @@ export function ImageInput({ value, onChange, wide }: { value: string; onChange:
       <div className={`img-preview${wide ? " wide" : ""}`} style={value ? { backgroundImage: `url("${value}")` } : undefined}>{!value && "Rasm yo‘q"}</div>
       <div className="stack grow" style={{ gap: 8 }}>
         <input className="input input-sm" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://… yoki faylni yuklang" />
-        <div className="row">
+        <div className="row" style={{ flexWrap: "wrap" }}>
           <button type="button" className="btn btn-sm" onClick={() => ref.current?.click()} disabled={busy}><I.upload size={15} /> {busy ? "Yuklanmoqda…" : "Yuklash"}</button>
           {value && <button type="button" className="btn btn-sm btn-ghost" onClick={() => onChange("")}>Olib tashlash</button>}
         </div>

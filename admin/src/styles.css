@@ -883,3 +883,6 @@ button.hb-item:hover { background: var(--n-50); }
   .hb-left { display: none; }
 }
 .hb-th.split > div { display: flex; flex-direction: column; gap: 6px; }
+
+/* Video edit page: uploaded file / YouTube preview */
+.video-preview { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: var(--r-sm); background: var(--n-900); }

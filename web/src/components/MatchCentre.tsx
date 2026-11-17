@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Crest } from "./Crest";
 import { Ball, Calendar, Clock, Doc, Pin, Play, Swap, Ticket, Users } from "./Icons";
 import { LiveMinute } from "./LiveMinute";
-import { fmtDate, fmtTime, isLive, matchMinute, STATUS_LABEL, youtubeId } from "@/lib/format";
+import { fmtDate, fmtTime, isFileVideo, isLive, matchMinute, STATUS_LABEL, youtubeId } from "@/lib/format";
 import type { MatchDetail, MatchEvent } from "@/lib/types";
 import { Lineups } from "./Lineups";
 import { Lightbox, PhotoGrid, PhotoTeaser } from "./MatchPhotos";
@@ -296,11 +296,13 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
           <section>
             <h2 className="h3" style={{ marginBottom: 20 }}>Video</h2>
         <div className="grid grid-2">
-          {[...(m.video_url ? [{ id: 0, title: "Videosharh", url: m.video_url, youtube_id: "" }] : []), ...d.videos].map((v) => {
+          {[...(m.video_url ? [{ id: 0, title: "Videosharh", url: m.video_url, youtube_id: "", thumbnail_url: "" }] : []), ...d.videos].map((v) => {
             const yt = youtubeId(v.url, v.youtube_id);
             return (
               <section key={v.id} className="stack" style={{ gap: 10 }}>
-                {yt ? (
+                {isFileVideo(v) ? (
+                  <video className="embed" src={v.url} poster={v.thumbnail_url || undefined} controls playsInline preload="metadata" />
+                ) : yt ? (
                   <iframe className="embed" src={`https://www.youtube-nocookie.com/embed/${yt}`} title={v.title} loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                 ) : (
                   <a className="btn btn-ghost" href={v.url} target="_blank" rel="noopener noreferrer"><Play /> {v.title}</a>

@@ -171,7 +171,7 @@ func (s *Server) matchDetailJSON(ctx context.Context, id int64, adminView bool) 
 		'lineup_meta', (SELECT coalesce(json_agg(lm ORDER BY lm.side), '[]') FROM
 			(SELECT side, formation, status, coach, assistant, published_at, updated_at FROM lineup_meta lm WHERE match_id = x.id `+metaPub+`) lm),
 		'officials', (SELECT coalesce(json_agg(o ORDER BY o.id), '[]') FROM (SELECT id, side, role, name FROM match_officials WHERE match_id = x.id) o),
-		'videos', (SELECT coalesce(json_agg(v), '[]') FROM (SELECT id, title, url, youtube_id, kind, thumbnail_url FROM videos WHERE match_id = x.id AND status='published') v),
+		'videos', (SELECT coalesce(json_agg(v), '[]') FROM (SELECT id, title, url, source, youtube_id, kind, duration_sec, thumbnail_url FROM videos WHERE match_id = x.id AND status='published') v),
 		'photos', (SELECT coalesce(json_agg(ph ORDER BY ph.ord, ph.id), '[]') FROM
 			(SELECT id, url, thumb_url, width, height, caption, ord FROM match_photos WHERE match_id = x.id) ph),
 		'news', (SELECT coalesce(json_agg(n), '[]') FROM (SELECT slug, title, cover_url, published_at FROM news WHERE match_id = x.id AND status='published' ORDER BY published_at DESC LIMIT 5) n),
@@ -370,7 +370,7 @@ func (s *Server) publicBanners(w http.ResponseWriter, r *http.Request) {
 func (s *Server) publicVideos(w http.ResponseWriter, r *http.Request) {
 	limit, offset := pageParams(r)
 	s.respondQuery(w, r, `SELECT coalesce(json_agg(v), '[]') FROM (
-		SELECT id, title, url, youtube_id, kind, match_id, duration_sec, thumbnail_url, published_at FROM videos
+		SELECT id, title, url, source, youtube_id, kind, match_id, duration_sec, thumbnail_url, published_at FROM videos
 		WHERE status = 'published' ORDER BY published_at DESC NULLS LAST LIMIT $1 OFFSET $2) v`, limit, offset)
 }
 

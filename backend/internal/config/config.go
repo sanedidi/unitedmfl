@@ -25,6 +25,7 @@ type Config struct {
 	AdminPassword      string
 	AdminName          string
 	MaxUploadBytes     int64
+	MaxVideoBytes      int64 // uploaded video files (Videolar → «Fayl yuklash»)
 	Env                string
 	PointsWin          int
 	PointsDraw         int
@@ -78,6 +79,7 @@ func Load() (*Config, error) {
 		AdminPassword:    env("ADMIN_PASSWORD", ""),
 		AdminName:        env("ADMIN_NAME", "Bosh admin"),
 		MaxUploadBytes:   int64(envInt("MAX_UPLOAD_MB", 20)) << 20,
+		MaxVideoBytes:    int64(envInt("MAX_VIDEO_MB", 2048)) << 20,
 		Env:              env("APP_ENV", "development"),
 		WebRevalidateURL: env("WEB_REVALIDATE_URL", ""),
 		RevalidateSecret: env("REVALIDATE_SECRET", ""),

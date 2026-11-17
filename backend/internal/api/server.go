@@ -66,12 +66,14 @@ func (s *Server) protocolsDir() string { return filepath.Join(s.Cfg.UploadDir, "
 func (s *Server) Routes() http.Handler {
 	_ = os.MkdirAll(s.imagesDir(), 0o755)
 	_ = os.MkdirAll(s.protocolsDir(), 0o750)
+	_ = os.MkdirAll(s.videosDir(), 0o755)
 
 	r := chi.NewRouter()
 	r.Use(httpx.Recover, httpx.Logger, httpx.SecurityHeaders, httpx.CORS(s.Cfg.CORSOrigins))
 
 	r.Get("/healthz", s.health)
 	r.Handle("/uploads/images/*", http.StripPrefix("/uploads/images/", noDirListing(http.FileServer(http.Dir(s.imagesDir())))))
+	r.Handle(videoURLPrefix+"*", s.serveVideos())
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// ---------- public site ----------
@@ -180,6 +182,7 @@ func (s *Server) Routes() http.Handler {
 			r.With(s.can(auth.PermBanners)).Put("/banners/order", s.reorderBanners)
 			s.mountHomepage(r)
 			s.mountCRUD(r, auth.PermVideos, "/videos", videosRes)
+			r.With(s.can(auth.PermVideos)).Post("/video-uploads", s.uploadVideo)
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermVideos))
 				r.Get("/instagram", s.adminInstagram)

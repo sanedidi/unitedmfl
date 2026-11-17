@@ -27,7 +27,7 @@ export default async function MediaPage() {
     const thumb = v.thumbnail_url ? abs(v.thumbnail_url) : yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : null;
     return thumb ? {
       "@context": "https://schema.org", "@type": "VideoObject", name: v.title, description: v.title, thumbnailUrl: thumb, uploadDate: v.published_at,
-      ...(yt ? { embedUrl: `https://www.youtube.com/embed/${yt}` } : { contentUrl: v.url }),
+      ...(yt ? { embedUrl: `https://www.youtube.com/embed/${yt}` } : { contentUrl: abs(v.url) }),
       ...(v.duration_sec ? { duration: `PT${Math.floor(v.duration_sec / 60)}M${v.duration_sec % 60}S` } : {}),
     } : null;
   }).filter(Boolean);

@@ -129,6 +129,19 @@ server {
     server_name admin.$MAIN;
     client_max_body_size 25m;
 $(proxy 8121 "        proxy_buffering off;")
+    # video files (Videolar → «Fayl yuklash»): a big body streamed straight to the API
+    location /api/v1/admin/video-uploads {
+        proxy_pass http://127.0.0.1:8121;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Forwarded-For \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Connection "";
+        client_max_body_size 2100m;
+        proxy_request_buffering off;
+        proxy_read_timeout 3h;
+        proxy_send_timeout 3h;
+    }
 }
 
 server {

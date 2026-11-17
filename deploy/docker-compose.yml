@@ -33,6 +33,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       UPLOAD_DIR: /data/uploads
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
+      # uploaded video files (Videolar → «Fayl yuklash»); keep nginx client_max_body_size above it
+      MAX_VIDEO_MB: ${MAX_VIDEO_MB:-2048}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ADMIN_NAME: ${ADMIN_NAME:-Bosh admin}

@@ -165,7 +165,7 @@ export type Page<T> = { items: T[]; total: number };
  * Uploads one file with upload progress (fetch has none). `onSent` fires once
  * the bytes are on the server — from then on the server is processing.
  */
-export function uploadWithProgress<T>(path: string, file: File, onProgress: (share: number) => void, onSent?: () => void): Promise<T> {
+export function uploadWithProgress<T>(path: string, file: File, onProgress: (share: number) => void, onSent?: () => void, signal?: AbortSignal): Promise<T> {
   const send = () => new Promise<{ status: number; text: string }>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${BASE}${path}`);
@@ -175,6 +175,11 @@ export function uploadWithProgress<T>(path: string, file: File, onProgress: (sha
     xhr.upload.onload = () => { onProgress(1); onSent?.(); };
     xhr.onload = () => resolve({ status: xhr.status, text: xhr.responseText });
     xhr.onerror = () => reject(new ApiError(0, "network", "Tarmoq xatosi"));
+    xhr.onabort = () => reject(new ApiError(0, "aborted", "Yuklash bekor qilindi"));
+    if (signal) {
+      if (signal.aborted) return reject(new ApiError(0, "aborted", "Yuklash bekor qilindi"));
+      signal.addEventListener("abort", () => xhr.abort(), { once: true });
+    }
     const fd = new FormData();
     fd.append("file", file);
     xhr.send(fd);
