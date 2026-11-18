@@ -16,6 +16,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/sanedidi/unitedmfl/backend/internal/httpx"
+	"github.com/sanedidi/unitedmfl/backend/internal/jersey"
 )
 
 type kind int
@@ -27,6 +28,7 @@ const (
 	kTime
 	kDate
 	kTextArray
+	kJersey // shirt number: «10» or «Z10», NULL when empty
 )
 
 type field struct {
@@ -204,6 +206,21 @@ func convert(name string, f field, v any) (any, error) {
 			return nil, fmt.Errorf("%s butun son bo‘lishi kerak", name)
 		}
 		return i, nil
+	case kJersey:
+		var raw string
+		switch x := v.(type) {
+		case json.Number:
+			raw = x.String()
+		case string:
+			raw = x
+		default:
+			return nil, jersey.ErrInvalid
+		}
+		n, ok := jersey.Parse(raw)
+		if !ok {
+			return nil, jersey.ErrInvalid
+		}
+		return n, nil // «no number» is stored as NULL
 	case kBool:
 		b, ok := v.(bool)
 		if !ok {
@@ -464,6 +481,7 @@ var (
 	optTime  = field{kind: kTime, nullable: true}
 	optDate  = field{kind: kDate, nullable: true}
 	textList = field{kind: kTextArray}
+	jerseyNo = field{kind: kJersey, nullable: true}
 	slugF    = field{kind: kText, required: true, max: 120, pattern: reSlug}
 )
 
@@ -474,9 +492,9 @@ var teamsRes = &resource{table: "teams", entity: "team", touch: true, order: "gr
 		"kit_url": txt(500), "kit_description": txt(2000), "kit_has_number": boolean, "kit_number_style": txt(300)},
 	afterWrite: teamKitChanged}
 
-var playersRes = &resource{table: "players", entity: "player", touch: true, order: "team_id, number NULLS LAST, full_name",
+var playersRes = &resource{table: "players", entity: "player", touch: true, order: "team_id, jersey_ord(number) NULLS LAST, number NULLS LAST, full_name",
 	search: []string{"full_name"}, filters: map[string]string{"team_id": "team_id", "position": "position", "active": "is_active"},
-	fields: map[string]field{"team_id": optInt, "full_name": reqTxt(120), "number": optInt, "position": enum("", "GK", "DF", "MF", "FW"),
+	fields: map[string]field{"team_id": optInt, "full_name": reqTxt(120), "number": jerseyNo, "position": enum("", "GK", "DF", "MF", "FW"),
 		"photo_url": txt(500), "instagram": txt(200), "is_active": boolean,
 		"birth_date": optDate, "jersey_name": txt(20), "kit_size": enum("", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"),
 		"workplace": txt(120), "is_media": boolean},

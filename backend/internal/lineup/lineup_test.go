@@ -3,6 +3,8 @@ package lineup
 import (
 	"strings"
 	"testing"
+
+	"github.com/sanedidi/unitedmfl/backend/internal/jersey"
 )
 
 func roles(f Formation) string {
@@ -48,9 +50,9 @@ func xi() []Player {
 	f, _ := Parse("4-3-3")
 	var ps []Player
 	for i, s := range f.Slots {
-		ps = append(ps, Player{PlayerID: i64(int64(i + 1)), Name: "P " + s.Role, Number: ip(i + 1), Role: s.Role, Slot: ip(i), Starter: true, Captain: i == 4})
+		ps = append(ps, Player{PlayerID: i64(int64(i + 1)), Name: "P " + s.Role, Number: jersey.FromInt(i + 1), Role: s.Role, Slot: ip(i), Starter: true, Captain: i == 4})
 	}
-	ps = append(ps, Player{PlayerID: i64(50), Name: "Bench A", Number: ip(12)})
+	ps = append(ps, Player{PlayerID: i64(50), Name: "Bench A", Number: "12"})
 	return ps
 }
 
@@ -64,7 +66,7 @@ func TestValidateOK(t *testing.T) {
 func TestValidateErrors(t *testing.T) {
 	ps := xi()
 	ps[10].Starter = false // only 10 on the pitch
-	*ps[9].Number = 7      // duplicate with slot 7's number? slot index 6 has number 7
+	ps[9].Number = "7"     // duplicate with slot 7's number? slot index 6 has number 7
 	ps[1].Role = "GK"      // two goalkeepers
 	ps[4].Captain = false  // no captain → warning
 	cs := Validate("4-3-3", ps, Options{BenchMax: 9})
@@ -81,6 +83,14 @@ func TestValidateErrors(t *testing.T) {
 	}
 	if !HasErrors(cs) {
 		t.Fatal("expected errors")
+	}
+	// a letter makes it another number: «10» and «Z10» may play together
+	ps = xi()
+	ps[9].Number, ps[8].Number = "10", "Z10"
+	for _, c := range Validate("4-3-3", ps, Options{BenchMax: 9}) {
+		if c.Code == "number" {
+			t.Errorf("10 and Z10 are different numbers: %+v", c)
+		}
 	}
 	if got := Validate("", nil, Options{}); len(got) != 1 || got[0].Code != "empty" {
 		t.Errorf("empty lineup: %+v", got)

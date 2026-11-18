@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/sanedidi/unitedmfl/backend/internal/jersey"
 )
 
 // Slot is one position in a formation. Line 0 is the goalkeeper; lines grow
@@ -134,15 +136,15 @@ func lineRoles(li, lines, n int) []string {
 
 // Player is one lineup row as stored in the database.
 type Player struct {
-	PlayerID  *int64 `json:"player_id"`
-	Name      string `json:"player_name"`
-	Number    *int   `json:"number"`
-	Position  string `json:"position"` // squad position GK/DF/MF/FW
-	Role      string `json:"role"`
-	Slot      *int   `json:"slot"`
-	Starter   bool   `json:"is_starter"`
-	Captain   bool   `json:"is_captain"`
-	Suspended bool   `json:"-"`
+	PlayerID  *int64        `json:"player_id"`
+	Name      string        `json:"player_name"`
+	Number    jersey.Number `json:"number"`
+	Position  string        `json:"position"` // squad position GK/DF/MF/FW
+	Role      string        `json:"role"`
+	Slot      *int          `json:"slot"`
+	Starter   bool          `json:"is_starter"`
+	Captain   bool          `json:"is_captain"`
+	Suspended bool          `json:"-"`
 }
 
 // Check is one validation result. Errors block publishing, warnings don't.
@@ -224,11 +226,11 @@ func Validate(formation string, players []Player, opt Options) []Check {
 	case gk > 1:
 		add("error", "gk", "Maydonda bittadan ortiq darvozabon")
 	}
-	nums := map[int][]string{}
+	nums := map[jersey.Number][]string{}
 	ids := map[int64]bool{}
 	for _, p := range players {
-		if p.Number != nil {
-			nums[*p.Number] = append(nums[*p.Number], surname(p.Name))
+		if p.Number != "" {
+			nums[p.Number] = append(nums[p.Number], surname(p.Name))
 		}
 		if p.PlayerID != nil {
 			if ids[*p.PlayerID] {
@@ -242,7 +244,7 @@ func Validate(formation string, players []Player, opt Options) []Check {
 	}
 	for n, who := range nums {
 		if len(who) > 1 {
-			add("error", "number", fmt.Sprintf("Raqam %d ikki marta: %s", n, strings.Join(who, " va ")))
+			add("error", "number", fmt.Sprintf("Raqam %s ikki marta: %s", n, strings.Join(who, " va ")))
 		}
 	}
 	caps := 0
@@ -268,8 +270,8 @@ func Validate(formation string, players []Player, opt Options) []Check {
 }
 
 func label(p Player) string {
-	if p.Number != nil {
-		return fmt.Sprintf("%d · %s", *p.Number, p.Name)
+	if p.Number != "" {
+		return fmt.Sprintf("%s · %s", p.Number, p.Name)
 	}
 	return p.Name
 }

@@ -100,12 +100,17 @@ function StaffPhoto({ s, onChange }: { s: Staff; onChange: (url: string) => void
 
 type Match = { file: File; player: Player | null; url: string };
 
-/** "10.jpg", "10_Karimov.png", "karimov-aziz.jpg" → player by number first, then by surname. */
+/** "10.jpg", "z10.jpg", "10_Karimov.png", "karimov-aziz.jpg" → player by number first, then by surname. */
 export function matchPhoto(fileName: string, players: Player[]): Player | null {
   const base = fileName.replace(/\.[a-z0-9]+$/i, "").toLowerCase();
+  const lettered = base.match(/^\s*(\p{L}{1,2}\d{1,3}|\d{1,3}\p{L})(?![\p{L}\d])/u); // «z10», «7a»
+  if (lettered) {
+    const p = players.find((x) => x.number === lettered[1].toUpperCase());
+    if (p) return p;
+  }
   const num = base.match(/^\s*(\d{1,3})(?!\d)/);
   if (num) {
-    const p = players.find((x) => x.number === Number(num[1]));
+    const p = players.find((x) => x.number === String(Number(num[1])));
     if (p) return p;
   }
   const words = base.split(/[^\p{L}]+/u).filter((w) => w.length > 2);

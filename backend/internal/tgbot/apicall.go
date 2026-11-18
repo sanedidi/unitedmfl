@@ -129,7 +129,7 @@ func (b *Bot) activeMatches(ctx context.Context, op *operator) ([]match, error) 
 // Read directly: the operator role has no access to the players admin section.
 func (b *Bot) squad(ctx context.Context, teamID int64) []person {
 	rows, err := b.db.QueryContext(ctx, `SELECT id, full_name, number FROM players WHERE team_id = $1 AND is_active
-		ORDER BY number NULLS LAST, full_name LIMIT 60`, teamID)
+		ORDER BY jersey_ord(number) NULLS LAST, number NULLS LAST, full_name LIMIT 60`, teamID)
 	if err != nil {
 		return nil
 	}

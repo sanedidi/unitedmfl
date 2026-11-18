@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/sanedidi/unitedmfl/backend/internal/httpx"
+	"github.com/sanedidi/unitedmfl/backend/internal/jersey"
 )
 
 // Team kits: a team's jersey photo; the AI service dresses every player and
@@ -149,7 +150,7 @@ func kitPhotoChanged(tbl string) func(s *Server, id int64, old, cur map[string]a
 		ctx := context.Background()
 		if photo == str(old, "photo_url") && num(cur, "team_id") == num(old, "team_id") {
 			// a new number matters only when the kit shows numbers
-			if old == nil || num(cur, "number") == num(old, "number") {
+			if old == nil || str(cur, "number") == str(old, "number") {
 				return
 			}
 			var shows bool
@@ -318,6 +319,9 @@ func playerNumberRequired(ctx context.Context, s *Server, body map[string]any, c
 	number, hasNumber := body["number"]
 	if !creating && !(hasTeam && hasNumber) {
 		return nil // partial update (e.g. bulk photos)
+	}
+	if s, ok := number.(string); ok && strings.TrimSpace(s) == "" {
+		number = nil // an emptied field is «no number»
 	}
 	if !hasTeam || team == nil || (hasNumber && number != nil) {
 		return nil
@@ -505,7 +509,7 @@ type kitPerson struct {
 	ID          int64           `json:"id"`
 	Kind        string          `json:"kind"` // player | staff
 	FullName    string          `json:"full_name"`
-	Number      *int64          `json:"number"`
+	Number      jersey.Number   `json:"number"`
 	Role        string          `json:"role,omitempty"`
 	TeamID      *int64          `json:"team_id"`
 	PhotoURL    string          `json:"photo_url"`
@@ -523,7 +527,7 @@ type kitPerson struct {
 func kitPersonSelect(tbl string) string {
 	extra := `p.number, ''`
 	if tbl == tStaff {
-		extra = `NULL::bigint, p.role`
+		extra = `NULL::text, p.role`
 	}
 	return `SELECT p.id, p.full_name, ` + extra + `, p.team_id, p.photo_url, p.kit_photo_url, p.kit_approved_url, p.kit_status, p.kit_error,
 	p.kit_hint, p.kit_analysis, p.kit_model, p.kit_updated_at, coalesce(t.kit_url,'')<>''
@@ -535,13 +539,10 @@ func scanKitPerson(tbl string, row interface{ Scan(...any) error }) (kitPerson, 
 	if tbl == tStaff {
 		p.Kind = "staff"
 	}
-	var number, team sql.NullInt64
+	var team sql.NullInt64
 	var analysis []byte
 	var upd sql.NullTime
-	err := row.Scan(&p.ID, &p.FullName, &number, &p.Role, &team, &p.PhotoURL, &p.KitPhotoURL, &p.ApprovedURL, &p.Status, &p.Error, &p.Hint, &analysis, &p.Model, &upd, &p.TeamKit)
-	if number.Valid {
-		p.Number = &number.Int64
-	}
+	err := row.Scan(&p.ID, &p.FullName, &p.Number, &p.Role, &team, &p.PhotoURL, &p.KitPhotoURL, &p.ApprovedURL, &p.Status, &p.Error, &p.Hint, &analysis, &p.Model, &upd, &p.TeamKit)
 	if team.Valid {
 		p.TeamID = &team.Int64
 	}
@@ -567,7 +568,7 @@ func (s *Server) mountKits(r chi.Router) {
 }
 
 func (s *Server) kitList(ctx context.Context, tbl string, team int64) ([]kitPerson, error) {
-	order := `p.number NULLS LAST, p.full_name`
+	order := `jersey_ord(p.number) NULLS LAST, p.number NULLS LAST, p.full_name`
 	if tbl == tStaff {
 		order = `p.ord, p.id`
 	}
@@ -624,7 +625,7 @@ func (s *Server) kitTeamView(w http.ResponseWriter, r *http.Request) {
 	}
 	counts := map[string]int{}
 	for _, p := range players {
-		if p.Number == nil {
+		if p.Number == "" {
 			counts["no_number"]++
 		}
 	}

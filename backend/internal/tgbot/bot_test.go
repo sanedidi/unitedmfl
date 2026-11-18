@@ -134,7 +134,7 @@ func TestOperatorFlow(t *testing.T) {
 	// home: matchday lineup (2 starters + 1 sub); away: only the roster
 	mustExec(`INSERT INTO players (team_id, full_name, number) VALUES (1,'Bot Home One',1),(1,'Bot Home Two',9),(1,'Bot Home Bench',12),(5,'Bot Away Ten',10),(5,'Bot Away Seven',7)`)
 	mustExec(`INSERT INTO lineups (match_id, side, team_id, player_id, player_name, number, is_starter)
-		SELECT $1, 'home', 1, id, full_name, number, number <> 12 FROM players WHERE team_id = 1 AND full_name LIKE 'Bot %'`, matchID)
+		SELECT $1, 'home', 1, id, full_name, number, number <> '12' FROM players WHERE team_id = 1 AND full_name LIKE 'Bot %'`, matchID)
 	hash, _ := auth.HashPassword("password-123")
 	mustExec(`INSERT INTO users (name, email, password_hash, role, phone) VALUES
 		('Operator Bot','op@bot.test',$1,'operator','998901234567'), ('Editor Bot','ed@bot.test',$1,'editor','998907654321')`, hash)

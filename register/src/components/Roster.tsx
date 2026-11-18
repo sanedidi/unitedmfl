@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { api, type Check, type ImportResult, type Player, type Role, type Staff } from "@/lib/api";
-import { KIT_SIZES, ROLE_LABEL, STAFF_ROLES, emptyPlayer, fmtBirth, fullName, initials } from "@/lib/format";
+import { KIT_SIZES, ROLE_LABEL, STAFF_ROLES, emptyPlayer, fmtBirth, fullName, initials, jerseyInput } from "@/lib/format";
 import { CheckLine, Field, Modal, Spinner, useToast } from "./ui";
 import { I } from "./Icons";
 
@@ -11,20 +11,20 @@ function isLight(hex: string) {
   const [r, g, b] = [1, 2, 3].map((i) => parseInt(m[i], 16));
   return 0.299 * r + 0.587 * g + 0.114 * b > 170;
 }
-export function Jersey({ color, name, number }: { color: string; name: string; number: number | null }) {
+export function Jersey({ color, name, number }: { color: string; name: string; number: string | null }) {
   const c = color || "#1D4ED8";
   return (
     <div className={`jersey${isLight(c) ? " light" : ""}`} aria-label="Futbolka orqa tomoni">
       <svg width="168" height="176" viewBox="0 0 168 176" aria-hidden><path d="M44 6 L66 0 Q84 14 102 0 L124 6 L164 38 L142 70 L126 60 L126 172 Q126 176 122 176 L46 176 Q42 176 42 172 L42 60 L26 70 L4 38 Z" fill={c} stroke="rgba(0,0,0,.12)" /></svg>
       <div className="jn">{name || "FAMILIYA"}</div>
-      <div className="jnum">{number ?? "00"}</div>
+      <div className={`jnum${(number?.length ?? 0) > 2 ? " long" : ""}`}>{number ?? "00"}</div>
     </div>
   );
 }
 
 /* ---------- player modal ---------- */
 export function PlayerModal({ token, initial, color, taken, onSave, onClose }: {
-  token: string; initial: Player; color: string; taken: number[]; onSave: (p: Player, more: boolean) => void; onClose: () => void;
+  token: string; initial: Player; color: string; taken: string[]; onSave: (p: Player, more: boolean) => void; onClose: () => void;
 }) {
   const toast = useToast();
   const [p, setP] = useState<Player>(initial);
@@ -98,7 +98,7 @@ export function PlayerModal({ token, initial, color, taken, onSave, onClose }: {
           </div>
           <div className="g-code">
             <Field label="Tug‘ilgan sana" error={e("birth_date")}><input className="input" type="date" value={p.birth_date} max={new Date().toISOString().slice(0, 10)} onChange={(ev) => set("birth_date", ev.target.value)} aria-invalid={!!e("birth_date")} /></Field>
-            <Field label="Raqam" error={e("number")}><input className="input" inputMode="numeric" value={p.number ?? ""} onChange={(ev) => { const d = ev.target.value.replace(/\D/g, "").slice(0, 3); set("number", d === "" ? null : Number(d)); }} aria-invalid={!!e("number")} /></Field>
+            <Field label="Raqam" error={e("number")}><input className="input" autoCapitalize="characters" autoComplete="off" maxLength={8} placeholder="10 yoki Z10" value={p.number ?? ""} onChange={(ev) => { const d = jerseyInput(ev.target.value); set("number", d === "" ? null : d); }} aria-invalid={!!e("number")} /></Field>
           </div>
           <Field label="Futbolkada yozilishi" error={e("jersey_name")} hint={`Lotin bosma harflar, 12 belgigacha · ${p.jersey_name.length}/12`}>
             <input className="input" value={p.jersey_name} maxLength={15} onChange={(ev) => { setJerseyTouched(true); set("jersey_name", ev.target.value.toUpperCase()); }} aria-invalid={!!e("jersey_name")} />

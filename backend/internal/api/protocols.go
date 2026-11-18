@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/sanedidi/unitedmfl/backend/internal/httpx"
+	"github.com/sanedidi/unitedmfl/backend/internal/jersey"
 	"github.com/sanedidi/unitedmfl/backend/internal/protocol"
 )
 
@@ -411,12 +412,13 @@ func (s *Server) applyTx(ctx context.Context, protocolID, matchID int64, ex *pro
 	for _, p := range ex.Players {
 		team := teamFor(p.Side)
 		var pid sql.NullInt64
+		number := jersey.FromInt(p.Number) // a protocol prints plain numbers
 		if team.Valid {
 			err := tx.QueryRowContext(ctx, `SELECT id FROM players WHERE team_id=$1 AND (number=$2 OR lower(full_name)=lower($3))
-				ORDER BY (lower(full_name)=lower($3)) DESC, (number=$2) DESC LIMIT 1`, team.Int64, p.Number, p.Name).Scan(&pid)
+				ORDER BY (lower(full_name)=lower($3)) DESC, (number=$2) DESC LIMIT 1`, team.Int64, number, p.Name).Scan(&pid)
 			if errors.Is(err, sql.ErrNoRows) && in.CreateMissingPlayers && p.Name != "" {
 				err = tx.QueryRowContext(ctx, `INSERT INTO players(team_id, full_name, number, position) VALUES ($1,$2,$3,$4) RETURNING id`,
-					team.Int64, p.Name, p.Number, positionMap[p.Position]).Scan(&pid)
+					team.Int64, p.Name, number, positionMap[p.Position]).Scan(&pid)
 				if err == nil {
 					summary["players_created"]++
 				}
@@ -429,7 +431,7 @@ func (s *Server) applyTx(ctx context.Context, protocolID, matchID int64, ex *pro
 			playerIDs[p.Side+"#"+strconv.Itoa(p.Number)] = pid.Int64
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO lineups(match_id, side, team_id, player_id, player_name, number, position, is_starter, is_captain)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, matchID, mapSide(p.Side), team, pid, p.Name, p.Number, positionMap[p.Position], p.Starter, p.Captain); err != nil {
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, matchID, mapSide(p.Side), team, pid, p.Name, number, positionMap[p.Position], p.Starter, p.Captain); err != nil {
 			return nil, err
 		}
 		summary["lineups"]++

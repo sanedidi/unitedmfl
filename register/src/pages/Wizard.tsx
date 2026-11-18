@@ -438,7 +438,7 @@ function RosterStep({ token, app, doc, update, locked, canLogo, color, checks, f
     toast(`${r2.import.players.length + r2.import.staff.length} kishi qo‘shildi`);
     setImp(null);
   }
-  const taken = (i: number) => doc.players.filter((_, j) => j !== i).map((p) => p.number).filter((n): n is number => n != null);
+  const taken = (i: number) => doc.players.filter((_, j) => j !== i).map((p) => p.number).filter((n): n is string => n != null);
   const swaps = checks.filter((c) => c.code === "player.swapped" && c.index != null);
 
   return (

@@ -12,6 +12,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/sanedidi/unitedmfl/backend/internal/jersey"
 	"github.com/sanedidi/unitedmfl/backend/internal/xlsx"
 )
 
@@ -36,16 +37,16 @@ type File struct {
 
 // Player is one person in the kit: a field player, a goalkeeper or a media person.
 type Player struct {
-	FirstName  string `json:"first_name"`
-	LastName   string `json:"last_name"`
-	JerseyName string `json:"jersey_name"`
-	BirthDate  string `json:"birth_date"` // YYYY-MM-DD
-	Number     *int   `json:"number"`
-	KitSize    string `json:"kit_size"`
-	Workplace  string `json:"workplace"`
-	Role       string `json:"role"`
-	PhotoURL   string `json:"photo_url"`
-	Medical    *File  `json:"medical"`
+	FirstName  string        `json:"first_name"`
+	LastName   string        `json:"last_name"`
+	JerseyName string        `json:"jersey_name"`
+	BirthDate  string        `json:"birth_date"` // YYYY-MM-DD
+	Number     jersey.Number `json:"number"`
+	KitSize    string        `json:"kit_size"`
+	Workplace  string        `json:"workplace"`
+	Role       string        `json:"role"`
+	PhotoURL   string        `json:"photo_url"`
+	Medical    *File         `json:"medical"`
 }
 
 // Staff is a coach or another staff member.
@@ -85,17 +86,31 @@ func NormalizeSize(s string) string {
 
 var reNumber = regexp.MustCompile(`(?i)^(?:no|№|n|#)?\s*[-.:]?\s*(\d{1,3})$`)
 
-// ParseNumber reads «12», «No-12», «№ 7».
-func ParseNumber(s string) (int, bool) {
-	m := reNumber.FindStringSubmatch(strings.TrimSpace(s))
-	if m == nil {
-		return 0, false
+// ParseNumber reads «12», «No-12», «№ 7» and numbers with letters: «Z10», «z 10».
+func ParseNumber(s string) (jersey.Number, bool) {
+	s = strings.TrimSpace(s)
+	if m := reNumber.FindStringSubmatch(s); m != nil {
+		n, err := strconv.Atoi(m[1])
+		if err != nil {
+			return "", false
+		}
+		return jersey.FromInt(n), true
 	}
-	n, err := strconv.Atoi(m[1])
-	if err != nil || n < 0 || n > 999 {
-		return 0, false
+	n, ok := jersey.Parse(s)
+	return n, ok && n != ""
+}
+
+// looseNumber tells whether a cell of an unnamed column is a shirt number:
+// «No-12» or letters with digits («Z10»), but not a role («GK») or a size («2XL»).
+func looseNumber(s string) bool {
+	s = strings.TrimSpace(s)
+	if reNumber.MatchString(s) {
+		return true
 	}
-	return n, true
+	if _, ok := ParseNumber(s); !ok || !strings.ContainsAny(s, "0123456789") {
+		return false
+	}
+	return roleWord(s) == "" && NormalizeSize(s) == ""
 }
 
 var dateLayouts = []string{"02.01.2006", "2.1.2006", "02/01/2006", "2/1/2006", "2006-01-02", "02-01-2006", "02.01.06"}
@@ -319,7 +334,7 @@ func ParseTarkib(rows [][]string) Import {
 			if v == "" {
 				continue
 			}
-			if _, ok := ParseNumber(v); ok && numText == "" && i != cm.idx {
+			if looseNumber(v) && numText == "" && i != cm.idx {
 				numText = v
 			} else if roleWord(v) != "" && roleText == "" {
 				roleText = v
@@ -359,9 +374,9 @@ func ParseTarkib(rows [][]string) Import {
 		}
 		if numText != "" {
 			if n, ok := ParseNumber(numText); ok {
-				p.Number = &n
-				if strconv.Itoa(n) != numText {
-					fixOnce("number", fmt.Sprintf("raqamlar: «%s» → %d", numText, n))
+				p.Number = n
+				if n.String() != numText {
+					fixOnce("number", fmt.Sprintf("raqamlar: «%s» → %s", numText, n))
 				}
 			} else {
 				out.Issues = append(out.Issues, fmt.Sprintf("%s: raqam tushunarsiz — «%s»", line, numText))
@@ -393,21 +408,21 @@ func ParseTarkib(rows [][]string) Import {
 
 // DuplicateNumbers lists numbers used by more than one person.
 func DuplicateNumbers(ps []Player) []string {
-	by := map[int][]string{}
-	var order []int
+	by := map[jersey.Number][]string{}
+	var order []jersey.Number
 	for _, p := range ps {
-		if p.Number == nil {
+		if p.Number == "" {
 			continue
 		}
-		if _, ok := by[*p.Number]; !ok {
-			order = append(order, *p.Number)
+		if _, ok := by[p.Number]; !ok {
+			order = append(order, p.Number)
 		}
-		by[*p.Number] = append(by[*p.Number], p.FullName())
+		by[p.Number] = append(by[p.Number], p.FullName())
 	}
 	var out []string
 	for _, n := range order {
 		if len(by[n]) > 1 {
-			out = append(out, fmt.Sprintf("%d-raqam bir nechta o‘yinchida: %s", n, strings.Join(by[n], ", ")))
+			out = append(out, fmt.Sprintf("%s-raqam bir nechta o‘yinchida: %s", n, strings.Join(by[n], ", ")))
 		}
 	}
 	return out
@@ -452,10 +467,7 @@ func ExportTarkib(team string, players []Player, staff []Staff) xlsx.Sheet {
 	n := 0
 	row := func(p Player) []xlsx.Cell {
 		n++
-		num, role, med := "", "", ""
-		if p.Number != nil {
-			num = strconv.Itoa(*p.Number)
-		}
+		num, role, med := p.Number.String(), "", ""
 		switch p.Role {
 		case RoleGoalkeeper:
 			role = "GK"

@@ -86,7 +86,7 @@ func (s *Server) publicTeam(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
 	s.respondQuery(w, r, `SELECT json_build_object(
 		'team', row_to_json(t),
-		'players', (SELECT coalesce(json_agg(p ORDER BY p.number NULLS LAST, p.full_name), '[]') FROM
+		'players', (SELECT coalesce(json_agg(p ORDER BY jersey_ord(p.number) NULLS LAST, p.number NULLS LAST, p.full_name), '[]') FROM
 			(SELECT p.id, p.full_name, p.number, p.position, `+displayPhoto+` AS photo_url FROM players p WHERE p.team_id = t.id AND p.is_active) p),
 		'matches', (SELECT coalesce(json_agg(x ORDER BY x.kickoff_at), '[]') FROM (`+matchSelect+`
 			WHERE m.published AND (m.home_team_id = t.id OR m.away_team_id = t.id)) x))
@@ -103,7 +103,7 @@ func (s *Server) publicPlayers(w http.ResponseWriter, r *http.Request) {
 		       json_build_object('id', t.id, 'name', t.name, 'slug', t.slug) AS team
 		FROM players p LEFT JOIN teams t ON t.id = p.team_id
 		WHERE p.is_active AND ($1 = '' OR t.slug = $1) AND ($2 = '' OR p.position = $2) AND ($3 = '' OR p.full_name ILIKE '%' || $3 || '%')
-		ORDER BY t.name, p.number NULLS LAST LIMIT $4 OFFSET $5) p`,
+		ORDER BY t.name, jersey_ord(p.number) NULLS LAST, p.number NULLS LAST LIMIT $4 OFFSET $5) p`,
 		q.Get("team"), q.Get("position"), strings.TrimSpace(q.Get("q")), limit, offset)
 }
 
@@ -165,7 +165,7 @@ func (s *Server) matchDetailJSON(ctx context.Context, id int64, adminView bool) 
 		'events', (SELECT coalesce(json_agg(e ORDER BY e.minute, e.extra_minute, e.id), '[]') FROM
 			(SELECT id, side, type, minute, extra_minute, player_id, player_name, related_player_id, related_player_name, note, source, payload
 			 FROM match_events WHERE match_id = x.id) e),
-		'lineups', (SELECT coalesce(json_agg(l ORDER BY l.side, NOT l.is_starter, l.slot NULLS LAST, l.number NULLS LAST), '[]') FROM
+		'lineups', (SELECT coalesce(json_agg(l ORDER BY l.side, NOT l.is_starter, l.slot NULLS LAST, jersey_ord(l.number) NULLS LAST, l.number NULLS LAST), '[]') FROM
 			(SELECT l.side, l.player_id, l.player_name, l.number, l.position, l.role, l.slot, l.is_starter, l.is_captain, coalesce(`+displayPhoto+`, '') AS photo_url
 			 FROM lineups l LEFT JOIN players p ON p.id = l.player_id WHERE l.match_id = x.id `+lineupPub+`) l),
 		'lineup_meta', (SELECT coalesce(json_agg(lm ORDER BY lm.side), '[]') FROM

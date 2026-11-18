@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/sanedidi/unitedmfl/backend/internal/jersey"
 )
 
 // Shapes of GET /api/v1/admin/matches and /admin/matches/{id}.
@@ -50,11 +52,11 @@ type event struct {
 }
 
 type lineupRow struct {
-	Side       string `json:"side"`
-	PlayerID   *int64 `json:"player_id"`
-	PlayerName string `json:"player_name"`
-	Number     *int   `json:"number"`
-	IsStarter  bool   `json:"is_starter"`
+	Side       string        `json:"side"`
+	PlayerID   *int64        `json:"player_id"`
+	PlayerName string        `json:"player_name"`
+	Number     jersey.Number `json:"number"`
+	IsStarter  bool          `json:"is_starter"`
 }
 
 type matchDetail struct {
@@ -64,16 +66,16 @@ type matchDetail struct {
 }
 
 type squadPlayer struct {
-	ID       int64  `json:"id"`
-	FullName string `json:"full_name"`
-	Number   *int   `json:"number"`
+	ID       int64         `json:"id"`
+	FullName string        `json:"full_name"`
+	Number   jersey.Number `json:"number"`
 }
 
 // person is one choice in the player picker.
 type person struct {
 	ID     *int64
 	Name   string
-	Number *int
+	Number jersey.Number
 	Bench  bool
 }
 
@@ -86,8 +88,8 @@ func (p person) same(id *int64, name string) bool {
 
 func (p person) label() string {
 	n := surname(p.Name)
-	if p.Number != nil {
-		n = fmt.Sprintf("%d · %s", *p.Number, n)
+	if p.Number != "" {
+		n = fmt.Sprintf("%s · %s", p.Number, n)
 	}
 	if p.Bench {
 		n = "🪑 " + n
@@ -176,18 +178,11 @@ func currentLineup(d *matchDetail, side string) (on, bench []person) {
 		}
 	}
 	byNumber := func(ps []person) {
-		sort.SliceStable(ps, func(i, j int) bool { return num(ps[i].Number) < num(ps[j].Number) })
+		sort.SliceStable(ps, func(i, j int) bool { return jersey.Less(ps[i].Number, ps[j].Number) })
 	}
 	byNumber(on)
 	byNumber(bench)
 	return on, bench
-}
-
-func num(n *int) int {
-	if n == nil {
-		return 999
-	}
-	return *n
 }
 
 // clock mirrors clockMinute() of the admin Live-pult.

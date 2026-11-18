@@ -306,7 +306,13 @@ func TestTeamKitFlow(t *testing.T) {
 	// a changed number re-dresses the player
 	wait()
 	before = len(dressed)
-	if c := call("PATCH", "/admin/players/"+idStr(np.ID), map[string]any{"number": 17, "team_id": team.ID}, nil); c != 200 {
+	// a number may carry letters; it is stored the way it is printed
+	for _, bad := range []any{"TOOLONG", "1-7", ""} {
+		if c := call("PATCH", "/admin/players/"+idStr(np.ID), map[string]any{"number": bad, "team_id": team.ID}, &e); c != 422 || e.Error.Fields["number"] == nil {
+			t.Fatalf("number %q must be rejected: %d %+v", bad, c, e)
+		}
+	}
+	if c := call("PATCH", "/admin/players/"+idStr(np.ID), map[string]any{"number": "z 17", "team_id": team.ID}, nil); c != 200 {
 		t.Fatal(c)
 	}
 	for i := 0; i < 100 && len(dressed) == before; i++ {
@@ -315,7 +321,7 @@ func TestTeamKitFlow(t *testing.T) {
 	mu.Lock()
 	last = dressed[len(dressed)-1]
 	mu.Unlock()
-	if last["number"] != "17" {
+	if last["number"] != "Z17" {
 		t.Fatalf("number change must re-dress: %+v", last["number"])
 	}
 	// a description from an older version is written again once at startup

@@ -72,7 +72,7 @@ export function LineupPitch({ formation, players, selected, dropSlot, flagged, c
             onDrop={(e) => { e.preventDefault(); onDropSlot?.(i, e); }}
             aria-label={p ? `${s.role}: ${p.number ?? ""} ${p.player_name}` : `${s.role} — bo‘sh o‘rin`}
           >
-            <span className="disc">
+            <span className={`disc${(p?.number?.length ?? 0) > 2 ? " long" : ""}`}>
               {p ? p.number ?? "–" : s.role}
               {p?.is_captain && <i className="cap">C</i>}
               {p && badge?.(p)}

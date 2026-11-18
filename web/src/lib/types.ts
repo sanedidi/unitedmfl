@@ -67,7 +67,7 @@ export type LineupRow = {
   side: "home" | "away";
   player_id: number | null;
   player_name: string;
-  number: number | null;
+  number: string | null;
   position: string;
   role?: string;
   slot?: number | null;
@@ -191,14 +191,14 @@ export const HERO_LAYOUTS: HeroLayout[] = ["shade", "panel", "glass", "split", "
 export type Player = {
   id: number;
   full_name: string;
-  number: number | null;
+  number: string | null;
   position: string;
   photo_url: string;
   team: { id: number; name: string; slug: string } | null;
 };
 
 export type PlayerDetail = {
-  player: { id: number; full_name: string; number: number | null; position: string; photo_url: string; instagram: string };
+  player: { id: number; full_name: string; number: string | null; position: string; photo_url: string; instagram: string };
   team: { id: number; name: string; slug: string } | null;
   stats: { appearances: number; goals: number; yellow: number; red: number };
   matches?: Match[];
@@ -207,7 +207,7 @@ export type PlayerDetail = {
 
 export type TeamDetail = {
   team: Team;
-  players: { id: number; full_name: string; number: number | null; position: string; photo_url: string }[];
+  players: { id: number; full_name: string; number: string | null; position: string; photo_url: string }[];
   matches: Match[];
 };
 

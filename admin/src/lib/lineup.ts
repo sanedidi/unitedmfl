@@ -6,7 +6,7 @@ export type Formation = { code: string; size: number; slots: Slot[] };
 export type LPlayer = {
   player_id: number | null;
   player_name: string;
-  number: number | null;
+  number: string | null;
   position: string;
   role: string;
   slot: number | null;
@@ -156,7 +156,7 @@ export function validate(formation: string, players: LPlayer[], opts: { benchMax
   const gk = starters.filter((p) => p.role === "GK" || (!p.role && p.position === "GK")).length;
   if (gk === 0) add("error", "gk", "Darvozabon belgilanmagan");
   else if (gk > 1) add("error", "gk", "Maydonda bittadan ortiq darvozabon");
-  const nums = new Map<number, string[]>();
+  const nums = new Map<string, string[]>();
   const ids = new Set<number>();
   for (const p of players) {
     if (p.number != null) nums.set(p.number, [...(nums.get(p.number) || []), surname(p.player_name)]);

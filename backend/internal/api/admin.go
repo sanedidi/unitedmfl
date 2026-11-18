@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/sanedidi/unitedmfl/backend/internal/httpx"
+	"github.com/sanedidi/unitedmfl/backend/internal/jersey"
 	"github.com/sanedidi/unitedmfl/backend/internal/lineup"
 )
 
@@ -303,13 +304,13 @@ func (s *Server) putLineups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in []struct {
-		Side       string `json:"side"`
-		PlayerID   *int64 `json:"player_id"`
-		PlayerName string `json:"player_name"`
-		Number     *int   `json:"number"`
-		Position   string `json:"position"`
-		IsStarter  bool   `json:"is_starter"`
-		IsCaptain  bool   `json:"is_captain"`
+		Side       string        `json:"side"`
+		PlayerID   *int64        `json:"player_id"`
+		PlayerName string        `json:"player_name"`
+		Number     jersey.Number `json:"number"`
+		Position   string        `json:"position"`
+		IsStarter  bool          `json:"is_starter"`
+		IsCaptain  bool          `json:"is_captain"`
 	}
 	if err := httpx.Decode(r, &in); err != nil {
 		httpx.Fail(w, r, err)

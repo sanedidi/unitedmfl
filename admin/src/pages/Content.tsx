@@ -57,9 +57,9 @@ export function PlayersPage() {
   const fields: FieldSpec[] = [
     { name: "full_name", label: "F.I.Sh.", required: true, full: true },
     { name: "team_id", label: "Jamoa", type: "select", nullable: true, numeric: true, options: teamOpts },
-    { name: "number", label: "Raqam", type: "number", nullable: true,
+    { name: "number", label: "Raqam", type: "jersey", nullable: true, placeholder: "10 yoki Z10",
       requiredIf: (v) => !!byId.get(Number(v.team_id))?.kit_has_number,
-      hintFor: (v) => byId.get(Number(v.team_id))?.kit_has_number ? "Jamoa formasida raqam bor — AI rasmda shu raqamni chizadi" : undefined },
+      hintFor: (v) => byId.get(Number(v.team_id))?.kit_has_number ? "Jamoa formasida raqam bor — AI rasmda shu raqamni chizadi. Harf ham yozish mumkin: Z10" : "Raqam yoki harf bilan: 10, Z10 (4 ta belgigacha)" },
     { name: "position", label: "Amplua", type: "select", nullable: true, options: posOpts },
     { name: "jersey_name", label: "Futbolkada yozilishi", placeholder: "FAMILIYA" },
     { name: "kit_size", label: "Forma o‘lchami", type: "select", nullable: true, options: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"].map((x) => ({ value: x, label: x })) },

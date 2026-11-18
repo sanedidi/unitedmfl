@@ -53,7 +53,7 @@ func (s *Server) loadSide(ctx context.Context, q interface {
 		return meta, nil, err
 	}
 	rows, err := q.QueryContext(ctx, `SELECT player_id, player_name, number, position, role, slot, is_starter, is_captain
-		FROM lineups WHERE match_id=$1 AND side=$2 ORDER BY NOT is_starter, slot NULLS LAST, number NULLS LAST`, matchID, side)
+		FROM lineups WHERE match_id=$1 AND side=$2 ORDER BY NOT is_starter, slot NULLS LAST, jersey_ord(number) NULLS LAST, number NULLS LAST`, matchID, side)
 	if err != nil {
 		return meta, nil, err
 	}
@@ -61,18 +61,14 @@ func (s *Server) loadSide(ctx context.Context, q interface {
 	var ps []lineup.Player
 	for rows.Next() {
 		var p lineup.Player
-		var num, slot sql.NullInt64
+		var slot sql.NullInt64
 		var pid sql.NullInt64
-		if err := rows.Scan(&pid, &p.Name, &num, &p.Position, &p.Role, &slot, &p.Starter, &p.Captain); err != nil {
+		if err := rows.Scan(&pid, &p.Name, &p.Number, &p.Position, &p.Role, &slot, &p.Starter, &p.Captain); err != nil {
 			return meta, nil, err
 		}
 		if pid.Valid {
 			v := pid.Int64
 			p.PlayerID = &v
-		}
-		if num.Valid {
-			v := int(num.Int64)
-			p.Number = &v
 		}
 		if slot.Valid {
 			v := int(slot.Int64)

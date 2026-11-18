@@ -182,11 +182,10 @@ func TestTeamRegistration(t *testing.T) {
 		t.Fatalf("import: %d %+v", c, imp)
 	}
 
-	n := func(i int) *int { return &i }
 	players := []roster.Player{
-		{FirstName: "Ali", LastName: "Valiyev", JerseyName: "ali", BirthDate: "20.07.2001", Number: n(1), KitSize: "m", Role: "goalkeeper", Medical: &med},
-		{FirstName: "Tursun" + sfx, LastName: "Qodir", JerseyName: "QODIR", BirthDate: "2000-01-01", Number: n(1), KitSize: "L", Role: "player"},
-		{FirstName: "Blogger", LastName: "Media", JerseyName: "BLOG", BirthDate: "1999-05-05", Number: n(99), KitSize: "S", Role: "media", Medical: &roster.File{File: "../../etc/passwd"}},
+		{FirstName: "Ali", LastName: "Valiyev", JerseyName: "ali", BirthDate: "20.07.2001", Number: "1", KitSize: "m", Role: "goalkeeper", Medical: &med},
+		{FirstName: "Tursun" + sfx, LastName: "Qodir", JerseyName: "QODIR", BirthDate: "2000-01-01", Number: "1", KitSize: "L", Role: "player"},
+		{FirstName: "Blogger", LastName: "Media", JerseyName: "BLOG", BirthDate: "1999-05-05", Number: "99", KitSize: "S", Role: "media", Medical: &roster.File{File: "../../etc/passwd"}},
 	}
 	team := map[string]any{"name": "Reg FC " + sfx, "short_name": "rgf", "colors": []string{"#1d4ed8", "red", "#ffffff"}, "crest_url": logo.URL, "crest_w": 256, "crest_h": 256, "instagram": "@regfc"}
 	if c := pub("PUT", base, map[string]any{"team": team, "rep": map[string]any{"name": "Jasur", "phone": "+998 90 123 45 67", "telegram": "@jasur", "role": "captain", "authorized": true},
@@ -228,7 +227,7 @@ func TestTeamRegistration(t *testing.T) {
 		t.Fatalf("verify: %d %+v", c, v)
 	}
 
-	players[1].Number = n(7)
+	players[1].Number = "z 10" // a number with a letter is stored the way it is printed: Z10
 	if c := pub("PUT", base, map[string]any{"players": players, "consents": map[string]bool{"rules": true, "players": true, "personal": true}}, &v); c != 200 {
 		t.Fatalf("save 2: %d", c)
 	}
@@ -293,8 +292,13 @@ func TestTeamRegistration(t *testing.T) {
 	if cnt != 3 || media != 1 || staff != 1 || short != "RGF" || crest != logo.URL || moved != teamID || res["players_moved"].(float64) != 1 {
 		t.Fatalf("created: players %d media %d staff %d short %s moved %d %+v", cnt, media, staff, short, moved, res)
 	}
+	var movedNumber string
+	conn.QueryRow(`SELECT number FROM players WHERE id = $1`, oldPlayer).Scan(&movedNumber)
+	if movedNumber != "Z10" {
+		t.Fatalf("number with a letter: %q", movedNumber)
+	}
 	var kit, medURL string
-	conn.QueryRow(`SELECT kit_size, medical_url FROM players WHERE team_id = $1 AND number = 1`, teamID).Scan(&kit, &medURL)
+	conn.QueryRow(`SELECT kit_size, medical_url FROM players WHERE team_id = $1 AND number = '1'`, teamID).Scan(&kit, &medURL)
 	if kit != "M" || !strings.Contains(medURL, med.File) {
 		t.Fatalf("player fields: %q %q", kit, medURL)
 	}

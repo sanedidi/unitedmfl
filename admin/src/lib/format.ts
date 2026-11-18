@@ -69,6 +69,17 @@ export function slugify(s: string) {
     .slice(0, 100);
 }
 
+/** Shirt number as typed → as printed: «z 10» → «Z10». Letters and digits only, at most 4 (same rule as the backend). */
+export const jerseyInput = (s: string) => s.replace(/[^\p{L}0-9]/gu, "").toUpperCase().slice(0, 4);
+const jerseyOrd = (n: string | null | undefined) => { const d = (n ?? "").replace(/\D/g, ""); return d ? Number(d) : Infinity; };
+/** Squad order of shirt numbers: 2 < 10 < Z10; no number goes last. */
+export const jerseyCmp = (a: string | null | undefined, b: string | null | undefined) => {
+  const x = jerseyOrd(a), y = jerseyOrd(b);
+  if (x !== y) return x < y ? -1 : 1;
+  if (!a || !b) return a ? -1 : b ? 1 : 0;
+  return a < b ? -1 : a > b ? 1 : 0;
+};
+
 export const fmtUZS = (n: number | null | undefined) => (n == null ? "—" : new Intl.NumberFormat("ru-RU").format(n).replace(/ /g, " ") + " so‘m");
 export const fmtBytes = (n: number) => (n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 

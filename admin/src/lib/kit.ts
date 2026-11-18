@@ -20,7 +20,7 @@ export type KitPlayer = {
   kind: "player" | "staff";
   role?: string;
   full_name: string;
-  number: number | null;
+  number: string | null;
   team_id: number | null;
   photo_url: string;
   kit_photo_url: string;

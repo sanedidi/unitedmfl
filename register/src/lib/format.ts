@@ -24,6 +24,9 @@ export function fmtBirth(d?: string) {
   return `${dd}.${m}.${y}`;
 }
 
+/** Shirt number as typed → as printed: «z 10» → «Z10». Letters and digits only, at most 4 (same rule as the server). */
+export const jerseyInput = (s: string) => s.replace(/[^\p{L}0-9]/gu, "").toUpperCase().slice(0, 4);
+
 export const KIT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
 export const REP_ROLES: Record<string, string> = { captain: "Kapitan", manager: "Menejer", coach: "Murabbiy", other: "Boshqa" };
 export const STAFF_ROLES: Record<string, string> = {

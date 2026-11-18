@@ -46,7 +46,7 @@ export type MatchEvent = {
   payload?: { slots?: Record<string, number> } | null;
 };
 
-export type LineupRow = { side: "home" | "away"; player_id: number | null; player_name: string; number: number | null; position: string; role?: string; slot?: number | null; photo_url?: string; is_starter: boolean; is_captain: boolean };
+export type LineupRow = { side: "home" | "away"; player_id: number | null; player_name: string; number: string | null; position: string; role?: string; slot?: number | null; photo_url?: string; is_starter: boolean; is_captain: boolean };
 export type LineupMetaRow = { side: "home" | "away"; formation: string; status: "draft" | "published"; coach: string; assistant: string; published_at: string | null; updated_at: string };
 
 export type MatchDetail = {
@@ -70,7 +70,7 @@ export type MatchRow = {
 
 export type Group = { id: number; season_id: number | null; name: string; code: string; ord: number; confirmed: boolean; created_at?: string; updated_at?: string };
 export type Team = { id: number; slug: string; name: string; short_name: string; group_id: number | null; group_ord?: number; group_label: string; group_is_provisional: boolean; crest_url: string; colors: string[]; leader: string; instagram: string; telegram: string; is_active: boolean; kit_url?: string; kit_has_number?: boolean };
-export type Player = { id: number; team_id: number | null; full_name: string; number: number | null; position: string; photo_url: string; instagram: string; is_active: boolean;
+export type Player = { id: number; team_id: number | null; full_name: string; number: string | null; position: string; photo_url: string; instagram: string; is_active: boolean;
   birth_date?: string | null; jersey_name?: string; kit_size?: string; workplace?: string; is_media?: boolean; medical_url?: string };
 
 export type ProtoEvent = { side: "home" | "away"; type: string; minute: number; extra: number; raw?: string; number?: number; player?: string; related?: string; related_number?: number; uncertain?: boolean };

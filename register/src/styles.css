@@ -204,7 +204,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .tr.head { background: var(--subtle); padding-top: 8px; padding-bottom: 8px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
 .tr.err { background: var(--danger-subtle); }
 .tr.warn { background: #fef8ec; }
-.num-box { width: 34px; height: 28px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); font-weight: 700; font-variant-numeric: tabular-nums; }
+.num-box { min-width: 34px; padding: 0 4px; height: 28px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); font-weight: 700; font-variant-numeric: tabular-nums; }
 .tr.err .num-box { border-color: var(--danger); color: var(--danger); }
 .who { display: flex; gap: 10px; align-items: center; min-width: 0; }
 .avatar { width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--muted); display: grid; place-items: center; font-size: 12px; font-weight: 600; color: var(--text-2); overflow: hidden; }
@@ -222,6 +222,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .jersey svg { position: absolute; inset: 0; }
 .jersey .jn { position: absolute; left: 0; right: 0; top: 40px; text-align: center; color: #fff; font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: .02em; text-shadow: 0 1px 1px rgba(0,0,0,.2); }
 .jersey .jnum { position: absolute; left: 0; right: 0; top: 62px; text-align: center; color: #fff; font-family: var(--display); font-weight: 800; font-size: 48px; line-height: 1; }
+.jersey .jnum.long { font-size: 34px; top: 70px; } /* «Z10», «10AB» */
 .jersey.light .jn, .jersey.light .jnum { color: var(--n-900); text-shadow: none; }
 
 /* summary (review) */

@@ -82,7 +82,7 @@ function Marker({ m, current, selected, onSelect }: { m: Placed; current: boolea
   return (
     <button type="button" className={`lu-mk ${m.side}${selected ? " sel" : ""}${current && sentOff ? " off" : ""}`} style={at(m.x, m.y)} onClick={onSelect}
       aria-label={`${p.number ?? ""} ${p.player_name}, ${roleText(p, POSITION_LABEL)}`} aria-pressed={selected}>
-      <span className="disc">
+      <span className={`disc${(p.number?.length ?? 0) > 2 ? " long" : ""}`}>
         {p.number ?? "–"}
         {p.is_captain && <i className="cap">C</i>}
         <span className="badges">

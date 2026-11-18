@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api, ApiError, type Page } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
-import { EVENT_LABEL, fmtDate, fmtShort, uid } from "@/lib/format";
+import { EVENT_LABEL, fmtDate, fmtShort, jerseyCmp, uid } from "@/lib/format";
 import type { LineupRow, Match, MatchDetail, Player } from "@/lib/types";
 import { Badge, Crest, Empty, ErrorBox, Loading, Modal, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
@@ -300,7 +300,7 @@ function EventSheet({ action, side, team, clock, lineup, squad, shootout, onClos
 }) {
   const people = useMemo(() => {
     const src = lineup.length ? lineup.map((l) => ({ id: l.player_id, name: l.player_name, number: l.number, starter: l.is_starter })) : squad.map((p) => ({ id: p.id as number | null, name: p.full_name, number: p.number, starter: true }));
-    return src.sort((a, b) => (a.number ?? 999) - (b.number ?? 999));
+    return src.sort((a, b) => jerseyCmp(a.number, b.number));
   }, [lineup, squad]);
   const [p1, setP1] = useState<number>(-1);
   const [p2, setP2] = useState<number>(-1);

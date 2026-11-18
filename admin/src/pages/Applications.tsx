@@ -20,10 +20,10 @@ export type RegLink = {
   require_medical: boolean; require_phone: boolean; check_duplicates: boolean; heading: string; description: string; rules_url: string;
   season: string; stage: string; state: LinkState; url: string; approved: number; sent: number; drafts: number; slots_left: number | null;
 };
-type Player = { first_name: string; last_name: string; jersey_name: string; birth_date: string; number: number | null; kit_size: string; workplace: string; role: "player" | "goalkeeper" | "media"; photo_url: string; medical: { file: string; name: string } | null };
+type Player = { first_name: string; last_name: string; jersey_name: string; birth_date: string; number: string | null; kit_size: string; workplace: string; role: "player" | "goalkeeper" | "media"; photo_url: string; medical: { file: string; name: string } | null };
 type Staff = { first_name: string; last_name: string; birth_date: string; kit_size: string; role: string; phone: string };
 type Check = { level: "error" | "warn"; section: string; code: string; text: string; index?: number; staff?: boolean };
-type Dup = { index: number; matches: { player_id: number; full_name: string; number: number | null; team_id: number | null; team_name: string }[] };
+type Dup = { index: number; matches: { player_id: number; full_name: string; number: string | null; team_id: number | null; team_name: string }[] };
 type AppSummary = {
   id: number; number: string; status: string; team: { name: string; short_name: string; crest_url: string; colors: string[] };
   rep: { name: string; phone: string }; phone_verified: boolean; players: number; media: number; staff: number;

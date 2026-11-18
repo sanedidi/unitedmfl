@@ -28,7 +28,7 @@ export type Player = {
   last_name: string;
   jersey_name: string;
   birth_date: string;
-  number: number | null;
+  number: string | null;
   kit_size: string;
   workplace: string;
   role: Role;

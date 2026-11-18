@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Route, Routes, useNavigate, useParams } from "react-router";
 import { api, ApiError, type Page } from "@/lib/api";
 import { useDebounced, useLoad } from "@/lib/hooks";
-import { fromLocalInput, slugify, toLocalInput } from "@/lib/format";
+import { fromLocalInput, jerseyInput, slugify, toLocalInput } from "@/lib/format";
 import { Drawer, Empty, ErrorBox, Field, ImageInput, Loading, Pager, useConfirm, useToast } from "./ui";
 import { I } from "./Icons";
 import { PageHead } from "./Layout";
@@ -12,7 +12,7 @@ export type Opt = { value: string; label: string };
 export type FieldSpec = {
   name: string;
   label: string;
-  type?: "text" | "textarea" | "markdown" | "number" | "bool" | "select" | "image" | "date" | "datetime" | "tags" | "colors" | "slug" | "url";
+  type?: "text" | "textarea" | "markdown" | "number" | "jersey" | "bool" | "select" | "image" | "date" | "datetime" | "tags" | "colors" | "slug" | "url";
   options?: Opt[];
   nullable?: boolean; // empty select / number → null
   numeric?: boolean; // select whose values are ids
@@ -44,6 +44,7 @@ export function fieldValueOut(f: FieldSpec, v: any) {
   switch (f.type) {
     case "bool": return !!v;
     case "number": return v === "" || v == null ? (f.nullable ? null : 0) : Number(v);
+    case "jersey": return jerseyInput(String(v ?? "")) || null; // shirt number: «10» or «Z10»
     case "datetime": return fromLocalInput(v);
     case "date": return v || null;
     case "tags":
@@ -89,6 +90,9 @@ export function FormFields({ fields, values, set, errors }: { fields: FieldSpec[
             break;
           case "number":
             input = <input {...common} className="input" type="number" inputMode="numeric" value={v} onChange={(e) => set(f.name, e.target.value)} />;
+            break;
+          case "jersey":
+            input = <input {...common} className="input" type="text" autoCapitalize="characters" autoComplete="off" maxLength={8} value={v} placeholder={f.placeholder} onChange={(e) => set(f.name, jerseyInput(e.target.value))} />;
             break;
           case "date":
             input = <input {...common} className="input" type="date" value={v} onChange={(e) => set(f.name, e.target.value)} />;

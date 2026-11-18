@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sanedidi/unitedmfl/backend/internal/jersey"
 	"github.com/sanedidi/unitedmfl/backend/internal/xlsx"
 )
 
@@ -36,7 +37,7 @@ func TestParseTarkib(t *testing.T) {
 		t.Fatalf("counts: players %d staff %d rows %d", len(imp.Players), len(imp.Staff), imp.Rows)
 	}
 	p := imp.Players[0]
-	if p.FirstName != "Akmal" || p.Role != RoleGoalkeeper || p.Number == nil || *p.Number != 1 || p.BirthDate != "2001-07-20" || p.KitSize != "S" || p.Workplace != "" {
+	if p.FirstName != "Akmal" || p.Role != RoleGoalkeeper || p.Number != "1" || p.BirthDate != "2001-07-20" || p.KitSize != "S" || p.Workplace != "" {
 		t.Fatalf("first player: %+v", p)
 	}
 	if b := imp.Players[1]; b.KitSize != "2XL" || b.JerseyName != "KHAMIDOV B" || b.Workplace != "Atlas Parfum" {
@@ -48,7 +49,7 @@ func TestParseTarkib(t *testing.T) {
 	if e := imp.Players[4]; e.Role != RoleMedia || e.KitSize != "2XL" {
 		t.Fatalf("media mark in the players section: %+v", e)
 	}
-	if g := imp.Players[5]; g.Role != RoleMedia || g.JerseyName != "GULOM_CW" || *g.Number != 8 {
+	if g := imp.Players[5]; g.Role != RoleMedia || g.JerseyName != "GULOM_CW" || g.Number != "8" {
 		t.Fatalf("media section: %+v", g)
 	}
 	if s := imp.Staff[0]; s.FirstName != "Farhod" || s.BirthDate != "1991-01-16" || s.KitSize != "L" || s.Role != "head_coach" {
@@ -79,7 +80,7 @@ func TestExportRoundTrip(t *testing.T) {
 	}
 	for i := range imp.Players {
 		a, b := imp.Players[i], back.Players[i]
-		if a.FullName() != b.FullName() || a.Role != b.Role || a.BirthDate != b.BirthDate || a.KitSize != b.KitSize || *a.Number != *b.Number || a.JerseyName != b.JerseyName {
+		if a.FullName() != b.FullName() || a.Role != b.Role || a.BirthDate != b.BirthDate || a.KitSize != b.KitSize || a.Number != b.Number || a.JerseyName != b.JerseyName {
 			t.Fatalf("player %d: %+v vs %+v", i, a, b)
 		}
 	}
@@ -99,9 +100,20 @@ func TestHelpers(t *testing.T) {
 			t.Errorf("ParseDate(%q) = %q", in, got)
 		}
 	}
-	for in, want := range map[string]int{"No-12": 12, "12": 12, "№ 7": 7, "no.9": 9} {
+	for in, want := range map[string]jersey.Number{"No-12": "12", "12": "12", "№ 7": "7", "no.9": "9", "z 10": "Z10", "Z10": "Z10", "7a": "7A"} {
 		if got, ok := ParseNumber(in); !ok || got != want {
-			t.Errorf("ParseNumber(%q) = %d %v", in, got, ok)
+			t.Errorf("ParseNumber(%q) = %q %v", in, got, ok)
+		}
+	}
+	for _, in := range []string{"", "-", "12345", "1/2"} {
+		if got, ok := ParseNumber(in); ok {
+			t.Errorf("ParseNumber(%q) = %q, must fail", in, got)
+		}
+	}
+	// unnamed columns: a role or a kit size is never taken for a number
+	for in, want := range map[string]bool{"No-12": true, "Z10": true, "GK": false, "2XL": false, "Media": false, "S": false} {
+		if looseNumber(in) != want {
+			t.Errorf("looseNumber(%q) != %v", in, want)
 		}
 	}
 	if NameKey("Nodir", "Xamidov") != NameKey("Khamidov", "Nodir") {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import { Link } from "react-router";
 import { api, ApiError, type Page } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
-import { POSITIONS, ago } from "@/lib/format";
+import { POSITIONS, ago, jerseyCmp, jerseyInput } from "@/lib/format";
 import type { MatchDetail, Player } from "@/lib/types";
 import {
   ROLE_LABEL, autoPlace, hasErrors, parseFormation, reassign, validate,
@@ -87,7 +87,7 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
       inLineup.delete(`id${s.id}`);
     }
     for (const [key, p] of inLineup) list.push({ key, p, photo: "", status: p.is_starter ? "pitch" : "bench" });
-    return list.sort((a, b) => (POS_ORDER[a.p.position] ?? 4) - (POS_ORDER[b.p.position] ?? 4) || (a.p.number ?? 999) - (b.p.number ?? 999));
+    return list.sort((a, b) => (POS_ORDER[a.p.position] ?? 4) - (POS_ORDER[b.p.position] ?? 4) || jerseyCmp(a.p.number, b.p.number));
   }, [d, squad]);
   const shown = rows.filter((r) => (filter === "all" || r.status === filter) && (!q || `${r.p.number ?? ""} ${r.p.player_name}`.toLowerCase().includes(q.toLowerCase())));
   const counts = { all: rows.length, pitch: rows.filter((r) => r.status === "pitch").length, bench: rows.filter((r) => r.status === "bench").length, free: rows.filter((r) => r.status === "free").length };
@@ -174,7 +174,7 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
   async function createAndPlace(slot: number, v: { number: string; name: string; position: string }) {
     if (!team) return;
     try {
-      const p = await api.post<Player>("/admin/players", { team_id: team.id, full_name: v.name.trim(), number: v.number ? Number(v.number) : null, position: v.position || null, is_active: true });
+      const p = await api.post<Player>("/admin/players", { team_id: team.id, full_name: v.name.trim(), number: v.number || null, position: v.position || null, is_active: true });
       setAdded((a) => ({ ...a, [side]: [...a[side], p] }));
       placeAt(slot, `id${p.id}`, fromSquad(p));
       setPicker(null);
@@ -268,7 +268,7 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
   const selP = selKey ? rows.find((r) => r.key === selKey) : undefined;
   const selSlot = sel?.kind === "slot" ? sel.slot : selP?.p.is_starter ? selP.p.slot : null;
   const errSlots = new Set<number>();
-  const numCount = new Map<number, number>();
+  const numCount = new Map<string, number>();
   d.players.forEach((p) => p.number != null && numCount.set(p.number, (numCount.get(p.number) || 0) + 1));
   d.players.forEach((p) => p.is_starter && p.slot != null && p.number != null && (numCount.get(p.number) || 0) > 1 && errSlots.add(p.slot));
   const bench = d.players.filter((p) => !p.is_starter);
@@ -416,7 +416,7 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
                   {selP.status !== "free" && (
                     <>
                       <label className="field"><span className="label">Raqam (shu match uchun)</span>
-                        <input className="input" type="number" min={0} max={99} value={selP.p.number ?? ""} onChange={(e) => patchP(selP.key, { number: e.target.value === "" ? null : Number(e.target.value) })} />
+                        <input className="input" type="text" autoCapitalize="characters" autoComplete="off" maxLength={8} placeholder="10 yoki Z10" value={selP.p.number ?? ""} onChange={(e) => patchP(selP.key, { number: jerseyInput(e.target.value) || null })} />
                       </label>
                       {selP.status === "pitch" && (
                         <label className="check"><input type="checkbox" checked={selP.p.is_captain} onChange={(e) => patchP(selP.key, { is_captain: e.target.checked })} /> Kapitan</label>
@@ -510,7 +510,7 @@ function SlotPicker({ slot, role, team, rows, onPick, onCreate, onClose }: {
   const [busy, setBusy] = useState(false);
   const list = rows
     .filter((r) => !q || `${r.p.number ?? ""} ${r.p.player_name}`.toLowerCase().includes(q.toLowerCase()))
-    .sort((a, b) => Number(b.p.position === want) - Number(a.p.position === want) || (a.p.number ?? 999) - (b.p.number ?? 999));
+    .sort((a, b) => Number(b.p.position === want) - Number(a.p.position === want) || jerseyCmp(a.p.number, b.p.number));
   return (
     <Modal title={<span>{role} · {ROLE_LABEL[role] || role} <span className="muted small">— {team}</span></span>} onClose={onClose}>
       <div className="stack" key={slot}>
@@ -533,7 +533,7 @@ function SlotPicker({ slot, role, team, rows, onPick, onCreate, onClose }: {
           onSubmit={async (e) => { e.preventDefault(); if (!nf.name.trim()) return; setBusy(true); await onCreate(nf); setBusy(false); }}>
           <b className="small">{rows.length ? "Ro‘yxatda yo‘qmi? Yangi o‘yinchi qo‘shing" : `${team} ro‘yxati bo‘sh — o‘yinchini shu yerda qo‘shing`}</b>
           <div className="row" style={{ gap: 8 }}>
-            <input className="input input-sm" style={{ width: 70 }} inputMode="numeric" placeholder="№" value={nf.number} onChange={(e) => setNf({ ...nf, number: e.target.value.replace(/\D/g, "").slice(0, 3) })} />
+            <input className="input input-sm" style={{ width: 70 }} autoCapitalize="characters" autoComplete="off" maxLength={8} placeholder="№" value={nf.number} onChange={(e) => setNf({ ...nf, number: jerseyInput(e.target.value) })} />
             <input className="input input-sm grow" placeholder="Ism familiya" value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} autoFocus={!rows.length} />
             <select className="select input-sm" style={{ width: "auto" }} value={nf.position} onChange={(e) => setNf({ ...nf, position: e.target.value })}>
               {Object.entries(POSITIONS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}

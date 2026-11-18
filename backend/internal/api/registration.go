@@ -30,6 +30,7 @@ import (
 
 	"github.com/sanedidi/unitedmfl/backend/internal/auth"
 	"github.com/sanedidi/unitedmfl/backend/internal/httpx"
+	"github.com/sanedidi/unitedmfl/backend/internal/jersey"
 	"github.com/sanedidi/unitedmfl/backend/internal/roster"
 	"github.com/sanedidi/unitedmfl/backend/internal/sms"
 	"github.com/sanedidi/unitedmfl/backend/internal/xlsx"
@@ -332,11 +333,11 @@ type appCheck struct {
 }
 
 type dupMatch struct {
-	PlayerID int64  `json:"player_id"`
-	FullName string `json:"full_name"`
-	Number   *int   `json:"number"`
-	TeamID   *int64 `json:"team_id"`
-	TeamName string `json:"team_name"`
+	PlayerID int64         `json:"player_id"`
+	FullName string        `json:"full_name"`
+	Number   jersey.Number `json:"number"`
+	TeamID   *int64        `json:"team_id"`
+	TeamName string        `json:"team_name"`
 }
 
 // checkEnv is what checks need from the database.
@@ -438,7 +439,7 @@ func checkApplication(a *application, l *regLink, env checkEnv) []appCheck {
 	if len(a.Players) > 0 && gk == 0 {
 		add("error", "roster", "roster.gk", "Kamida bitta darvozabon belgilang", nil)
 	}
-	numbers := map[int]int{}
+	numbers := map[jersey.Number]int{}
 	for i, p := range a.Players {
 		name := p.FullName()
 		if name == "" {
@@ -452,12 +453,12 @@ func checkApplication(a *application, l *regLink, env checkEnv) []appCheck {
 		} else if age, ok := roster.Age(p.BirthDate, env.Now); ok && minAge != nil && age < *minAge {
 			add("error", "roster", "player.age", fmt.Sprintf("%s: %d yosh — kamida %d yosh bo‘lishi kerak", name, age, *minAge), idx(i))
 		}
-		if p.Number == nil {
+		if p.Number == "" {
 			add("error", "roster", "player.number", name+": raqamni yozing", idx(i))
-		} else if j, dup := numbers[*p.Number]; dup {
-			add("error", "roster", "player.number_dup", fmt.Sprintf("%d-raqam takrorlangan: %s va %s", *p.Number, a.Players[j].FullName(), name), idx(i))
+		} else if j, dup := numbers[p.Number]; dup {
+			add("error", "roster", "player.number_dup", fmt.Sprintf("%s-raqam takrorlangan: %s va %s", p.Number, a.Players[j].FullName(), name), idx(i))
 		} else {
-			numbers[*p.Number] = i
+			numbers[p.Number] = i
 		}
 		if strings.TrimSpace(p.JerseyName) == "" {
 			add("error", "roster", "player.jersey", name+": futbolkadagi yozuvni kiriting", idx(i))
@@ -767,9 +768,8 @@ func (s *Server) sanitizePlayers(ps []roster.Player, appDir string) ([]roster.Pl
 		if d, ok := roster.ParseDate(p.BirthDate); ok {
 			q.BirthDate = d
 		}
-		if p.Number != nil && *p.Number >= 0 && *p.Number <= 999 {
-			n := *p.Number
-			q.Number = &n
+		if n, ok := jersey.Parse(p.Number.String()); ok {
+			q.Number = n
 		}
 		switch q.Role {
 		case roster.RolePlayer, roster.RoleGoalkeeper, roster.RoleMedia:
