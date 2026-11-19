@@ -191,10 +191,11 @@ func stickerInput(keywords []string) string {
 	return string(b)
 }
 
-func (c *tgStkClient) createSet(ctx context.Context, owner int64, name, title string, png []byte, keywords []string) error {
+// createSet opens a set; stickerType is "regular" or "custom_emoji".
+func (c *tgStkClient) createSet(ctx context.Context, owner int64, name, title, stickerType string, png []byte, keywords []string) error {
 	return c.upload(ctx, "createNewStickerSet", map[string]string{
 		"user_id": strconv.FormatInt(owner, 10), "name": name, "title": title,
-		"sticker_type": "regular", "stickers": "[" + stickerInput(keywords) + "]",
+		"sticker_type": stickerType, "stickers": "[" + stickerInput(keywords) + "]",
 	}, png)
 }
 

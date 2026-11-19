@@ -139,3 +139,29 @@ func TestBuildFitsSizeLimit(t *testing.T) {
 		t.Fatalf("%d bytes", len(data))
 	}
 }
+
+func TestBuildEmoji(t *testing.T) {
+	for _, outline := range []bool{false, true} {
+		data, err := Build(testLogo(500, 500, color.NRGBA{255, 255, 255, 255}), Options{Emoji: true, Outline: outline})
+		if err != nil {
+			t.Fatal(err)
+		}
+		img, err := png.Decode(bytes.NewReader(data))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if b := img.Bounds(); b.Dx() != EmojiSize || b.Dy() != EmojiSize {
+			t.Fatalf("size %v", b)
+		}
+		if _, _, _, a := img.At(0, 0).RGBA(); a != 0 {
+			t.Fatal("corner not transparent")
+		}
+		if _, _, _, a := img.At(EmojiSize/2+20, EmojiSize/2).RGBA(); a < 0xF000 {
+			t.Fatal("logo body missing")
+		}
+		// the eye stays white
+		if r, g, b, a := img.At(EmojiSize/2, EmojiSize/2).RGBA(); a < 0xF000 || r>>8 < 230 || g>>8 < 230 || b>>8 < 230 {
+			t.Fatalf("inner white lost: %d %d %d %d", r>>8, g>>8, b>>8, a>>8)
+		}
+	}
+}

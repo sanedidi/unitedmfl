@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -28,6 +29,7 @@ type fakeTelegram struct {
 	token   string
 	owner   int64
 	sets    map[string][]tgStkSticker
+	types   map[string]string // set name → sticker_type
 	seq     int
 	failAdd string // next addStickerToSet answers 400 with this text
 	calls   []string
@@ -71,8 +73,12 @@ func (f *fakeTelegram) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	checkPNG := func() bool {
+		want := 512
+		if f.types[params["name"]] == "custom_emoji" || params["sticker_type"] == "custom_emoji" {
+			want = 100
+		}
 		img, err := png.Decode(bytes.NewReader(file))
-		if err != nil || img.Bounds().Dx() != 512 || img.Bounds().Dy() != 512 || len(file) > 512<<10 {
+		if err != nil || img.Bounds().Dx() != want || img.Bounds().Dy() != want || len(file) > 512<<10 {
 			fail(400, "Bad Request: STICKER_PNG_DIMENSIONS")
 			return false
 		}
@@ -104,6 +110,7 @@ func (f *fakeTelegram) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		f.sets[params["name"]] = []tgStkSticker{newSticker()}
+		f.types[params["name"]] = params["sticker_type"]
 		reply(true)
 	case "addStickerToSet":
 		if f.failAdd != "" {
@@ -196,7 +203,8 @@ func TestTelegramStickers(t *testing.T) {
 	// a clean slate: only this test's teams carry logos
 	for _, q := range []string{`DELETE FROM tg_stickers`, `DELETE FROM tg_sticker_sets`, `DELETE FROM tg_bot_starts`,
 		`UPDATE tg_sticker_settings SET token_enc = NULL, bot_id = 0, bot_username = '', owner_id = 0, enabled = false, problem = '', last_error = '',
-		 set_slug = 'unitedmfl', set_title = 'United MFL — Jamoalar', outline = true, auto_update = true`,
+		 set_slug = 'unitedmfl', set_title = 'United MFL — Jamoalar', outline = true, auto_update = true,
+		 emoji_enabled = false, emoji_slug = 'unitedmfl_emoji', emoji_title = 'United MFL — Emoji', emoji_outline = true`,
 		`UPDATE teams SET crest_url = ''`} {
 		if _, err := conn.Exec(q); err != nil {
 			t.Fatal(err)
@@ -204,7 +212,7 @@ func TestTelegramStickers(t *testing.T) {
 	}
 
 	const token = "777:AAH-test-token-test-token-test-token"
-	tg := &fakeTelegram{token: token, owner: 555, sets: map[string][]tgStkSticker{}}
+	tg := &fakeTelegram{token: token, owner: 555, sets: map[string][]tgStkSticker{}, types: map[string]string{}}
 	tgSrv := httptest.NewServer(tg)
 	defer tgSrv.Close()
 
@@ -378,6 +386,83 @@ func TestTelegramStickers(t *testing.T) {
 	conn.QueryRow(`SELECT file_id FROM tg_stickers WHERE team_id = $1`, alpha).Scan(&after)
 	if after == before {
 		t.Fatal("outline change did not redraw")
+	}
+
+	// ---------- emoji: a second set kind on the same bot and owner ----------
+	if c := call("PATCH", "/tg-stickers", map[string]any{"emoji_enabled": true}, nil); c != 400 {
+		t.Fatalf("emoji switched on before its set exists: %d", c)
+	}
+	if c := call("PATCH", "/tg-stickers", map[string]any{"emoji_slug": "unitedmfl"}, nil); c != 422 {
+		t.Fatalf("emoji link equal to the sticker link: %d", c)
+	}
+	if v := get(); status(v, alpha).Emoji.Status != "waiting" || v.Emoji.Created {
+		t.Fatalf("emoji before create: %+v", status(v, alpha).Emoji)
+	}
+	if c := call("POST", "/tg-stickers/emoji/create", nil, &state); c != 200 || !state.Emoji.Enabled || !state.Emoji.Created {
+		t.Fatalf("emoji create: %d %+v", c, state.Emoji)
+	}
+	const emojiSet = "unitedmfl_emoji_by_umfl_test_bot"
+	if tg.types[emojiSet] != "custom_emoji" || state.Emoji.SetURL != "https://t.me/addemoji/"+emojiSet {
+		t.Fatalf("emoji set: type %q url %q", tg.types[emojiSet], state.Emoji.SetURL)
+	}
+	s.stkTick(ctx)
+	v = get()
+	if len(tg.set(emojiSet)) != 2 || v.Emoji.Counts["ready"] != 2 || status(v, gamma).Emoji.Status != "ready" || status(v, gamma).Emoji.Image == "" {
+		t.Fatalf("emoji after tick: set=%v counts=%v", tg.set(emojiSet), v.Emoji.Counts)
+	}
+	if len(tg.set(setName)) != 2 || v.Counts["ready"] != 2 {
+		t.Fatalf("stickers touched by emoji: %v", v.Counts)
+	}
+	// a new logo replaces both the sticker and the emoji
+	var sBefore, eBefore, sAfter, eAfter string
+	conn.QueryRow(`SELECT file_id FROM tg_stickers WHERE team_id = $1 AND kind = 'sticker'`, gamma).Scan(&sBefore)
+	conn.QueryRow(`SELECT file_id FROM tg_stickers WHERE team_id = $1 AND kind = 'emoji'`, gamma).Scan(&eBefore)
+	if c := call("PATCH", fmt.Sprintf("/teams/%d", gamma), map[string]any{"crest_url": saveLogo("gamma2.png", color.NRGBA{0, 90, 90, 255})}, nil); c != 200 {
+		t.Fatalf("gamma logo 2: %d", c)
+	}
+	s.stkTick(ctx)
+	conn.QueryRow(`SELECT file_id FROM tg_stickers WHERE team_id = $1 AND kind = 'sticker'`, gamma).Scan(&sAfter)
+	conn.QueryRow(`SELECT file_id FROM tg_stickers WHERE team_id = $1 AND kind = 'emoji'`, gamma).Scan(&eAfter)
+	if sAfter == sBefore || eAfter == eBefore || len(tg.set(emojiSet)) != 2 {
+		t.Fatalf("logo change: sticker %s→%s emoji %s→%s", sBefore, sAfter, eBefore, eAfter)
+	}
+	// emoji switched off: the emoji set is left alone, stickers go on
+	if c := call("PATCH", "/tg-stickers", map[string]any{"emoji_enabled": false}, nil); c != 200 {
+		t.Fatalf("emoji off: %d", c)
+	}
+	conn.QueryRow(`SELECT file_id FROM tg_stickers WHERE team_id = $1 AND kind = 'emoji'`, alpha).Scan(&eBefore)
+	call("PATCH", fmt.Sprintf("/teams/%d", alpha), map[string]any{"crest_url": saveLogo("alpha3.png", color.NRGBA{90, 90, 0, 255})}, nil)
+	s.stkTick(ctx)
+	conn.QueryRow(`SELECT file_id FROM tg_stickers WHERE team_id = $1 AND kind = 'emoji'`, alpha).Scan(&eAfter)
+	if eAfter != eBefore || status(get(), alpha).Status != "ready" {
+		t.Fatalf("emoji changed while off: %s→%s", eBefore, eAfter)
+	}
+	// back on: it catches up; a deleted team loses both
+	if c := call("PATCH", "/tg-stickers", map[string]any{"emoji_enabled": true, "emoji_outline": false}, nil); c != 200 {
+		t.Fatalf("emoji on: %d", c)
+	}
+	s.stkTick(ctx)
+	conn.QueryRow(`SELECT file_id FROM tg_stickers WHERE team_id = $1 AND kind = 'emoji'`, alpha).Scan(&eAfter)
+	if eAfter == eBefore {
+		t.Fatal("emoji did not catch up")
+	}
+	if c := call("DELETE", fmt.Sprintf("/teams/%d", gamma), nil, nil); c != 204 {
+		t.Fatalf("delete gamma: %d", c)
+	}
+	s.stkTick(ctx)
+	if len(tg.set(emojiSet)) != 1 || len(tg.set(setName)) != 1 {
+		t.Fatalf("delete: emoji=%v stickers=%v", tg.set(emojiSet), tg.set(setName))
+	}
+	var epv struct {
+		Image string `json:"image"`
+	}
+	if c := call("POST", "/tg-stickers/preview", map[string]any{"team_id": alpha, "outline": true, "kind": "emoji"}, &epv); c != 200 {
+		t.Fatalf("emoji preview: %d", c)
+	}
+	if raw, _ := base64.StdEncoding.DecodeString(strings.TrimPrefix(epv.Image, "data:image/png;base64,")); len(raw) > 0 {
+		if img, err := png.Decode(bytes.NewReader(raw)); err != nil || img.Bounds().Dx() != 100 {
+			t.Fatalf("emoji preview size: %v", err)
+		}
 	}
 
 	// preview and the team page block

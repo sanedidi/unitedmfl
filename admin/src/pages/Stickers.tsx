@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { api, ApiError } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
 import { fmtDateTime } from "@/lib/format";
@@ -10,19 +10,20 @@ import { I } from "@/components/Icons";
 /* Tizim → Telegram stikerlar: team logos become one Telegram sticker set. */
 
 export type StkStatus = "ready" | "queued" | "error" | "stale" | "no_logo" | "waiting";
-export type StkTeam = {
-  team_id: number; name: string; short_name: string; crest_url: string; status: StkStatus; image: string;
-  attempts: number; last_error: string; updated_at: string | null; next_try_at: string | null;
-};
+export type StkItem = { status: StkStatus; image: string; attempts: number; last_error: string; updated_at: string | null; next_try_at: string | null };
+export type StkTeam = StkItem & { team_id: number; name: string; short_name: string; crest_url: string; emoji: StkItem };
+type Counts = Record<"teams" | "ready" | "queued" | "error" | "no_logo" | "stale", number>;
+type SetView = { name: string; title: string; url: string; count: number };
 type Person = { id: number; username: string; name: string; at?: string };
 type State = {
   connected: boolean; token_broken: boolean; token_masked: string; bot_username: string; same_as_live: boolean;
   owner: Person | null; candidates: Person[];
-  set_slug: string; set_title: string; set_url: string; sets: { name: string; title: string; url: string; count: number }[]; limit: number;
+  set_slug: string; set_title: string; set_url: string; sets: SetView[]; limit: number;
   outline: boolean; auto_update: boolean; enabled: boolean;
   problem: "" | "token_invalid" | "owner_blocked" | "telegram_down"; last_error: string;
   last_sync_at: string | null; next_retry_at: string | null;
-  counts: Record<"teams" | "ready" | "queued" | "error" | "no_logo" | "stale", number>;
+  counts: Counts;
+  emoji: { enabled: boolean; created: boolean; slug: string; title: string; outline: boolean; set_url: string; sets: SetView[]; limit: number; counts: Counts };
   teams: StkTeam[];
 };
 
@@ -33,7 +34,7 @@ export const STK_LABEL: Record<StkStatus, string> = {
   ready: "Tayyor", queued: "Navbatda", error: "Xato", stale: "Logotip o‘zgargan", no_logo: "Logotip yo‘q", waiting: "—",
 };
 
-export function StkStatusCell({ t, autoUpdate = true }: { t: StkTeam; autoUpdate?: boolean }) {
+export function StkStatusCell({ t, autoUpdate = true }: { t: StkItem; autoUpdate?: boolean }) {
   let sub = "";
   if (t.status === "queued" && t.attempts > 0) sub = `${t.attempts}-urinish: ${t.last_error}`;
   else if (t.status === "queued" && t.last_error) sub = t.last_error;
@@ -48,7 +49,7 @@ export function StkStatusCell({ t, autoUpdate = true }: { t: StkTeam; autoUpdate
   );
 }
 
-export function StkTile({ t, size = 44 }: { t: Pick<StkTeam, "image" | "crest_url" | "status">; size?: number }) {
+export function StkTile({ t, size = 44 }: { t: { image: string; crest_url: string }; size?: number }) {
   const src = t.image || t.crest_url;
   return (
     <span className={`stk-tile${t.image ? "" : " pending"}`} style={{ width: size, height: size }}>
@@ -59,7 +60,9 @@ export function StkTile({ t, size = 44 }: { t: Pick<StkTeam, "image" | "crest_ur
 
 export function StickersPage() {
   const { data, error, loading, reload, setData } = useLoad(() => api.get<State>("/admin/tg-stickers"), []);
-  const busy = !!data && (data.counts.queued > 0 || (!data.enabled && data.connected && !data.owner));
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "emoji" ? "emoji" : "stickers";
+  const busy = !!data && (data.counts.queued > 0 || (data.emoji.enabled && data.emoji.counts.queued > 0) || (!data.enabled && data.connected && !data.owner));
   // live progress while something is queued or the owner is awaited
   useEffect(() => {
     if (!busy) return;
@@ -70,7 +73,18 @@ export function StickersPage() {
   if (error) return <><PageHead title="Telegram stikerlar" /><div className="card card-pad"><ErrorBox error={error} retry={reload} /></div></>;
   if (loading && !data) return <><PageHead title="Telegram stikerlar" /><Loading /></>;
   if (!data) return null;
-  return data.enabled ? <Connected s={data} set={setData} /> : <Setup s={data} set={setData} />;
+  if (!data.enabled) return <Setup s={data} set={setData} />;
+  const tabs = (
+    <div className="stk-tabs" role="tablist">
+      {([["stickers", "Stikerlar", <I.image size={16} />, data.counts.ready], ["emoji", "Emoji", <I.ball size={16} />, data.emoji.counts.ready]] as const).map(([k, l, icon, n]) => (
+        <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setParams(k === "emoji" ? { tab: "emoji" } : {}, { replace: true })}>
+          {icon}{l}<span>{n}</span>
+        </button>
+      ))}
+    </div>
+  );
+  if (tab === "emoji") return data.emoji.created ? <EmojiConnected s={data} set={setData} tabs={tabs} /> : <EmojiSetup s={data} set={setData} tabs={tabs} />;
+  return <Connected s={data} set={setData} tabs={tabs} />;
 }
 
 function Problems({ s, set }: { s: State; set: (v: State) => void }) {
@@ -103,7 +117,7 @@ function Banner({ text, action, danger, icon }: { text: string; action?: ReactNo
 
 type Filter = "all" | "ready" | "queued" | "error" | "no_logo";
 
-function Connected({ s, set }: { s: State; set: (v: State) => void }) {
+function Connected({ s, set, tabs }: { s: State; set: (v: State) => void; tabs: ReactNode }) {
   const toast = useToast();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -128,12 +142,13 @@ function Connected({ s, set }: { s: State; set: (v: State) => void }) {
     <>
       <PageHead
         title="Telegram stikerlar"
-        sub="Jamoa logotiplari avtomatik ravishda Telegram stiker to‘plamiga qo‘shiladi"
+        sub="Jamoa logotiplari avtomatik ravishda Telegram stiker va emoji to‘plamlariga qo‘shiladi"
         actions={<>
           <button className="btn btn-dark" disabled={busy} onClick={sync}><I.refresh size={16} /> Hammasini sinxronlash</button>
           {s.set_url && <a className="btn btn-primary" href={s.set_url} target="_blank" rel="noreferrer">To‘plamni ochish</a>}
         </>}
       />
+      {tabs}
       <Problems s={s} set={set} />
       <div className="stk-cols">
         <div className="stack">
@@ -410,23 +425,274 @@ function Step({ n, done, title, sub, disabled, children }: { n: number; done: bo
   );
 }
 
+/* ---------- E1 / E2: emoji ---------- */
+
+/** A Telegram-like message with the emoji inline, in a light or dark chat. */
+function ChatPreview({ img, img2, dark }: { img: string; img2?: string; dark?: boolean }) {
+  const e = (src?: string) => (src ? <img src={src} alt="" className="stk-inline" /> : <span className="stk-inline empty" />);
+  return (
+    <div className={`stk-chat${dark ? " dark" : ""}`}>
+      <div className="stk-bubble">Gol! {e(img)} 2 : 1 {e(img2 || img)}</div>
+      <small>{dark ? "Qorong‘i mavzu" : "Yorug‘ mavzu"}</small>
+    </div>
+  );
+}
+
+function useEmojiPreview(teamId: number, outline: boolean) {
+  const [img, setImg] = useState("");
+  useEffect(() => {
+    if (!teamId) return;
+    let live = true;
+    api.post<{ image: string }>("/admin/tg-stickers/preview", { team_id: teamId, outline, kind: "emoji" }).then((r) => live && setImg(r.image)).catch(() => live && setImg(""));
+    return () => { live = false; };
+  }, [teamId, outline]);
+  return img;
+}
+
+const PREMIUM_NOTE = "Emoji’ni yuborish va to‘plamni qo‘shish faqat Telegram Premium foydalanuvchilariga ochiq. Boshqalar ularni xabarlarda ko‘radi.";
+
+function EmojiConnected({ s, set, tabs }: { s: State; set: (v: State) => void; tabs: ReactNode }) {
+  const toast = useToast();
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [busy, setBusy] = useState(false);
+  const fail = (e: unknown) => toast(errText(e), "error");
+  const e = s.emoji;
+  async function sync() {
+    setBusy(true);
+    try { set(await api.post<State>("/admin/tg-stickers/sync")); toast(`Sinxronlash boshlandi: ${e.counts.teams} ta jamoa`); } catch (x) { fail(x); } finally { setBusy(false); }
+  }
+  async function retry(t: StkTeam) {
+    try { set(await api.post<State>(`/admin/tg-stickers/teams/${t.team_id}/retry?kind=emoji`)); toast(`${t.name}: navbatga qo‘yildi`); } catch (x) { fail(x); }
+  }
+  async function patch(b: Record<string, unknown>, msg?: string) {
+    try { set(await api.patch<State>("/admin/tg-stickers", b)); if (msg) toast(msg); } catch (x) { fail(x); }
+  }
+  const inFilter = (t: StkTeam) => filter === "all" || t.emoji.status === filter || (filter === "queued" && t.emoji.status === "stale");
+  const rows = s.teams.filter((t) => inFilter(t) && (!q.trim() || t.name.toLowerCase().includes(q.trim().toLowerCase())));
+  const chips: [Filter, string, number][] = [
+    ["all", "Hammasi", e.counts.teams], ["ready", "Tayyor", e.counts.ready], ["queued", "Navbatda", e.counts.queued + e.counts.stale],
+    ["error", "Xato", e.counts.error], ["no_logo", "Logotip yo‘q", e.counts.no_logo],
+  ];
+  const withLogo = s.teams.filter((t) => t.crest_url);
+  const [teamId, setTeamId] = useState<number>(withLogo[0]?.team_id || 0);
+  const img = useEmojiPreview(teamId, e.outline);
+  const img2 = withLogo.find((t) => t.team_id !== teamId)?.emoji.image;
+  const total = e.sets.reduce((a, x) => a + x.count, 0);
+  const ok = !s.problem && !s.token_broken;
+
+  return (
+    <>
+      <PageHead
+        title="Telegram stikerlar"
+        sub="Jamoa logotiplari avtomatik ravishda Telegram stiker va emoji to‘plamlariga qo‘shiladi"
+        actions={<>
+          <button className="btn btn-dark" disabled={busy} onClick={sync}><I.refresh size={16} /> Hammasini sinxronlash</button>
+          {e.set_url && <a className="btn btn-primary" href={e.set_url} target="_blank" rel="noreferrer">To‘plamni ochish</a>}
+        </>}
+      />
+      {tabs}
+      <Problems s={s} set={set} />
+      {!e.enabled && <div className="stack" style={{ marginBottom: 16 }}><Banner icon={<I.alert size={18} />} text="Emoji o‘chirilgan: to‘plam Telegram’da qoladi, lekin jamoalar o‘zgarsa yangilanmaydi." action={<button className="btn" onClick={() => patch({ emoji_enabled: true }, "Emoji yoqildi")}>Yoqish</button>} /></div>}
+      <div className="stk-cols">
+        <div className="stack">
+          <div className="card stk-stats">
+            {[[e.counts.teams, "Jamoalar"], [e.counts.ready, "Emoji tayyor"], [e.counts.queued + e.counts.stale, "Navbatda"], [e.counts.error, "Xato"]].map(([v, l]) => (
+              <div key={l}><b>{v}</b><small>{l}</small></div>
+            ))}
+          </div>
+          <div className="row wrap" style={{ gap: 8 }}>
+            <div className="search" style={{ width: 260 }}><I.search size={16} /><input className="input" aria-label="Qidirish" placeholder="Jamoa qidirish…" value={q} onChange={(x) => setQ(x.target.value)} /></div>
+            {chips.map(([k, l, n]) => (
+              <button key={k} className={`stk-chip${filter === k ? " on" : ""}`} onClick={() => setFilter(k)}>{l} <span>{n}</span></button>
+            ))}
+          </div>
+          <div className="card">
+            <div className="table-wrap"><table className="table">
+              <thead><tr><th>Jamoa</th><th>Emoji</th><th className="hide-mobile">Matnda</th><th>Holat</th><th className="hide-mobile">Yangilangan</th><th /></tr></thead>
+              <tbody>
+                {rows.map((t) => (
+                  <tr key={t.team_id}>
+                    <td><span className="row"><Crest team={{ id: t.team_id, name: t.name, short_name: t.short_name, crest_url: t.crest_url }} size={24} /><b>{t.name}</b></span></td>
+                    <td style={{ width: 64 }}>{t.emoji.status === "no_logo" ? <span className="stk-tile nologo" style={{ width: 36, height: 36 }}><I.image size={16} /></span> : <StkTile t={{ image: t.emoji.image, crest_url: t.crest_url }} size={36} />}</td>
+                    <td className="hide-mobile" style={{ width: 110 }}>{t.emoji.image ? <span className="row" style={{ gap: 10 }}><img className="stk-inline" src={t.emoji.image} alt="" /><img src={t.emoji.image} alt="" style={{ width: 32, height: 32 }} /></span> : <span className="muted">—</span>}</td>
+                    <td><StkStatusCell t={t.emoji} autoUpdate={s.auto_update} /></td>
+                    <td className="hide-mobile nowrap">{t.emoji.status === "ready" || t.emoji.status === "stale" ? fmtDateTime(t.emoji.updated_at) : "—"}</td>
+                    <td className="nowrap" style={{ textAlign: "right" }}>
+                      {t.emoji.status === "no_logo"
+                        ? <Link className="btn btn-ghost btn-icon" title="Logotip yuklash" aria-label="Logotip yuklash" to={`/teams/${t.team_id}`}><I.upload size={16} /></Link>
+                        : <button className="btn btn-ghost btn-icon" title={t.emoji.status === "ready" ? "Qayta yaratish" : "Qayta urinish"} aria-label="Qayta yaratish" disabled={!e.enabled} onClick={() => retry(t)}><I.refresh size={16} /></button>}
+                    </td>
+                  </tr>
+                ))}
+                {!rows.length && <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 32 }}>Jamoa topilmadi</td></tr>}
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+        <aside className="stack">
+          <div className="card">
+            <div className="card-head"><h2>Emoji to‘plami</h2><span className="row small b" style={{ gap: 6 }}><i className={`stk-dot ${e.enabled && ok ? "ready" : e.enabled ? "error" : "waiting"}`} />{!e.enabled ? "O‘chirilgan" : ok ? "Yoqilgan" : "Muammo bor"}</span></div>
+            <div className="stk-kv">
+              <div><span>To‘plam</span><b>{e.title}</b></div>
+              <div><span>Emoji</span><b>{total} / {e.limit * Math.max(1, e.sets.length)}</b></div>
+              <div><span>Egasi</span><b>{s.owner ? who(s.owner) : "—"}</b></div>
+              <div><span>Oxirgi sinxronlash</span><b>{fmtDateTime(s.last_sync_at)}</b></div>
+            </div>
+            {e.sets.map((x) => (
+              <a key={x.name} className="stk-link" href={x.url} target="_blank" rel="noreferrer"><span className="grow">{x.url.replace("https://", "")}</span><I.link size={16} /></a>
+            ))}
+            <div className="card-pad" style={{ borderTop: "1px solid var(--border)" }}>
+              <label className="toggle-row"><span><b>Emoji’ni yoqish</b><small>O‘chirilsa, to‘plam Telegram’da qoladi, lekin yangilanmaydi</small></span><input type="checkbox" className="switch" checked={e.enabled} onChange={(x) => patch({ emoji_enabled: x.target.checked }, x.target.checked ? "Emoji yoqildi" : "Emoji o‘chirildi")} /></label>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-head"><h2>Emoji ko‘rinishi</h2>
+              {withLogo.length > 1 && (
+                <select className="input input-sm" style={{ width: 140 }} value={teamId} onChange={(x) => setTeamId(Number(x.target.value))} aria-label="Jamoa">
+                  {withLogo.map((t) => <option key={t.team_id} value={t.team_id}>{t.name}</option>)}
+                </select>
+              )}
+            </div>
+            <div className="card-pad stack" style={{ gap: 12 }}>
+              <ChatPreview img={img} img2={img2} />
+              <ChatPreview img={img} img2={img2} dark />
+              <div className="stk-sizes">
+                {([[20, "Matnda"], [32, "Tanlovda"], [48, "Katta"]] as const).map(([px, l]) => (
+                  <div key={px}>{img ? <img src={img} alt="" style={{ width: px, height: px }} /> : <span style={{ width: px, height: px }} />}<small>{l}</small></div>
+                ))}
+              </div>
+              <label className="toggle-row"><span><b>Ingichka oq kontur</b><small>2 px — kichik o‘lchamda ham logotip ko‘rinadi</small></span><input type="checkbox" className="switch" checked={e.outline} onChange={(x) => patch({ emoji_outline: x.target.checked }, "Barcha emoji qayta chiziladi")} /></label>
+              <label className="toggle-row"><span><b>Avtomatik yangilash</b><small>Stikerlar bilan umumiy sozlama</small></span><input type="checkbox" className="switch" checked={s.auto_update} onChange={(x) => patch({ auto_update: x.target.checked })} /></label>
+            </div>
+          </div>
+          <div className="stk-note"><I.alert size={16} /><span>{PREMIUM_NOTE}</span></div>
+        </aside>
+      </div>
+    </>
+  );
+}
+
+function EmojiSetup({ s, set, tabs }: { s: State; set: (v: State) => void; tabs: ReactNode }) {
+  const toast = useToast();
+  const e = s.emoji;
+  const [slug, setSlug] = useState(e.slug);
+  const [title, setTitle] = useState(e.title);
+  const [errs, setErrs] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setSlug(e.slug); setTitle(e.title); }, [e.slug, e.title]);
+  const withLogo = s.teams.filter((t) => t.crest_url);
+  const img = useEmojiPreview(withLogo[0]?.team_id || 0, e.outline);
+  const img2 = useEmojiPreview(withLogo[1]?.team_id || withLogo[0]?.team_id || 0, e.outline);
+
+  async function save(extra: Record<string, unknown> = {}): Promise<boolean> {
+    const body: Record<string, unknown> = { ...extra };
+    if (slug !== e.slug) body.emoji_slug = slug.trim().toLowerCase();
+    if (title !== e.title) body.emoji_title = title.trim();
+    if (!Object.keys(body).length) return true;
+    try {
+      set(await api.patch<State>("/admin/tg-stickers", body));
+      setErrs({});
+      return true;
+    } catch (x) {
+      if (x instanceof ApiError && Object.keys(x.fields).length) setErrs(Object.fromEntries(Object.entries(x.fields).map(([k, v]) => [k, String(v)])));
+      else toast(errText(x), "error");
+      return false;
+    }
+  }
+  async function create() {
+    setBusy(true);
+    try {
+      if (!(await save())) return;
+      set(await api.post<State>("/admin/tg-stickers/emoji/create"));
+      toast("Emoji to‘plami yaratildi");
+    } catch (x) {
+      if (x instanceof ApiError && Object.keys(x.fields).length) setErrs(Object.fromEntries(Object.entries(x.fields).map(([k, v]) => [k, String(v)])));
+      else toast(errText(x), "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const full = s.bot_username ? `t.me/addemoji/${slug || "…"}_by_${s.bot_username}` : "";
+  return (
+    <>
+      <PageHead title="Telegram stikerlar" sub="Jamoa logotiplari avtomatik ravishda Telegram stiker va emoji to‘plamlariga qo‘shiladi" />
+      {tabs}
+      <Problems s={s} set={set} />
+      <div className="stk-cols">
+        <div className="card">
+          <div className="card-head"><h2>Emoji to‘plamini yaratish</h2><span className="row small b muted" style={{ gap: 6 }}><i className="stk-dot waiting" />Yoqilmagan</span></div>
+          <div className="stk-intro">
+            <div className="stk-strip">
+              {withLogo.slice(0, 6).map((t) => <span key={t.team_id}>{t.image || t.crest_url ? <img src={t.image || t.crest_url} alt="" /> : null}</span>)}
+            </div>
+            <div className="grow">
+              <h3>Stikerlar bilan bir xil bot va egasi ishlatiladi</h3>
+              <p>Logotiplar 100 × 100 ga joylanadi, oq fon olib tashlanadi. Jamoalar o‘zgarsa, emoji ham o‘zi yangilanadi.</p>
+            </div>
+          </div>
+          <div className="card-pad stack" style={{ borderBottom: "1px solid var(--border)" }}>
+            <div className="form-grid">
+              <Field label="To‘plam nomi" error={errs.emoji_title}><input className="input" value={title} maxLength={60} onChange={(x) => setTitle(x.target.value)} onBlur={() => save()} /></Field>
+              <Field label="Havola" error={errs.emoji_slug} hint={full}>
+                <input className="input" value={slug} onChange={(x) => setSlug(x.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} onBlur={() => save()} spellCheck={false} />
+              </Field>
+            </div>
+            <label className="toggle-row"><span><b>Ingichka oq kontur</b><small>2 px — kichik o‘lchamda ham logotip ko‘rinadi</small></span><input type="checkbox" className="switch" checked={e.outline} onChange={(x) => save({ emoji_outline: x.target.checked })} /></label>
+          </div>
+          <div className="stk-foot">
+            <span className="grow muted">{s.counts.teams} ta jamoadan {withLogo.length} tasida logotip bor — {withLogo.length} ta emoji yaratiladi</span>
+            <button className="btn btn-primary" disabled={busy || !withLogo.length || !s.owner} onClick={create}>{busy ? "Yaratilmoqda…" : "Emoji to‘plamini yaratish"}</button>
+          </div>
+        </div>
+        <aside className="stack">
+          <div className="card">
+            <div className="card-head"><h2>Oldindan ko‘rish</h2></div>
+            <div className="card-pad stack" style={{ gap: 12 }}>
+              <ChatPreview img={img} img2={img2} />
+              <ChatPreview img={img} img2={img2} dark />
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-head"><h2>Emoji talablari</h2></div>
+            <div className="stk-kv">
+              <div><span>Format</span><b>PNG</b></div>
+              <div><span>O‘lcham</span><b>100 × 100 px</b></div>
+              <div><span>Fon</span><b>Shaffof</b></div>
+              <div><span>To‘plamda</span><b>{e.limit} tagacha</b></div>
+            </div>
+          </div>
+          <div className="stk-note"><I.alert size={16} /><span>{PREMIUM_NOTE}</span></div>
+        </aside>
+      </div>
+    </>
+  );
+}
+
 /* ---------- team page block (A11) ---------- */
 
+type TeamBlock = { enabled: boolean; set_url: string; emoji_enabled: boolean; emoji_set_url: string; team: StkTeam };
+
 export function TeamStickerCard({ teamId, version }: { teamId: number; version: number }) {
-  const { data } = useLoad(() => api.get<{ enabled: boolean; set_url: string; outline: boolean; team: StkTeam }>(`/admin/teams/${teamId}/sticker`).catch(() => null), [teamId, version]);
-  const view = data?.team;
-  if (!data || !data.enabled || !view) return null;
+  const { data } = useLoad(() => api.get<TeamBlock>(`/admin/teams/${teamId}/sticker`).catch(() => null), [teamId, version]);
+  const t = data?.team;
+  if (!data || !t || (!data.enabled && !data.emoji_enabled)) return null;
+  const line = (label: string, it: StkItem, size: string) => (
+    <div className="stk-teamrow">
+      {it.status === "no_logo" ? <span className="stk-tile nologo" style={{ width: 64, height: 64 }}><I.image size={22} /></span> : <StkTile t={{ image: it.image, crest_url: t.crest_url }} size={64} />}
+      <div className="grow stack" style={{ gap: 4 }}>
+        <b>{label}</b>
+        <StkStatusCell t={it} />
+        {it.status === "ready" && <small className="muted">{size} · yangilangan: {fmtDateTime(it.updated_at)}</small>}
+      </div>
+    </div>
+  );
   return (
     <div className="card">
-      <div className="card-head"><h3>Telegram stiker</h3>{data.set_url && <a className="btn btn-sm" href={data.set_url} target="_blank" rel="noreferrer">Ko‘rish</a>}</div>
-      <div className="card-pad row" style={{ gap: 14, alignItems: "flex-start" }}>
-        {view.status === "no_logo" ? <span className="stk-tile nologo" style={{ width: 64, height: 64 }}><I.image size={22} /></span> : <StkTile t={view} size={64} />}
-        <div className="grow stack" style={{ gap: 4 }}>
-          <StkStatusCell t={view} />
-          {view.status === "ready" && <small className="muted">Yangilangan: {fmtDateTime(view.updated_at)}</small>}
-        </div>
-      </div>
-      <div className="stk-foot small muted" style={{ borderTop: "1px solid var(--border)" }}><I.refresh size={14} /><span>Logotip saqlanganda stiker o‘zi yangilanadi.</span></div>
+      <div className="card-head"><h3>Telegram</h3>{(data.set_url || data.emoji_set_url) && <a className="btn btn-sm" href={data.enabled ? data.set_url : data.emoji_set_url} target="_blank" rel="noreferrer">Ko‘rish</a>}</div>
+      {data.enabled && line("Stiker", t, "512 × 512")}
+      {data.emoji_enabled && line("Emoji", t.emoji, "100 × 100")}
+      <div className="stk-foot small muted" style={{ borderTop: "1px solid var(--border)" }}><I.refresh size={14} /><span>Logotip saqlanganda stiker va emoji o‘zi yangilanadi.</span></div>
     </div>
   );
 }

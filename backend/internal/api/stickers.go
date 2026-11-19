@@ -32,7 +32,12 @@ import (
 	"github.com/sanedidi/unitedmfl/backend/internal/sticker"
 )
 
-// Telegram stickers from team logos (Tizim → Telegram stikerlar).
+// Telegram stickers and custom emoji from team logos (Tizim → Telegram stikerlar).
+//
+// Two set kinds share the bot and the owner: stickers (512×512, up to 120
+// per set) and emoji (100×100, up to 200 per set). Each kind has its own
+// sets, look (outline) and on/off switch; rows in tg_stickers are per team
+// and kind.
 //
 // The admin enters a bot token and picks the set owner among the Telegram
 // accounts that sent /start to the bot. «To‘plamni yaratish» creates the set
@@ -49,8 +54,9 @@ import (
 // team is marked «Xato». The bot token is AES-GCM encrypted at rest.
 
 const (
-	stkSetLimit    = 120
-	stkMaxAttempts = 6 // the first try and 5 retries
+	stkSetLimit    = 120 // stickers per set
+	stkEmojiLimit  = 200 // custom emoji per set
+	stkMaxAttempts = 6   // the first try and 5 retries
 	stkBatch       = 20
 )
 
@@ -105,6 +111,13 @@ func teamStickerChanged(s *Server) {
 
 // ---------- settings ----------
 
+const (
+	kindSticker = "sticker"
+	kindEmoji   = "emoji"
+)
+
+var stkKinds = []string{kindSticker, kindEmoji}
+
 type stkSettings struct {
 	Token         string
 	TokenBroken   bool // stored, but cannot be decrypted (secret changed)
@@ -117,19 +130,64 @@ type stkSettings struct {
 	SetTitle      string
 	Outline       bool
 	AutoUpdate    bool
-	Enabled       bool
+	Enabled       bool // stickers: the first set has been created
+	EmojiEnabled  bool // emoji: kept in step with the teams
+	EmojiSlug     string
+	EmojiTitle    string
+	EmojiOutline  bool
 	Problem       string
 	LastError     string
 	LastSyncAt    sql.NullTime
+}
+
+// stkKindCfg is one set kind (stickers or emoji) as the worker sees it.
+type stkKindCfg struct {
+	Kind    string
+	Enabled bool
+	Slug    string
+	Title   string
+	Outline bool
+}
+
+func (st *stkSettings) kind(k string) stkKindCfg {
+	if k == kindEmoji {
+		return stkKindCfg{kindEmoji, st.EmojiEnabled, st.EmojiSlug, st.EmojiTitle, st.EmojiOutline}
+	}
+	return stkKindCfg{kindSticker, st.Enabled, st.SetSlug, st.SetTitle, st.Outline}
+}
+
+func stkLimit(kind string) int {
+	if kind == kindEmoji {
+		return stkEmojiLimit
+	}
+	return stkSetLimit
+}
+
+func stkSetURL(kind, name string) string {
+	if kind == kindEmoji {
+		return "https://t.me/addemoji/" + name
+	}
+	return "https://t.me/addstickers/" + name
+}
+
+func (k stkKindCfg) source(crest string) string { return crest + k.flag() }
+
+func (k stkKindCfg) flag() string {
+	if k.Outline {
+		return "|o1"
+	}
+	return "|o0"
 }
 
 func (s *Server) stkLoad(ctx context.Context) (*stkSettings, error) {
 	var st stkSettings
 	var box []byte
 	err := s.DB.QueryRowContext(ctx, `SELECT token_enc, bot_id, bot_username, owner_id, owner_username, owner_name,
-		set_slug, set_title, outline, auto_update, enabled, problem, last_error, last_sync_at FROM tg_sticker_settings WHERE id = 1`).
+		set_slug, set_title, outline, auto_update, enabled, emoji_enabled, emoji_slug, emoji_title, emoji_outline,
+		problem, last_error, last_sync_at FROM tg_sticker_settings WHERE id = 1`).
 		Scan(&box, &st.BotID, &st.BotUsername, &st.OwnerID, &st.OwnerUsername, &st.OwnerName,
-			&st.SetSlug, &st.SetTitle, &st.Outline, &st.AutoUpdate, &st.Enabled, &st.Problem, &st.LastError, &st.LastSyncAt)
+			&st.SetSlug, &st.SetTitle, &st.Outline, &st.AutoUpdate, &st.Enabled, &st.EmojiEnabled, &st.EmojiSlug, &st.EmojiTitle, &st.EmojiOutline,
+			&st.Problem, &st.LastError, &st.LastSyncAt)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +199,9 @@ func (s *Server) stkLoad(ctx context.Context) (*stkSettings, error) {
 	return &st, nil
 }
 
-func (st *stkSettings) ready() bool { return st.Token != "" && st.OwnerID != 0 && st.Enabled }
+func (st *stkSettings) connected() bool { return st.Token != "" && st.OwnerID != 0 }
+
+func (st *stkSettings) ready() bool { return st.connected() && (st.Enabled || st.EmojiEnabled) }
 
 func (s *Server) stkClient(st *stkSettings) *tgStkClient {
 	return newTGStkClient(s.Cfg.TelegramAPIURL, st.Token)
@@ -168,15 +228,14 @@ func stkSetTitle(title string, ord int) string {
 	return title
 }
 
-func (st *stkSettings) source(crest string) string {
-	if st.Outline {
-		return crest + "|o1"
-	}
-	return crest + "|o0"
-}
-
 func (s *Server) stkSetProblem(ctx context.Context, problem, msg string) {
 	_, _ = s.DB.ExecContext(ctx, `UPDATE tg_sticker_settings SET problem = $1, last_error = $2, updated_at = now() WHERE id = 1`, problem, msg)
+}
+
+func (s *Server) stkHasSets(ctx context.Context, kind string) bool {
+	var n int
+	_ = s.DB.QueryRowContext(ctx, `SELECT count(*) FROM tg_sticker_sets WHERE kind = $1`, kind).Scan(&n)
+	return n > 0
 }
 
 // ---------- images ----------
@@ -254,50 +313,28 @@ func (s *Server) stkDownload(ctx context.Context, url string) (string, error) {
 	return f.Name(), nil
 }
 
-func (s *Server) stkBuild(ctx context.Context, crest string, outline bool) ([]byte, error) {
+func (s *Server) stkBuild(ctx context.Context, crest string, k stkKindCfg) ([]byte, error) {
 	img, err := s.stkLoadLogo(ctx, crest)
 	if err != nil {
 		return nil, err
 	}
-	return sticker.Build(img, sticker.Options{Outline: outline})
+	return sticker.Build(img, sticker.Options{Outline: k.Outline, Emoji: k.Kind == kindEmoji})
 }
 
 // stkSaveImage keeps the sent PNG so the admin can show it.
-func (s *Server) stkSaveImage(teamID int64, data []byte) string {
+func (s *Server) stkSaveImage(teamID int64, kind string, data []byte) string {
 	if err := os.MkdirAll(s.stickersDir(), 0o755); err != nil {
 		return ""
 	}
-	name := fmt.Sprintf("team-%d-%s", teamID, randomName(".png"))
+	prefix := "team"
+	if kind == kindEmoji {
+		prefix = "emoji"
+	}
+	name := fmt.Sprintf("%s-%d-%s", prefix, teamID, randomName(".png"))
 	if err := os.WriteFile(filepath.Join(s.stickersDir(), name), data, 0o644); err != nil {
 		return ""
 	}
 	return "/uploads/images/stickers/" + name
-}
-
-func (s *Server) stkRemoveImage(url string) {
-	if name := strings.TrimPrefix(url, "/uploads/images/stickers/"); name != url && name != "" && !strings.Contains(name, "/") {
-		_ = os.Remove(filepath.Join(s.stickersDir(), name))
-	}
-}
-
-func stkKeywords(name, short string) []string {
-	var out []string
-	total := 0
-	for _, k := range []string{name, short, "united mfl"} {
-		k = strings.ToLower(strings.TrimSpace(k))
-		if k == "" || total+len(k) > 64 {
-			continue
-		}
-		dup := false
-		for _, o := range out {
-			dup = dup || o == k
-		}
-		if !dup {
-			out = append(out, k)
-			total += len(k)
-		}
-	}
-	return out
 }
 
 // ---------- worker ----------
@@ -334,15 +371,23 @@ func (s *Server) stkTick(ctx context.Context) {
 	}
 	s.stk.mu.Lock()
 	defer s.stk.mu.Unlock()
-	if err := s.stkReconcile(ctx, st); err != nil {
-		slog.Warn("sticker reconcile", "err", err)
-		return
+	var kinds []string
+	for _, k := range stkKinds {
+		if !st.kind(k).Enabled {
+			continue
+		}
+		if err := s.stkReconcile(ctx, st, k); err != nil {
+			slog.Warn("sticker reconcile", "kind", k, "err", err)
+			return
+		}
+		kinds = append(kinds, k)
 	}
 	done := 0
 	for i := 0; i < stkBatch && ctx.Err() == nil; i++ {
 		var teamID int64
-		err := s.DB.QueryRowContext(ctx, `SELECT team_id FROM tg_stickers WHERE state IN ('queued', 'removing') AND next_try_at <= now()
-			ORDER BY state = 'removing' DESC, next_try_at, team_id LIMIT 1`).Scan(&teamID)
+		var kind string
+		err := s.DB.QueryRowContext(ctx, `SELECT team_id, kind FROM tg_stickers WHERE state IN ('queued', 'removing') AND next_try_at <= now()
+			AND kind = ANY($1::text[]) ORDER BY state = 'removing' DESC, next_try_at, kind, team_id LIMIT 1`, pqArray(kinds)).Scan(&teamID, &kind)
 		if errors.Is(err, sql.ErrNoRows) {
 			break
 		}
@@ -350,7 +395,7 @@ func (s *Server) stkTick(ctx context.Context) {
 			slog.Warn("sticker queue", "err", err)
 			return
 		}
-		if stop := s.stkProcess(ctx, st, teamID); stop {
+		if stop := s.stkProcess(ctx, st, teamID, kind); stop {
 			break
 		}
 		done++
@@ -360,12 +405,9 @@ func (s *Server) stkTick(ctx context.Context) {
 	}
 }
 
-// stkReconcile queues what changed since the last pass.
-func (s *Server) stkReconcile(ctx context.Context, st *stkSettings) error {
-	flag := "|o0"
-	if st.Outline {
-		flag = "|o1"
-	}
+// stkReconcile queues what changed since the last pass, for one kind.
+func (s *Server) stkReconcile(ctx context.Context, st *stkSettings, kind string) error {
+	flag := st.kind(kind).flag()
 	type stmt struct {
 		q    string
 		args []any
@@ -373,16 +415,16 @@ func (s *Server) stkReconcile(ctx context.Context, st *stkSettings) error {
 	gone := `NOT EXISTS (SELECT 1 FROM teams t WHERE t.id = k.team_id AND coalesce(t.crest_url, '') <> '')`
 	for _, x := range []stmt{
 		// new team or logo added
-		{`INSERT INTO tg_stickers (team_id, source, state) SELECT id, crest_url || $1, 'queued' FROM teams
-		  WHERE coalesce(crest_url, '') <> '' ON CONFLICT (team_id) DO NOTHING`, []any{flag}},
+		{`INSERT INTO tg_stickers (team_id, kind, source, state) SELECT id, $2, crest_url || $1, 'queued' FROM teams
+		  WHERE coalesce(crest_url, '') <> '' ON CONFLICT (team_id, kind) DO NOTHING`, []any{flag, kind}},
 		// changed logo or look (or a logo put back while its sticker was being removed)
 		{`UPDATE tg_stickers k SET state = 'queued', attempts = 0, next_try_at = now(), last_error = '', source = t.crest_url || $1, updated_at = now()
-		  FROM teams t WHERE t.id = k.team_id AND coalesce(t.crest_url, '') <> ''
-		    AND (k.state = 'removing' OR (k.source <> t.crest_url || $1 AND k.state <> 'queued' AND ($2 OR k.file_id = '')))`, []any{flag, st.AutoUpdate}},
+		  FROM teams t WHERE t.id = k.team_id AND k.kind = $3 AND coalesce(t.crest_url, '') <> ''
+		    AND (k.state = 'removing' OR (k.source <> t.crest_url || $1 AND k.state <> 'queued' AND ($2 OR k.file_id = '')))`, []any{flag, st.AutoUpdate, kind}},
 		// team deleted or logo removed
 		{`UPDATE tg_stickers k SET state = 'removing', attempts = 0, next_try_at = now(), last_error = '', updated_at = now()
-		  WHERE k.state <> 'removing' AND k.file_id <> '' AND ` + gone, nil},
-		{`DELETE FROM tg_stickers k WHERE k.file_id = '' AND ` + gone, nil},
+		  WHERE k.kind = $1 AND k.state <> 'removing' AND k.file_id <> '' AND ` + gone, []any{kind}},
+		{`DELETE FROM tg_stickers k WHERE k.kind = $1 AND k.file_id = '' AND ` + gone, []any{kind}},
 	} {
 		if _, err := s.DB.ExecContext(ctx, x.q, x.args...); err != nil {
 			return err
@@ -393,6 +435,7 @@ func (s *Server) stkReconcile(ctx context.Context, st *stkSettings) error {
 
 type stkRow struct {
 	TeamID       int64
+	Kind         string
 	SetName      string
 	FileID       string
 	FileUniqueID string
@@ -402,9 +445,9 @@ type stkRow struct {
 	Attempts     int
 }
 
-func (s *Server) stkRow(ctx context.Context, teamID int64) (*stkRow, error) {
-	var r stkRow
-	err := s.DB.QueryRowContext(ctx, `SELECT team_id, set_name, file_id, file_unique_id, image, source, state, attempts FROM tg_stickers WHERE team_id = $1`, teamID).
+func (s *Server) stkRow(ctx context.Context, teamID int64, kind string) (*stkRow, error) {
+	r := stkRow{Kind: kind}
+	err := s.DB.QueryRowContext(ctx, `SELECT team_id, set_name, file_id, file_unique_id, image, source, state, attempts FROM tg_stickers WHERE team_id = $1 AND kind = $2`, teamID, kind).
 		Scan(&r.TeamID, &r.SetName, &r.FileID, &r.FileUniqueID, &r.Image, &r.Source, &r.State, &r.Attempts)
 	if err != nil {
 		return nil, err
@@ -414,17 +457,18 @@ func (s *Server) stkRow(ctx context.Context, teamID int64) (*stkRow, error) {
 
 // stkProcess handles one queued row and reports whether the batch must stop
 // (Telegram-wide problem: bad token, owner unreachable, rate limit).
-func (s *Server) stkProcess(ctx context.Context, st *stkSettings, teamID int64) (stop bool) {
-	row, err := s.stkRow(ctx, teamID)
+func (s *Server) stkProcess(ctx context.Context, st *stkSettings, teamID int64, kind string) (stop bool) {
+	row, err := s.stkRow(ctx, teamID, kind)
 	if err != nil {
 		return false
 	}
+	k := st.kind(kind)
 	tg := s.stkClient(st)
 	if row.State == "removing" {
 		err := tg.deleteSticker(ctx, row.FileID)
 		if err == nil || tgErrHas(err, "STICKER_ID_INVALID", "not found", "STICKERSET_INVALID", "wrong file_id", "file identifier") {
 			s.stkRemoveImage(row.Image)
-			_, _ = s.DB.ExecContext(ctx, `DELETE FROM tg_stickers WHERE team_id = $1 AND state = 'removing'`, teamID)
+			_, _ = s.DB.ExecContext(ctx, `DELETE FROM tg_stickers WHERE team_id = $1 AND kind = $2 AND state = 'removing'`, teamID, kind)
 			return false
 		}
 		return s.stkFailed(ctx, row, err)
@@ -435,21 +479,21 @@ func (s *Server) stkProcess(ctx context.Context, st *stkSettings, teamID int64) 
 	if err != nil || crest == "" {
 		return false // gone: the next reconcile turns it into a removal
 	}
-	data, err := s.stkBuild(ctx, crest, st.Outline)
+	data, err := s.stkBuild(ctx, crest, k)
 	if err != nil {
 		// a logo that cannot be read will not get better by retrying
-		_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET state = 'error', attempts = $2, last_error = $3, updated_at = now() WHERE team_id = $1`,
-			teamID, stkMaxAttempts, "Logotip: "+err.Error())
+		_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET state = 'error', attempts = $3, last_error = $4, updated_at = now() WHERE team_id = $1 AND kind = $2`,
+			teamID, kind, stkMaxAttempts, "Logotip: "+err.Error())
 		return false
 	}
-	setName, fileID, uniq, err := s.stkSend(ctx, st, tg, row, data, stkKeywords(name, short))
+	setName, fileID, uniq, err := s.stkSend(ctx, st, k, tg, row, data, stkKeywords(name, short))
 	if err != nil {
 		return s.stkFailed(ctx, row, err)
 	}
-	img := s.stkSaveImage(teamID, data)
-	if _, err := s.DB.ExecContext(ctx, `UPDATE tg_stickers SET set_name = $2, file_id = $3, file_unique_id = $4, image = $5, source = $6,
-		state = 'ready', attempts = 0, last_error = '', updated_at = now() WHERE team_id = $1`,
-		teamID, setName, fileID, uniq, img, st.source(crest)); err != nil {
+	img := s.stkSaveImage(teamID, kind, data)
+	if _, err := s.DB.ExecContext(ctx, `UPDATE tg_stickers SET set_name = $3, file_id = $4, file_unique_id = $5, image = $6, source = $7,
+		state = 'ready', attempts = 0, last_error = '', updated_at = now() WHERE team_id = $1 AND kind = $2`,
+		teamID, kind, setName, fileID, uniq, img, k.source(crest)); err != nil {
 		slog.Warn("sticker save", "err", err)
 	}
 	if row.Image != img {
@@ -463,11 +507,11 @@ func (s *Server) stkProcess(ctx context.Context, st *stkSettings, teamID int64) 
 }
 
 // stkSend adds or replaces the sticker and returns where it landed.
-func (s *Server) stkSend(ctx context.Context, st *stkSettings, tg *tgStkClient, row *stkRow, data []byte, kw []string) (set, fileID, uniq string, err error) {
+func (s *Server) stkSend(ctx context.Context, st *stkSettings, k stkKindCfg, tg *tgStkClient, row *stkRow, data []byte, kw []string) (set, fileID, uniq string, err error) {
 	if row.FileID != "" && row.SetName != "" {
 		err = tg.replaceSticker(ctx, st.OwnerID, row.SetName, row.FileID, data, kw)
 		if err == nil {
-			fileID, uniq, err = s.stkFindNew(ctx, tg, row.SetName, row.TeamID)
+			fileID, uniq, err = s.stkFindNew(ctx, tg, row.SetName, row.TeamID, row.Kind)
 			return row.SetName, fileID, uniq, err
 		}
 		if !tgErrHas(err, "STICKER_ID_INVALID", "not found", "wrong file_id", "file identifier") {
@@ -475,61 +519,65 @@ func (s *Server) stkSend(ctx context.Context, st *stkSettings, tg *tgStkClient, 
 		}
 		// the sticker was deleted in Telegram by hand: add it again
 	}
-	set, err = s.stkAdd(ctx, st, tg, data, kw)
+	set, err = s.stkAdd(ctx, st, k, tg, data, kw)
 	if err != nil {
 		return "", "", "", err
 	}
-	fileID, uniq, err = s.stkFindNew(ctx, tg, set, row.TeamID)
+	fileID, uniq, err = s.stkFindNew(ctx, tg, set, row.TeamID, row.Kind)
 	return set, fileID, uniq, err
 }
 
-// stkAdd puts a new sticker into the last set that has room, opening the next set when full.
-func (s *Server) stkAdd(ctx context.Context, st *stkSettings, tg *tgStkClient, data []byte, kw []string) (string, error) {
+// stkAdd puts a new sticker into the last set of its kind that has room, opening the next set when full.
+func (s *Server) stkAdd(ctx context.Context, st *stkSettings, k stkKindCfg, tg *tgStkClient, data []byte, kw []string) (string, error) {
 	var name string
 	var ord, used int
 	err := s.DB.QueryRowContext(ctx, `SELECT s.name, s.ord, (SELECT count(*) FROM tg_stickers k WHERE k.set_name = s.name AND k.file_id <> '')
-		FROM tg_sticker_sets s ORDER BY s.ord DESC LIMIT 1`).Scan(&name, &ord, &used)
+		FROM tg_sticker_sets s WHERE s.kind = $1 ORDER BY s.ord DESC LIMIT 1`, k.Kind).Scan(&name, &ord, &used)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return "", err
 	}
-	if name != "" && used < stkSetLimit {
+	if name != "" && used < stkLimit(k.Kind) {
 		err := tg.addSticker(ctx, st.OwnerID, name, data, kw)
 		if err == nil || !tgErrHas(err, "STICKERS_TOO_MUCH", "too much stickers", "too many stickers") {
 			return name, err
 		}
 	}
-	return s.stkOpenSet(ctx, st, tg, ord+1, data, kw)
+	return s.stkOpenSet(ctx, st, k, tg, ord+1, data, kw)
 }
 
-// stkOpenSet creates set number ord with this sticker as its first one.
+// stkOpenSet creates set number ord of a kind with this sticker as its first one.
 // An existing set with that name made by this bot is taken over instead.
-func (s *Server) stkOpenSet(ctx context.Context, st *stkSettings, tg *tgStkClient, ord int, data []byte, kw []string) (string, error) {
-	name := stkSetName(st.SetSlug, ord, st.BotUsername)
-	title := stkSetTitle(st.SetTitle, ord)
+func (s *Server) stkOpenSet(ctx context.Context, st *stkSettings, k stkKindCfg, tg *tgStkClient, ord int, data []byte, kw []string) (string, error) {
+	name := stkSetName(k.Slug, ord, st.BotUsername)
+	title := stkSetTitle(k.Title, ord)
 	if _, err := tg.getStickerSet(ctx, name); err == nil {
 		if err := tg.addSticker(ctx, st.OwnerID, name, data, kw); err != nil {
 			return "", err
 		}
 	} else if tgErrHas(err, "STICKERSET_INVALID", "not found") {
-		if err := tg.createSet(ctx, st.OwnerID, name, title, data, kw); err != nil {
+		typ := "regular"
+		if k.Kind == kindEmoji {
+			typ = "custom_emoji"
+		}
+		if err := tg.createSet(ctx, st.OwnerID, name, title, typ, data, kw); err != nil {
 			return "", err
 		}
 	} else {
 		return "", err
 	}
-	_, err := s.DB.ExecContext(ctx, `INSERT INTO tg_sticker_sets (name, ord, title) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, name, ord, title)
+	_, err := s.DB.ExecContext(ctx, `INSERT INTO tg_sticker_sets (name, ord, title, kind) VALUES ($1, $2, $3, $4) ON CONFLICT (name) DO NOTHING`, name, ord, title, k.Kind)
 	return name, err
 }
 
 // stkFindNew returns the sticker just added to set: the last one whose
 // file_unique_id belongs to no other team.
-func (s *Server) stkFindNew(ctx context.Context, tg *tgStkClient, set string, teamID int64) (string, string, error) {
+func (s *Server) stkFindNew(ctx context.Context, tg *tgStkClient, set string, teamID int64, kind string) (string, string, error) {
 	got, err := tg.getStickerSet(ctx, set)
 	if err != nil {
 		return "", "", err
 	}
 	known := map[string]bool{}
-	rows, err := s.DB.QueryContext(ctx, `SELECT file_unique_id FROM tg_stickers WHERE set_name = $1 AND team_id <> $2 AND file_unique_id <> ''`, set, teamID)
+	rows, err := s.DB.QueryContext(ctx, `SELECT file_unique_id FROM tg_stickers WHERE set_name = $1 AND NOT (team_id = $2 AND kind = $3) AND file_unique_id <> ''`, set, teamID, kind)
 	if err != nil {
 		return "", "", err
 	}
@@ -541,7 +589,7 @@ func (s *Server) stkFindNew(ctx context.Context, tg *tgStkClient, set string, te
 		}
 	}
 	var prevUniq string
-	_ = s.DB.QueryRowContext(ctx, `SELECT file_unique_id FROM tg_stickers WHERE team_id = $1`, teamID).Scan(&prevUniq)
+	_ = s.DB.QueryRowContext(ctx, `SELECT file_unique_id FROM tg_stickers WHERE team_id = $1 AND kind = $2`, teamID, kind).Scan(&prevUniq)
 	for i := len(got.Stickers) - 1; i >= 0; i-- {
 		k := got.Stickers[i]
 		if !known[k.FileUniqueID] && k.FileUniqueID != prevUniq {
@@ -561,14 +609,14 @@ func (s *Server) stkFailed(ctx context.Context, row *stkRow, err error) bool {
 		return true
 	case tgErrHas(err, "PEER_ID_INVALID", "USER_ID_INVALID", "bot was blocked", "user is deactivated"):
 		s.stkSetProblem(ctx, "owner_blocked", msg)
-		_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET next_try_at = now() + interval '5 minutes', last_error = $2, updated_at = now() WHERE team_id = $1`, row.TeamID, msg)
+		_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET next_try_at = now() + interval '5 minutes', last_error = $3, updated_at = now() WHERE team_id = $1 AND kind = $2`, row.TeamID, row.Kind, msg)
 		return true
 	case code == 429:
 		var e *tgStkError
 		errors.As(err, &e)
 		wait := time.Duration(max(e.RetryAfter, 5)) * time.Second
-		_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET next_try_at = now() + $2::interval, updated_at = now() WHERE team_id = $1`,
-			row.TeamID, fmt.Sprintf("%d seconds", int(wait.Seconds())))
+		_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET next_try_at = now() + $3::interval, updated_at = now() WHERE team_id = $1 AND kind = $2`,
+			row.TeamID, row.Kind, fmt.Sprintf("%d seconds", int(wait.Seconds())))
 		return true
 	}
 	attempts := row.Attempts + 1
@@ -576,13 +624,39 @@ func (s *Server) stkFailed(ctx context.Context, row *stkRow, err error) bool {
 		s.stkSetProblem(ctx, "telegram_down", msg)
 	}
 	if attempts >= stkMaxAttempts {
-		_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET state = 'error', attempts = $2, last_error = $3, updated_at = now() WHERE team_id = $1`, row.TeamID, attempts, msg)
+		_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET state = 'error', attempts = $3, last_error = $4, updated_at = now() WHERE team_id = $1 AND kind = $2`, row.TeamID, row.Kind, attempts, msg)
 		return code == 0
 	}
 	delay := stkRetryDelays[min(attempts-1, len(stkRetryDelays)-1)]
-	_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET attempts = $2, last_error = $3, next_try_at = now() + $4::interval, updated_at = now() WHERE team_id = $1`,
-		row.TeamID, attempts, msg, fmt.Sprintf("%d seconds", int(delay.Seconds())))
+	_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET attempts = $3, last_error = $4, next_try_at = now() + $5::interval, updated_at = now() WHERE team_id = $1 AND kind = $2`,
+		row.TeamID, row.Kind, attempts, msg, fmt.Sprintf("%d seconds", int(delay.Seconds())))
 	return code == 0 // network trouble: do not hammer the rest of the queue
+}
+
+func (s *Server) stkRemoveImage(url string) {
+	if name := strings.TrimPrefix(url, "/uploads/images/stickers/"); name != url && name != "" && !strings.Contains(name, "/") {
+		_ = os.Remove(filepath.Join(s.stickersDir(), name))
+	}
+}
+
+func stkKeywords(name, short string) []string {
+	var out []string
+	total := 0
+	for _, k := range []string{name, short, "united mfl"} {
+		k = strings.ToLower(strings.TrimSpace(k))
+		if k == "" || total+len(k) > 64 {
+			continue
+		}
+		dup := false
+		for _, o := range out {
+			dup = dup || o == k
+		}
+		if !dup {
+			out = append(out, k)
+			total += len(k)
+		}
+	}
+	return out
 }
 
 // stkHuman turns Telegram errors into admin-readable Uzbek.
@@ -678,7 +752,8 @@ func (s *Server) mountStickers(r chi.Router) {
 		r.Delete("/tg-stickers", s.stkDisconnect)
 		r.Put("/tg-stickers/token", s.stkToken)
 		r.Put("/tg-stickers/owner", s.stkOwner)
-		r.Post("/tg-stickers/create", s.stkCreate)
+		r.Post("/tg-stickers/create", s.stkCreate)       // stickers
+		r.Post("/tg-stickers/emoji/create", s.stkCreate) // emoji
 		r.Post("/tg-stickers/sync", s.stkSync)
 		r.Post("/tg-stickers/preview", s.stkPreview)
 		r.Post("/tg-stickers/teams/{id}/retry", s.stkRetry)
@@ -686,17 +761,23 @@ func (s *Server) mountStickers(r chi.Router) {
 	r.With(s.can(auth.PermTeams)).Get("/teams/{id}/sticker", s.stkTeam)
 }
 
-type stkTeamView struct {
-	TeamID    int64      `json:"team_id"`
-	Name      string     `json:"name"`
-	ShortName string     `json:"short_name"`
-	CrestURL  string     `json:"crest_url"`
+// stkItem is one team's sticker or emoji as the admin sees it.
+type stkItem struct {
 	Status    string     `json:"status"` // ready, queued, error, stale, no_logo, waiting
 	Image     string     `json:"image"`
 	Attempts  int        `json:"attempts"`
 	LastError string     `json:"last_error"`
 	UpdatedAt *time.Time `json:"updated_at"`
 	NextTryAt *time.Time `json:"next_try_at"`
+}
+
+type stkTeamView struct {
+	TeamID    int64   `json:"team_id"`
+	Name      string  `json:"name"`
+	ShortName string  `json:"short_name"`
+	CrestURL  string  `json:"crest_url"`
+	stkItem           // the sticker (flattened, as before)
+	Emoji     stkItem `json:"emoji"`
 }
 
 type stkCandidate struct {
@@ -711,6 +792,18 @@ type stkSetView struct {
 	Title string `json:"title"`
 	URL   string `json:"url"`
 	Count int    `json:"count"`
+}
+
+type stkEmojiView struct {
+	Enabled bool           `json:"enabled"`
+	Created bool           `json:"created"` // an emoji set exists
+	Slug    string         `json:"slug"`
+	Title   string         `json:"title"`
+	Outline bool           `json:"outline"`
+	SetURL  string         `json:"set_url"`
+	Sets    []stkSetView   `json:"sets"`
+	Limit   int            `json:"limit"`
+	Counts  map[string]int `json:"counts"`
 }
 
 type stkStateView struct {
@@ -734,15 +827,12 @@ type stkStateView struct {
 	LastSyncAt  *time.Time     `json:"last_sync_at"`
 	NextRetryAt *time.Time     `json:"next_retry_at"`
 	Counts      map[string]int `json:"counts"`
+	Emoji       stkEmojiView   `json:"emoji"`
 	Teams       []stkTeamView  `json:"teams"`
 }
 
-func maskToken(t string) string {
-	i := strings.IndexByte(t, ':')
-	if i <= 0 || len(t) < i+5 {
-		return "••••"
-	}
-	return t[:min(i, 4)] + "••••:••••" + t[len(t)-4:]
+func stkCounts() map[string]int {
+	return map[string]int{"teams": 0, "ready": 0, "queued": 0, "error": 0, "no_logo": 0, "stale": 0}
 }
 
 func (s *Server) stkView(ctx context.Context) (*stkStateView, error) {
@@ -754,14 +844,16 @@ func (s *Server) stkView(ctx context.Context) (*stkStateView, error) {
 		Connected: st.Token != "", TokenBroken: st.TokenBroken, TokenMasked: maskToken(st.Token), BotUsername: st.BotUsername,
 		SameAsLive: s.sameBotAsLive(st), SetSlug: st.SetSlug, SetTitle: st.SetTitle, Limit: stkSetLimit,
 		Outline: st.Outline, AutoUpdate: st.AutoUpdate, Enabled: st.Enabled, Problem: st.Problem, LastError: st.LastError,
-		Candidates: []stkCandidate{}, Sets: []stkSetView{}, Teams: []stkTeamView{},
-		Counts: map[string]int{"teams": 0, "ready": 0, "queued": 0, "error": 0, "no_logo": 0, "stale": 0},
+		Candidates: []stkCandidate{}, Sets: []stkSetView{}, Teams: []stkTeamView{}, Counts: stkCounts(),
+		Emoji: stkEmojiView{Enabled: st.EmojiEnabled, Slug: st.EmojiSlug, Title: st.EmojiTitle, Outline: st.EmojiOutline,
+			Sets: []stkSetView{}, Limit: stkEmojiLimit, Counts: stkCounts()},
 	}
 	if st.LastSyncAt.Valid {
 		v.LastSyncAt = &st.LastSyncAt.Time
 	}
 	if st.BotUsername != "" {
-		v.SetURL = "https://t.me/addstickers/" + stkSetName(st.SetSlug, 1, st.BotUsername)
+		v.SetURL = stkSetURL(kindSticker, stkSetName(st.SetSlug, 1, st.BotUsername))
+		v.Emoji.SetURL = stkSetURL(kindEmoji, stkSetName(st.EmojiSlug, 1, st.BotUsername))
 	}
 	if st.OwnerID != 0 {
 		v.Owner = &stkCandidate{ID: st.OwnerID, Username: st.OwnerUsername, Name: st.OwnerName}
@@ -780,15 +872,21 @@ func (s *Server) stkView(ctx context.Context) (*stkStateView, error) {
 		}
 		rows.Close()
 	}
-	rows, err := s.DB.QueryContext(ctx, `SELECT s.name, s.title, (SELECT count(*) FROM tg_stickers k WHERE k.set_name = s.name AND k.file_id <> '')
-		FROM tg_sticker_sets s ORDER BY s.ord`)
+	rows, err := s.DB.QueryContext(ctx, `SELECT s.kind, s.name, s.title, (SELECT count(*) FROM tg_stickers k WHERE k.set_name = s.name AND k.file_id <> '')
+		FROM tg_sticker_sets s ORDER BY s.kind, s.ord`)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
+		var kind string
 		var x stkSetView
-		if rows.Scan(&x.Name, &x.Title, &x.Count) == nil {
-			x.URL = "https://t.me/addstickers/" + x.Name
+		if rows.Scan(&kind, &x.Name, &x.Title, &x.Count) != nil {
+			continue
+		}
+		x.URL = stkSetURL(kind, x.Name)
+		if kind == kindEmoji {
+			v.Emoji.Sets = append(v.Emoji.Sets, x)
+		} else {
 			v.Sets = append(v.Sets, x)
 		}
 	}
@@ -796,46 +894,59 @@ func (s *Server) stkView(ctx context.Context) (*stkStateView, error) {
 	if len(v.Sets) > 0 {
 		v.SetURL = v.Sets[0].URL
 	}
+	if len(v.Emoji.Sets) > 0 {
+		v.Emoji.Created, v.Emoji.SetURL = true, v.Emoji.Sets[0].URL
+	}
 
 	rows, err = s.DB.QueryContext(ctx, `SELECT t.id, t.name, coalesce(t.short_name, ''), coalesce(t.crest_url, ''),
-		coalesce(k.state, ''), coalesce(k.image, ''), coalesce(k.attempts, 0), coalesce(k.last_error, ''), k.updated_at, k.next_try_at, coalesce(k.source, ''), coalesce(k.file_id, '')
-		FROM teams t LEFT JOIN tg_stickers k ON k.team_id = t.id ORDER BY t.name`)
+		coalesce(k.state, ''), coalesce(k.image, ''), coalesce(k.attempts, 0), coalesce(k.last_error, ''), k.updated_at, k.next_try_at, coalesce(k.source, ''),
+		coalesce(e.state, ''), coalesce(e.image, ''), coalesce(e.attempts, 0), coalesce(e.last_error, ''), e.updated_at, e.next_try_at, coalesce(e.source, '')
+		FROM teams t
+		LEFT JOIN tg_stickers k ON k.team_id = t.id AND k.kind = 'sticker'
+		LEFT JOIN tg_stickers e ON e.team_id = t.id AND e.kind = 'emoji'
+		ORDER BY t.name`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	for rows.Next() {
-		var t stkTeamView
-		var state, source, fileID string
-		var upd, next sql.NullTime
-		if err := rows.Scan(&t.TeamID, &t.Name, &t.ShortName, &t.CrestURL, &state, &t.Image, &t.Attempts, &t.LastError, &upd, &next, &source, &fileID); err != nil {
-			return nil, err
-		}
+	item := func(k stkKindCfg, crest, state, source string, upd, next sql.NullTime, it *stkItem, counts map[string]int, nextRetry **time.Time) {
 		if upd.Valid {
-			t.UpdatedAt = &upd.Time
+			it.UpdatedAt = &upd.Time
 		}
 		switch {
-		case t.CrestURL == "":
-			t.Status = "no_logo"
-		case state == "" && !st.Enabled:
-			t.Status = "waiting"
+		case crest == "":
+			it.Status = "no_logo"
+		case state == "" && !k.Enabled:
+			it.Status = "waiting"
 		case state == "" || state == "removing":
-			t.Status = "queued"
-		case state == "ready" && source != st.source(t.CrestURL):
-			t.Status = "stale"
+			it.Status = "queued"
+		case state == "ready" && source != k.source(crest):
+			it.Status = "stale"
 		default:
-			t.Status = state
+			it.Status = state
 		}
-		if t.Status == "queued" && next.Valid && next.Time.After(time.Now()) {
-			t.NextTryAt = &next.Time
-			if v.NextRetryAt == nil || next.Time.Before(*v.NextRetryAt) {
-				v.NextRetryAt = &next.Time
+		if it.Status == "queued" && next.Valid && next.Time.After(time.Now()) {
+			it.NextTryAt = &next.Time
+			if *nextRetry == nil || next.Time.Before(**nextRetry) {
+				*nextRetry = &next.Time
 			}
 		}
-		v.Counts["teams"]++
-		if _, ok := v.Counts[t.Status]; ok {
-			v.Counts[t.Status]++
+		counts["teams"]++
+		if _, ok := counts[it.Status]; ok {
+			counts[it.Status]++
 		}
+	}
+	for rows.Next() {
+		var t stkTeamView
+		var sState, sSource, eState, eSource string
+		var sUpd, sNext, eUpd, eNext sql.NullTime
+		if err := rows.Scan(&t.TeamID, &t.Name, &t.ShortName, &t.CrestURL,
+			&sState, &t.Image, &t.Attempts, &t.LastError, &sUpd, &sNext, &sSource,
+			&eState, &t.Emoji.Image, &t.Emoji.Attempts, &t.Emoji.LastError, &eUpd, &eNext, &eSource); err != nil {
+			return nil, err
+		}
+		item(st.kind(kindSticker), t.CrestURL, sState, sSource, sUpd, sNext, &t.stkItem, v.Counts, &v.NextRetryAt)
+		item(st.kind(kindEmoji), t.CrestURL, eState, eSource, eUpd, eNext, &t.Emoji, v.Emoji.Counts, &v.NextRetryAt)
 		v.Teams = append(v.Teams, t)
 	}
 	return v, rows.Err()
@@ -848,6 +959,427 @@ func (s *Server) stkState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, 200, v)
+}
+
+func (s *Server) stkPatch(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		SetSlug      *string `json:"set_slug"`
+		SetTitle     *string `json:"set_title"`
+		Outline      *bool   `json:"outline"`
+		AutoUpdate   *bool   `json:"auto_update"`
+		EmojiSlug    *string `json:"emoji_slug"`
+		EmojiTitle   *string `json:"emoji_title"`
+		EmojiOutline *bool   `json:"emoji_outline"`
+		EmojiEnabled *bool   `json:"emoji_enabled"`
+	}
+	if err := httpx.Decode(r, &in); err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	s.stk.mu.Lock()
+	defer s.stk.mu.Unlock()
+	ctx := r.Context()
+	st, err := s.stkLoad(ctx)
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	emojiCreated := s.stkHasSets(ctx, kindEmoji)
+
+	slug := func(field string, in *string, cur *string, created bool, other string) bool {
+		if in == nil {
+			return true
+		}
+		v := strings.ToLower(strings.TrimSpace(*in))
+		msg := ""
+		switch {
+		case created && v != *cur:
+			msg = "To‘plam yaratilgandan keyin havolani o‘zgartirib bo‘lmaydi"
+		case v == other:
+			msg = "Stikerlar va emoji havolalari har xil bo‘lsin"
+		default:
+			msg = stkCheckSlug(v, st.BotUsername)
+		}
+		if msg != "" {
+			httpx.Fail(w, r, httpx.Validation(map[string]any{field: msg}))
+			return false
+		}
+		*cur = v
+		return true
+	}
+	if !slug("set_slug", in.SetSlug, &st.SetSlug, st.Enabled || s.stkHasSets(ctx, kindSticker), st.EmojiSlug) ||
+		!slug("emoji_slug", in.EmojiSlug, &st.EmojiSlug, emojiCreated, st.SetSlug) {
+		return
+	}
+	title := func(field, kind string, in *string, cur *string) bool {
+		if in == nil {
+			return true
+		}
+		v := strings.TrimSpace(*in)
+		if n := len([]rune(v)); n < 1 || n > 60 {
+			httpx.Fail(w, r, httpx.Validation(map[string]any{field: "Nom 1–60 belgi bo‘lsin"}))
+			return false
+		}
+		if v != *cur && st.Token != "" {
+			if err := s.stkRetitle(ctx, st, kind, v); err != nil {
+				httpx.Fail(w, r, httpx.BadRequest("Telegram nomni o‘zgartirmadi: "+stkHuman(err)))
+				return false
+			}
+		}
+		*cur = v
+		return true
+	}
+	if !title("set_title", kindSticker, in.SetTitle, &st.SetTitle) || !title("emoji_title", kindEmoji, in.EmojiTitle, &st.EmojiTitle) {
+		return
+	}
+	stickerLook := in.Outline != nil && *in.Outline != st.Outline
+	emojiLook := in.EmojiOutline != nil && *in.EmojiOutline != st.EmojiOutline
+	if in.Outline != nil {
+		st.Outline = *in.Outline
+	}
+	if in.EmojiOutline != nil {
+		st.EmojiOutline = *in.EmojiOutline
+	}
+	if in.AutoUpdate != nil {
+		st.AutoUpdate = *in.AutoUpdate
+	}
+	if in.EmojiEnabled != nil {
+		if *in.EmojiEnabled && !emojiCreated {
+			httpx.Fail(w, r, httpx.BadRequest("Avval emoji to‘plamini yarating"))
+			return
+		}
+		st.EmojiEnabled = *in.EmojiEnabled
+	}
+	if _, err := s.DB.ExecContext(ctx, `UPDATE tg_sticker_settings SET set_slug = $1, set_title = $2, outline = $3, auto_update = $4,
+		emoji_slug = $5, emoji_title = $6, emoji_outline = $7, emoji_enabled = $8, updated_at = now() WHERE id = 1`,
+		st.SetSlug, st.SetTitle, st.Outline, st.AutoUpdate, st.EmojiSlug, st.EmojiTitle, st.EmojiOutline, st.EmojiEnabled); err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	// a new look is an explicit change: redraw every sticker of that kind, whatever auto-update says
+	for kind, changed := range map[string]bool{kindSticker: stickerLook, kindEmoji: emojiLook} {
+		if changed {
+			_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers k SET state = 'queued', attempts = 0, next_try_at = now(), last_error = '',
+				source = t.crest_url || $1, updated_at = now() FROM teams t
+				WHERE t.id = k.team_id AND k.kind = $2 AND coalesce(t.crest_url, '') <> '' AND k.state <> 'removing'`, st.kind(kind).flag(), kind)
+		}
+	}
+	s.audit(r, "tg_stickers.settings", "tg_stickers", 1, nil)
+	s.stk.poke()
+	s.stkState(w, r)
+}
+
+// stkRetitle renames every Telegram set of a kind.
+func (s *Server) stkRetitle(ctx context.Context, st *stkSettings, kind, title string) error {
+	rows, err := s.DB.QueryContext(ctx, `SELECT name, ord FROM tg_sticker_sets WHERE kind = $1 ORDER BY ord`, kind)
+	if err != nil {
+		return err
+	}
+	type set struct {
+		name string
+		ord  int
+	}
+	var sets []set
+	for rows.Next() {
+		var x set
+		if rows.Scan(&x.name, &x.ord) == nil {
+			sets = append(sets, x)
+		}
+	}
+	rows.Close()
+	tg := s.stkClient(st)
+	for _, x := range sets {
+		if err := tg.setTitle(ctx, x.name, stkSetTitle(title, x.ord)); err != nil {
+			return err
+		}
+		_, _ = s.DB.ExecContext(ctx, `UPDATE tg_sticker_sets SET title = $2 WHERE name = $1`, x.name, stkSetTitle(title, x.ord))
+	}
+	return nil
+}
+
+func stkCheckSlug(slug, bot string) string {
+	switch {
+	case !stkSlugRe.MatchString(slug) || strings.Contains(slug, "__"):
+		return "Havola lotin harfi bilan boshlansin; faqat kichik lotin harflari, raqamlar va _"
+	case len(stkSetName(slug, 99, bot)) > 64:
+		return "Havola juda uzun"
+	}
+	return ""
+}
+
+// stkCreate creates the first set of a kind (stickers, or emoji on /emoji/create)
+// with the first team logo, then queues the rest.
+func (s *Server) stkCreate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	kind := kindSticker
+	if strings.HasSuffix(r.URL.Path, "/emoji/create") {
+		kind = kindEmoji
+	}
+	s.stk.mu.Lock()
+	defer s.stk.mu.Unlock()
+	st, err := s.stkLoad(ctx)
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	k := st.kind(kind)
+	switch {
+	case st.Token == "":
+		httpx.Fail(w, r, httpx.BadRequest("Avval bot tokenini kiriting"))
+		return
+	case st.OwnerID == 0:
+		httpx.Fail(w, r, httpx.BadRequest("Avval to‘plam egasini tanlang"))
+		return
+	case s.stkHasSets(ctx, kind):
+		httpx.Fail(w, r, httpx.BadRequest("To‘plam allaqachon yaratilgan"))
+		return
+	}
+	field := "set_slug"
+	if kind == kindEmoji {
+		field = "emoji_slug"
+	}
+	if msg := stkCheckSlug(k.Slug, st.BotUsername); msg != "" {
+		httpx.Fail(w, r, httpx.Validation(map[string]any{field: msg}))
+		return
+	}
+	if st.SetSlug == st.EmojiSlug {
+		httpx.Fail(w, r, httpx.Validation(map[string]any{field: "Stikerlar va emoji havolalari har xil bo‘lsin"}))
+		return
+	}
+	var teamID int64
+	var name, short, crest string
+	err = s.DB.QueryRowContext(ctx, `SELECT id, name, coalesce(short_name, ''), crest_url FROM teams WHERE coalesce(crest_url, '') <> '' ORDER BY id LIMIT 1`).
+		Scan(&teamID, &name, &short, &crest)
+	if errors.Is(err, sql.ErrNoRows) {
+		httpx.Fail(w, r, httpx.BadRequest("Logotipi bor jamoa yo‘q: avval jamoaga logotip yuklang"))
+		return
+	}
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	data, err := s.stkBuild(ctx, crest, k)
+	if err != nil {
+		httpx.Fail(w, r, httpx.BadRequest(name+" logotipi: "+err.Error()))
+		return
+	}
+	tg := s.stkClient(st)
+	_, _ = s.DB.ExecContext(ctx, `DELETE FROM tg_stickers WHERE kind = $1`, kind)
+	set, err := s.stkOpenSet(ctx, st, k, tg, 1, data, stkKeywords(name, short))
+	if err != nil {
+		httpx.Fail(w, r, httpx.BadRequest("To‘plam yaratilmadi: "+stkHuman(err)))
+		return
+	}
+	fileID, uniq, err := s.stkFindNew(ctx, tg, set, teamID, kind)
+	if err != nil {
+		httpx.Fail(w, r, httpx.BadRequest("To‘plam yaratildi, lekin stikerni o‘qib bo‘lmadi: "+stkHuman(err)))
+		return
+	}
+	img := s.stkSaveImage(teamID, kind, data)
+	if _, err := s.DB.ExecContext(ctx, `INSERT INTO tg_stickers (team_id, kind, set_name, file_id, file_unique_id, image, source, state)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'ready')`, teamID, kind, set, fileID, uniq, img, k.source(crest)); err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	col := "enabled"
+	if kind == kindEmoji {
+		col, st.EmojiEnabled = "emoji_enabled", true
+	} else {
+		st.Enabled = true
+	}
+	if _, err := s.DB.ExecContext(ctx, `UPDATE tg_sticker_settings SET `+col+` = true, problem = '', last_error = '', last_sync_at = now(), updated_at = now() WHERE id = 1`); err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	if err := s.stkReconcile(ctx, st, kind); err != nil {
+		slog.Warn("sticker reconcile", "err", err)
+	}
+	s.audit(r, "tg_stickers.create", "tg_stickers", 1, map[string]any{"set": set, "kind": kind})
+	s.stk.poke()
+	s.stkState(w, r)
+}
+
+// stkSync re-checks the token and the sets in Telegram and queues everything that is off.
+func (s *Server) stkSync(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	s.stk.mu.Lock()
+	st, err := s.stkLoad(ctx)
+	if err != nil {
+		s.stk.mu.Unlock()
+		httpx.Fail(w, r, err)
+		return
+	}
+	if !st.ready() {
+		s.stk.mu.Unlock()
+		httpx.Fail(w, r, httpx.BadRequest("To‘plam hali yaratilmagan"))
+		return
+	}
+	tg := s.stkClient(st)
+	if _, err := tg.getMe(ctx); err != nil {
+		s.stk.mu.Unlock()
+		if tgErrCode(err) == 401 || tgErrCode(err) == 404 {
+			s.stkSetProblem(ctx, "token_invalid", stkHuman(err))
+		}
+		httpx.Fail(w, r, httpx.BadRequest(stkHuman(err)))
+		return
+	}
+	s.stkSetProblem(ctx, "", "")
+	// stickers deleted in Telegram by hand are added again
+	rows, err := s.DB.QueryContext(ctx, `SELECT name FROM tg_sticker_sets ORDER BY kind, ord`)
+	if err == nil {
+		var sets []string
+		for rows.Next() {
+			var n string
+			if rows.Scan(&n) == nil {
+				sets = append(sets, n)
+			}
+		}
+		rows.Close()
+		for _, n := range sets {
+			got, err := tg.getStickerSet(ctx, n)
+			if err != nil {
+				continue
+			}
+			have := make([]string, 0, len(got.Stickers))
+			for _, k := range got.Stickers {
+				have = append(have, k.FileUniqueID)
+			}
+			_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET file_id = '', file_unique_id = '', state = CASE WHEN state = 'removing' THEN state ELSE 'queued' END,
+				attempts = 0, next_try_at = now(), updated_at = now() WHERE set_name = $1 AND file_unique_id <> '' AND NOT (file_unique_id = ANY($2::text[]))`, n, pqArray(have))
+		}
+	}
+	_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET state = 'queued', attempts = 0, next_try_at = now(), last_error = '', updated_at = now()
+		WHERE state = 'error' OR (state = 'queued' AND attempts > 0)`)
+	_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET next_try_at = now() WHERE state = 'removing'`)
+	for _, k := range stkKinds {
+		if st.kind(k).Enabled {
+			if err := s.stkReconcile(ctx, st, k); err != nil {
+				slog.Warn("sticker reconcile", "kind", k, "err", err)
+			}
+		}
+	}
+	s.stk.mu.Unlock()
+	s.audit(r, "tg_stickers.sync", "tg_stickers", 1, nil)
+	s.stk.poke()
+	s.stkState(w, r)
+}
+
+func stkKindParam(r *http.Request) string {
+	if r.URL.Query().Get("kind") == kindEmoji {
+		return kindEmoji
+	}
+	return kindSticker
+}
+
+func (s *Server) stkRetry(w http.ResponseWriter, r *http.Request) {
+	id, err := idParam(r, "id")
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	kind := stkKindParam(r)
+	res, err := s.DB.ExecContext(r.Context(), `UPDATE tg_stickers SET state = 'queued', attempts = 0, next_try_at = now(), last_error = '', updated_at = now()
+		WHERE team_id = $1 AND kind = $2 AND state <> 'removing'`, id, kind)
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		// no row yet (or a stale view): let reconcile create it
+		_, _ = s.DB.ExecContext(r.Context(), `INSERT INTO tg_stickers (team_id, kind, state) SELECT id, $2, 'queued' FROM teams WHERE id = $1 AND coalesce(crest_url, '') <> ''
+			ON CONFLICT DO NOTHING`, id, kind)
+	}
+	s.stk.poke()
+	s.stkState(w, r)
+}
+
+func (s *Server) stkDisconnect(w http.ResponseWriter, r *http.Request) {
+	s.stk.mu.Lock()
+	defer s.stk.mu.Unlock()
+	ctx := r.Context()
+	rows, err := s.DB.QueryContext(ctx, `DELETE FROM tg_stickers RETURNING image`)
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	for rows.Next() {
+		var img string
+		if rows.Scan(&img) == nil {
+			s.stkRemoveImage(img)
+		}
+	}
+	rows.Close()
+	if _, err := s.DB.ExecContext(ctx, `DELETE FROM tg_sticker_sets; UPDATE tg_sticker_settings SET token_enc = NULL, bot_id = 0, bot_username = '',
+		token_set_at = NULL, owner_id = 0, owner_username = '', owner_name = '', enabled = false, emoji_enabled = false,
+		problem = '', last_error = '', last_sync_at = NULL, updated_at = now() WHERE id = 1`); err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	s.audit(r, "tg_stickers.disconnect", "tg_stickers", 1, nil)
+	s.stkState(w, r)
+}
+
+// stkPreview draws a team's sticker or emoji without sending it.
+func (s *Server) stkPreview(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		TeamID  int64  `json:"team_id"`
+		Outline bool   `json:"outline"`
+		Kind    string `json:"kind"`
+	}
+	if err := httpx.Decode(r, &in); err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	var crest string
+	q := `SELECT crest_url FROM teams WHERE id = $1 AND coalesce(crest_url, '') <> ''`
+	args := []any{in.TeamID}
+	if in.TeamID == 0 {
+		q, args = `SELECT crest_url FROM teams WHERE coalesce(crest_url, '') <> '' ORDER BY id LIMIT 1`, nil
+	}
+	if err := s.DB.QueryRowContext(r.Context(), q, args...).Scan(&crest); err != nil {
+		httpx.Fail(w, r, httpx.ErrNotFound)
+		return
+	}
+	kind := kindSticker
+	if in.Kind == kindEmoji {
+		kind = kindEmoji
+	}
+	data, err := s.stkBuild(r.Context(), crest, stkKindCfg{Kind: kind, Outline: in.Outline})
+	if err != nil {
+		httpx.Fail(w, r, httpx.BadRequest(err.Error()))
+		return
+	}
+	httpx.JSON(w, 200, map[string]any{"image": "data:image/png;base64," + base64.StdEncoding.EncodeToString(data), "bytes": len(data)})
+}
+
+// stkTeam is the «Telegram» block on the team page.
+func (s *Server) stkTeam(w http.ResponseWriter, r *http.Request) {
+	id, err := idParam(r, "id")
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	v, err := s.stkView(r.Context())
+	if err != nil {
+		httpx.Fail(w, r, err)
+		return
+	}
+	for _, t := range v.Teams {
+		if t.TeamID == id {
+			httpx.JSON(w, 200, map[string]any{"enabled": v.Enabled, "set_url": v.SetURL, "outline": v.Outline,
+				"emoji_enabled": v.Emoji.Enabled, "emoji_set_url": v.Emoji.SetURL, "team": t})
+			return
+		}
+	}
+	httpx.Fail(w, r, httpx.ErrNotFound)
+}
+
+func maskToken(t string) string {
+	i := strings.IndexByte(t, ':')
+	if i <= 0 || len(t) < i+5 {
+		return "••••"
+	}
+	return t[:min(i, 4)] + "••••:••••" + t[len(t)-4:]
 }
 
 func (s *Server) stkToken(w http.ResponseWriter, r *http.Request) {
@@ -889,7 +1421,7 @@ func (s *Server) stkToken(w http.ResponseWriter, r *http.Request) {
 	if st.BotID != me.ID {
 		// another bot cannot edit the old sets: start over (the old sets stay in Telegram)
 		if _, err := tx.ExecContext(r.Context(), `UPDATE tg_sticker_settings SET owner_id = 0, owner_username = '', owner_name = '',
-			enabled = false, token_set_at = now() WHERE id = 1`); err != nil {
+			enabled = false, emoji_enabled = false, token_set_at = now() WHERE id = 1`); err != nil {
 			httpx.Fail(w, r, err)
 			return
 		}
@@ -929,7 +1461,7 @@ func (s *Server) stkOwner(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, r, err)
 		return
 	}
-	if st.Enabled {
+	if st.Enabled || st.EmojiEnabled || s.stkHasSets(r.Context(), kindSticker) || s.stkHasSets(r.Context(), kindEmoji) {
 		httpx.Fail(w, r, httpx.BadRequest("To‘plam yaratilgan: egasini o‘zgartirib bo‘lmaydi. Avval ulanishni uzing."))
 		return
 	}
@@ -954,337 +1486,6 @@ func (s *Server) stkOwner(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "tg_stickers.owner", "tg_stickers", 1, map[string]any{"tg_user_id": c.ID, "username": c.Username})
 	s.stkState(w, r)
-}
-
-func (s *Server) stkPatch(w http.ResponseWriter, r *http.Request) {
-	var in struct {
-		SetSlug    *string `json:"set_slug"`
-		SetTitle   *string `json:"set_title"`
-		Outline    *bool   `json:"outline"`
-		AutoUpdate *bool   `json:"auto_update"`
-	}
-	if err := httpx.Decode(r, &in); err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	s.stk.mu.Lock()
-	defer s.stk.mu.Unlock()
-	ctx := r.Context()
-	st, err := s.stkLoad(ctx)
-	if err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	if in.SetSlug != nil {
-		slug := strings.ToLower(strings.TrimSpace(*in.SetSlug))
-		if st.Enabled && slug != st.SetSlug {
-			httpx.Fail(w, r, httpx.Validation(map[string]any{"set_slug": "To‘plam yaratilgandan keyin havolani o‘zgartirib bo‘lmaydi"}))
-			return
-		}
-		if msg := stkCheckSlug(slug, st.BotUsername); msg != "" {
-			httpx.Fail(w, r, httpx.Validation(map[string]any{"set_slug": msg}))
-			return
-		}
-		st.SetSlug = slug
-	}
-	if in.SetTitle != nil {
-		title := strings.TrimSpace(*in.SetTitle)
-		if n := len([]rune(title)); n < 1 || n > 60 {
-			httpx.Fail(w, r, httpx.Validation(map[string]any{"set_title": "Nom 1–60 belgi bo‘lsin"}))
-			return
-		}
-		if st.Enabled && title != st.SetTitle && st.Token != "" {
-			tg := s.stkClient(st)
-			rows, err := s.DB.QueryContext(ctx, `SELECT name, ord FROM tg_sticker_sets ORDER BY ord`)
-			if err != nil {
-				httpx.Fail(w, r, err)
-				return
-			}
-			type set struct {
-				name string
-				ord  int
-			}
-			var sets []set
-			for rows.Next() {
-				var x set
-				if rows.Scan(&x.name, &x.ord) == nil {
-					sets = append(sets, x)
-				}
-			}
-			rows.Close()
-			for _, x := range sets {
-				if err := tg.setTitle(ctx, x.name, stkSetTitle(title, x.ord)); err != nil {
-					httpx.Fail(w, r, httpx.BadRequest("Telegram nomni o‘zgartirmadi: "+stkHuman(err)))
-					return
-				}
-				_, _ = s.DB.ExecContext(ctx, `UPDATE tg_sticker_sets SET title = $2 WHERE name = $1`, x.name, stkSetTitle(title, x.ord))
-			}
-		}
-		st.SetTitle = title
-	}
-	lookChanged := in.Outline != nil && *in.Outline != st.Outline
-	if in.Outline != nil {
-		st.Outline = *in.Outline
-	}
-	if in.AutoUpdate != nil {
-		st.AutoUpdate = *in.AutoUpdate
-	}
-	if _, err := s.DB.ExecContext(ctx, `UPDATE tg_sticker_settings SET set_slug = $1, set_title = $2, outline = $3, auto_update = $4, updated_at = now() WHERE id = 1`,
-		st.SetSlug, st.SetTitle, st.Outline, st.AutoUpdate); err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	if lookChanged && st.Enabled {
-		// a new look is an explicit change: redraw every sticker, whatever auto-update says
-		flag := "|o0"
-		if st.Outline {
-			flag = "|o1"
-		}
-		_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers k SET state = 'queued', attempts = 0, next_try_at = now(), last_error = '',
-			source = t.crest_url || $1, updated_at = now() FROM teams t WHERE t.id = k.team_id AND coalesce(t.crest_url, '') <> '' AND k.state <> 'removing'`, flag)
-	}
-	s.audit(r, "tg_stickers.settings", "tg_stickers", 1, nil)
-	s.stk.poke()
-	s.stkState(w, r)
-}
-
-func stkCheckSlug(slug, bot string) string {
-	switch {
-	case !stkSlugRe.MatchString(slug) || strings.Contains(slug, "__"):
-		return "Havola lotin harfi bilan boshlansin; faqat kichik lotin harflari, raqamlar va _"
-	case len(stkSetName(slug, 99, bot)) > 64:
-		return "Havola juda uzun"
-	}
-	return ""
-}
-
-// stkCreate creates the first set with the first team logo, then queues the rest.
-func (s *Server) stkCreate(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	s.stk.mu.Lock()
-	defer s.stk.mu.Unlock()
-	st, err := s.stkLoad(ctx)
-	if err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	switch {
-	case st.Token == "":
-		httpx.Fail(w, r, httpx.BadRequest("Avval bot tokenini kiriting"))
-		return
-	case st.OwnerID == 0:
-		httpx.Fail(w, r, httpx.BadRequest("Avval to‘plam egasini tanlang"))
-		return
-	case st.Enabled:
-		httpx.Fail(w, r, httpx.BadRequest("To‘plam allaqachon yaratilgan"))
-		return
-	}
-	if msg := stkCheckSlug(st.SetSlug, st.BotUsername); msg != "" {
-		httpx.Fail(w, r, httpx.Validation(map[string]any{"set_slug": msg}))
-		return
-	}
-	var teamID int64
-	var name, short, crest string
-	err = s.DB.QueryRowContext(ctx, `SELECT id, name, coalesce(short_name, ''), crest_url FROM teams WHERE coalesce(crest_url, '') <> '' ORDER BY id LIMIT 1`).
-		Scan(&teamID, &name, &short, &crest)
-	if errors.Is(err, sql.ErrNoRows) {
-		httpx.Fail(w, r, httpx.BadRequest("Logotipi bor jamoa yo‘q: avval jamoaga logotip yuklang"))
-		return
-	}
-	if err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	data, err := s.stkBuild(ctx, crest, st.Outline)
-	if err != nil {
-		httpx.Fail(w, r, httpx.BadRequest(name+" logotipi: "+err.Error()))
-		return
-	}
-	tg := s.stkClient(st)
-	_, _ = s.DB.ExecContext(ctx, `DELETE FROM tg_stickers; DELETE FROM tg_sticker_sets`)
-	set, err := s.stkOpenSet(ctx, st, tg, 1, data, stkKeywords(name, short))
-	if err != nil {
-		httpx.Fail(w, r, httpx.BadRequest("To‘plam yaratilmadi: "+stkHuman(err)))
-		return
-	}
-	fileID, uniq, err := s.stkFindNew(ctx, tg, set, teamID)
-	if err != nil {
-		httpx.Fail(w, r, httpx.BadRequest("To‘plam yaratildi, lekin stikerni o‘qib bo‘lmadi: "+stkHuman(err)))
-		return
-	}
-	img := s.stkSaveImage(teamID, data)
-	if _, err := s.DB.ExecContext(ctx, `INSERT INTO tg_stickers (team_id, set_name, file_id, file_unique_id, image, source, state)
-		VALUES ($1, $2, $3, $4, $5, $6, 'ready')`, teamID, set, fileID, uniq, img, st.source(crest)); err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	if _, err := s.DB.ExecContext(ctx, `UPDATE tg_sticker_settings SET enabled = true, problem = '', last_error = '', last_sync_at = now(), updated_at = now() WHERE id = 1`); err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	st.Enabled = true
-	if err := s.stkReconcile(ctx, st); err != nil {
-		slog.Warn("sticker reconcile", "err", err)
-	}
-	s.audit(r, "tg_stickers.create", "tg_stickers", 1, map[string]any{"set": set})
-	s.stk.poke()
-	s.stkState(w, r)
-}
-
-// stkSync re-checks the token and the sets in Telegram and queues everything that is off.
-func (s *Server) stkSync(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	s.stk.mu.Lock()
-	st, err := s.stkLoad(ctx)
-	if err != nil {
-		s.stk.mu.Unlock()
-		httpx.Fail(w, r, err)
-		return
-	}
-	if !st.ready() {
-		s.stk.mu.Unlock()
-		httpx.Fail(w, r, httpx.BadRequest("To‘plam hali yaratilmagan"))
-		return
-	}
-	tg := s.stkClient(st)
-	if _, err := tg.getMe(ctx); err != nil {
-		s.stk.mu.Unlock()
-		if tgErrCode(err) == 401 || tgErrCode(err) == 404 {
-			s.stkSetProblem(ctx, "token_invalid", stkHuman(err))
-		}
-		httpx.Fail(w, r, httpx.BadRequest(stkHuman(err)))
-		return
-	}
-	s.stkSetProblem(ctx, "", "")
-	// stickers deleted in Telegram by hand are added again
-	rows, err := s.DB.QueryContext(ctx, `SELECT name FROM tg_sticker_sets ORDER BY ord`)
-	if err == nil {
-		var sets []string
-		for rows.Next() {
-			var n string
-			if rows.Scan(&n) == nil {
-				sets = append(sets, n)
-			}
-		}
-		rows.Close()
-		for _, n := range sets {
-			got, err := tg.getStickerSet(ctx, n)
-			if err != nil {
-				continue
-			}
-			have := make([]string, 0, len(got.Stickers))
-			for _, k := range got.Stickers {
-				have = append(have, k.FileUniqueID)
-			}
-			_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET file_id = '', file_unique_id = '', state = CASE WHEN state = 'removing' THEN state ELSE 'queued' END,
-				attempts = 0, next_try_at = now(), updated_at = now() WHERE set_name = $1 AND file_unique_id <> '' AND NOT (file_unique_id = ANY($2::text[]))`, n, pqArray(have))
-		}
-	}
-	_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET state = 'queued', attempts = 0, next_try_at = now(), last_error = '', updated_at = now()
-		WHERE state = 'error' OR (state = 'queued' AND attempts > 0)`)
-	_, _ = s.DB.ExecContext(ctx, `UPDATE tg_stickers SET next_try_at = now() WHERE state = 'removing'`)
-	if err := s.stkReconcile(ctx, st); err != nil {
-		slog.Warn("sticker reconcile", "err", err)
-	}
-	s.stk.mu.Unlock()
-	s.audit(r, "tg_stickers.sync", "tg_stickers", 1, nil)
-	s.stk.poke()
-	s.stkState(w, r)
-}
-
-func (s *Server) stkRetry(w http.ResponseWriter, r *http.Request) {
-	id, err := idParam(r, "id")
-	if err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	res, err := s.DB.ExecContext(r.Context(), `UPDATE tg_stickers SET state = 'queued', attempts = 0, next_try_at = now(), last_error = '', updated_at = now()
-		WHERE team_id = $1 AND state <> 'removing'`, id)
-	if err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		// no row yet (or a stale view): let reconcile create it
-		_, _ = s.DB.ExecContext(r.Context(), `INSERT INTO tg_stickers (team_id, state) SELECT id, 'queued' FROM teams WHERE id = $1 AND coalesce(crest_url, '') <> ''
-			ON CONFLICT DO NOTHING`, id)
-	}
-	s.stk.poke()
-	s.stkState(w, r)
-}
-
-func (s *Server) stkDisconnect(w http.ResponseWriter, r *http.Request) {
-	s.stk.mu.Lock()
-	defer s.stk.mu.Unlock()
-	ctx := r.Context()
-	rows, err := s.DB.QueryContext(ctx, `DELETE FROM tg_stickers RETURNING image`)
-	if err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	for rows.Next() {
-		var img string
-		if rows.Scan(&img) == nil {
-			s.stkRemoveImage(img)
-		}
-	}
-	rows.Close()
-	if _, err := s.DB.ExecContext(ctx, `DELETE FROM tg_sticker_sets; UPDATE tg_sticker_settings SET token_enc = NULL, bot_id = 0, bot_username = '',
-		token_set_at = NULL, owner_id = 0, owner_username = '', owner_name = '', enabled = false, problem = '', last_error = '', last_sync_at = NULL, updated_at = now() WHERE id = 1`); err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	s.audit(r, "tg_stickers.disconnect", "tg_stickers", 1, nil)
-	s.stkState(w, r)
-}
-
-// stkPreview draws a team's sticker without sending it (the «Stiker ko‘rinishi» card).
-func (s *Server) stkPreview(w http.ResponseWriter, r *http.Request) {
-	var in struct {
-		TeamID  int64 `json:"team_id"`
-		Outline bool  `json:"outline"`
-	}
-	if err := httpx.Decode(r, &in); err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	var crest string
-	q := `SELECT crest_url FROM teams WHERE id = $1 AND coalesce(crest_url, '') <> ''`
-	args := []any{in.TeamID}
-	if in.TeamID == 0 {
-		q, args = `SELECT crest_url FROM teams WHERE coalesce(crest_url, '') <> '' ORDER BY id LIMIT 1`, nil
-	}
-	if err := s.DB.QueryRowContext(r.Context(), q, args...).Scan(&crest); err != nil {
-		httpx.Fail(w, r, httpx.ErrNotFound)
-		return
-	}
-	data, err := s.stkBuild(r.Context(), crest, in.Outline)
-	if err != nil {
-		httpx.Fail(w, r, httpx.BadRequest(err.Error()))
-		return
-	}
-	httpx.JSON(w, 200, map[string]any{"image": "data:image/png;base64," + base64.StdEncoding.EncodeToString(data), "bytes": len(data)})
-}
-
-// stkTeam is the «Telegram stiker» block on the team page.
-func (s *Server) stkTeam(w http.ResponseWriter, r *http.Request) {
-	id, err := idParam(r, "id")
-	if err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	v, err := s.stkView(r.Context())
-	if err != nil {
-		httpx.Fail(w, r, err)
-		return
-	}
-	for _, t := range v.Teams {
-		if t.TeamID == id {
-			httpx.JSON(w, 200, map[string]any{"enabled": v.Enabled, "set_url": v.SetURL, "outline": v.Outline, "team": t})
-			return
-		}
-	}
-	httpx.Fail(w, r, httpx.ErrNotFound)
 }
 
 // pqArray formats a text[] literal for lib/pq without importing it here.

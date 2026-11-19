@@ -1,5 +1,6 @@
-// Package sticker turns a team logo into a Telegram static sticker:
-// a 512×512 PNG with a transparent background, at most 512 KB.
+// Package sticker turns a team logo into a Telegram static sticker
+// (a 512×512 PNG) or a custom emoji (a 100×100 PNG), with a transparent
+// background, at most 512 KB.
 //
 // Steps:
 //  1. Background. A logo on a plain background (white, or any single colour
@@ -10,6 +11,8 @@
 //  2. Edges. The pixels next to the removed background get a soft alpha and
 //     the background colour is taken out of them (no white halo on dark chats).
 //  3. Fit. The logo is cropped to its content and centred in 512×512 with a margin.
+//     An emoji is drawn the same way at 400×400 and scaled down to 100×100,
+//     which keeps its edges and the thin outline smooth.
 //  4. Outline (optional). A white border around the shape, the usual sticker
 //     look, so dark logos stay visible in Telegram's dark theme.
 //  5. Size. PNG at best compression; if it is still over 512 KB the colours
@@ -27,18 +30,23 @@ import (
 )
 
 const (
-	Size     = 512       // Telegram: one side exactly 512 px
-	MaxBytes = 512 << 10 // Telegram: static sticker file limit
-	margin   = 16        // free space around the logo
-	outlineW = 10        // white border width (px at 512)
-	bgTol    = 38        // max channel difference still counted as background
-	bgShare  = 0.6       // share of border pixels that must be the background colour
-	edgeBand = 2         // px of soft edge next to the removed background
+	Size      = 512       // Telegram: one side exactly 512 px
+	EmojiSize = 100       // Telegram: custom emoji are exactly 100×100
+	emojiDraw = 4         // an emoji is drawn at 4× and scaled down
+	emojiPad  = 12        // margin of an emoji at 4× (3 px at 100)
+	emojiLine = 8         // outline of an emoji at 4× (2 px at 100)
+	MaxBytes  = 512 << 10 // Telegram: static sticker file limit
+	margin    = 16        // free space around the logo
+	outlineW  = 10        // white border width (px at 512)
+	bgTol     = 38        // max channel difference still counted as background
+	bgShare   = 0.6       // share of border pixels that must be the background colour
+	edgeBand  = 2         // px of soft edge next to the removed background
 )
 
 // Options control the result.
 type Options struct {
 	Outline bool // white border around the logo
+	Emoji   bool // a 100×100 custom emoji instead of a 512×512 sticker
 }
 
 // ErrEmpty is returned for an image with nothing left after background removal.
@@ -53,13 +61,19 @@ func Build(img image.Image, o Options) ([]byte, error) {
 		return nil, ErrEmpty
 	}
 	cut = crop(cut, box)
-	pad := margin
-	if o.Outline {
-		pad += outlineW
+	size, pad, line := Size, margin, outlineW
+	if o.Emoji {
+		size, pad, line = EmojiSize*emojiDraw, emojiPad, emojiLine
 	}
-	out := fit(cut, Size-2*pad)
 	if o.Outline {
-		out = addOutline(out, outlineW)
+		pad += line
+	}
+	out := fit(cut, size, size-2*pad)
+	if o.Outline {
+		out = addOutline(out, line)
+	}
+	if o.Emoji {
+		out = resize(out, EmojiSize, EmojiSize)
 	}
 	return encode(out)
 }
@@ -296,14 +310,14 @@ func crop(img *image.NRGBA, r image.Rectangle) *image.NRGBA {
 	return out
 }
 
-// fit scales img to fit a box×box square and centres it on a transparent Size×Size canvas.
-func fit(img *image.NRGBA, box int) *image.NRGBA {
+// fit scales img to fit a box×box square and centres it on a transparent size×size canvas.
+func fit(img *image.NRGBA, size, box int) *image.NRGBA {
 	w, h := img.Rect.Dx(), img.Rect.Dy()
 	k := math.Min(float64(box)/float64(w), float64(box)/float64(h))
 	nw, nh := max(1, int(math.Round(float64(w)*k))), max(1, int(math.Round(float64(h)*k)))
 	scaled := resize(img, nw, nh)
-	out := image.NewNRGBA(image.Rect(0, 0, Size, Size))
-	ox, oy := (Size-nw)/2, (Size-nh)/2
+	out := image.NewNRGBA(image.Rect(0, 0, size, size))
+	ox, oy := (size-nw)/2, (size-nh)/2
 	for y := 0; y < nh; y++ {
 		copy(out.Pix[(oy+y)*out.Stride+ox*4:], scaled.Pix[y*scaled.Stride:y*scaled.Stride+nw*4])
 	}
