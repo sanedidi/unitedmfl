@@ -333,11 +333,28 @@ type appCheck struct {
 }
 
 type dupMatch struct {
-	PlayerID int64         `json:"player_id"`
-	FullName string        `json:"full_name"`
-	Number   jersey.Number `json:"number"`
-	TeamID   *int64        `json:"team_id"`
-	TeamName string        `json:"team_name"`
+	PlayerID  int64         `json:"player_id"`
+	FullName  string        `json:"full_name"`
+	Number    jersey.Number `json:"number"`
+	TeamID    *int64        `json:"team_id"`
+	TeamName  string        `json:"team_name"`
+	BirthDate string        `json:"birth_date"` // YYYY-MM-DD, "" if unknown
+}
+
+// dupsFor lists league players that may be the same person as p: the name
+// matches (transliteration aside) and the birth dates do not contradict it.
+// «Ismoil Boxodirov 27.04.2006» and «Ismoil Bohodirov 27.04.2005» share a name
+// key but are two different people.
+func dupsFor(idx map[string][]dupMatch, p roster.Player) []dupMatch {
+	var out []dupMatch
+	birth, known := roster.ParseDate(p.BirthDate)
+	for _, m := range idx[roster.NameKey(p.FirstName, p.LastName)] {
+		if known && m.BirthDate != "" && m.BirthDate != birth {
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
 }
 
 // checkEnv is what checks need from the database.
@@ -480,7 +497,7 @@ func checkApplication(a *application, l *regLink, env checkEnv) []appCheck {
 			add("warn", "roster", "player.swapped", fmt.Sprintf("«%s» — ism va familiya almashgan bo‘lishi mumkin", name), idx(i))
 		}
 		if env.Players != nil {
-			for _, m := range env.Players[roster.NameKey(p.FirstName, p.LastName)] {
+			for _, m := range dupsFor(env.Players, p) {
 				where := "jamoasiz"
 				if m.TeamName != "" {
 					where = "«" + m.TeamName + "» tarkibida"
@@ -524,7 +541,8 @@ func hasErrors(cs []appCheck) bool {
 
 // playerIndex maps a normalised name to active league players with that name.
 func (s *Server) playerIndex(ctx context.Context) (map[string][]dupMatch, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT p.id, p.full_name, p.number, p.team_id, coalesce(t.name, '')
+	rows, err := s.DB.QueryContext(ctx, `SELECT p.id, p.full_name, p.number, p.team_id, coalesce(t.name, ''),
+		coalesce(to_char(p.birth_date, 'YYYY-MM-DD'), '')
 		FROM players p LEFT JOIN teams t ON t.id = p.team_id WHERE p.is_active`)
 	if err != nil {
 		return nil, err
@@ -533,7 +551,7 @@ func (s *Server) playerIndex(ctx context.Context) (map[string][]dupMatch, error)
 	out := map[string][]dupMatch{}
 	for rows.Next() {
 		var m dupMatch
-		if err := rows.Scan(&m.PlayerID, &m.FullName, &m.Number, &m.TeamID, &m.TeamName); err != nil {
+		if err := rows.Scan(&m.PlayerID, &m.FullName, &m.Number, &m.TeamID, &m.TeamName, &m.BirthDate); err != nil {
 			return nil, err
 		}
 		k := roster.NameKey(m.FullName)

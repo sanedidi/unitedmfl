@@ -418,7 +418,7 @@ func (s *Server) adminApplication(w http.ResponseWriter, r *http.Request) {
 	dups := []map[string]any{}
 	if env.Players != nil {
 		for i, p := range a.Players {
-			if m := env.Players[roster.NameKey(p.FirstName, p.LastName)]; len(m) > 0 {
+			if m := dupsFor(env.Players, p); len(m) > 0 {
 				dups = append(dups, map[string]any{"index": i, "matches": m})
 			}
 		}
@@ -866,7 +866,7 @@ func (s *Server) approveApplication(w http.ResponseWriter, r *http.Request) {
 		}
 		if pid > 0 {
 			ok := false
-			for _, m := range env.Players[roster.NameKey(a.Players[i].FirstName, a.Players[i].LastName)] {
+			for _, m := range dupsFor(env.Players, a.Players[i]) {
 				ok = ok || m.PlayerID == pid
 			}
 			if !ok {

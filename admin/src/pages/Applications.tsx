@@ -23,7 +23,7 @@ export type RegLink = {
 type Player = { first_name: string; last_name: string; jersey_name: string; birth_date: string; number: string | null; kit_size: string; workplace: string; role: "player" | "goalkeeper" | "media"; photo_url: string; medical: { file: string; name: string } | null };
 type Staff = { first_name: string; last_name: string; birth_date: string; kit_size: string; role: string; phone: string };
 type Check = { level: "error" | "warn"; section: string; code: string; text: string; index?: number; staff?: boolean };
-type Dup = { index: number; matches: { player_id: number; full_name: string; number: string | null; team_id: number | null; team_name: string }[] };
+type Dup = { index: number; matches: { player_id: number; full_name: string; number: string | null; team_id: number | null; team_name: string; birth_date: string }[] };
 type AppSummary = {
   id: number; number: string; status: string; team: { name: string; short_name: string; crest_url: string; colors: string[] };
   rep: { name: string; phone: string }; phone_verified: boolean; players: number; media: number; staff: number;
@@ -617,7 +617,7 @@ function ApproveModal({ app, sms, onClose, onDone }: { app: AppDetail; sms: bool
               <b className="small row" style={{ gap: 8 }}><span style={{ color: "var(--amber-500)" }}><I.alert size={16} /></span>{fullName(p)} — ligada shu ismli o‘yinchi bor</b>
               {d.matches.map((m) => (
                 <label key={m.player_id} className="radio-line"><input type="radio" name={key} checked={choice[key] === m.player_id} onChange={() => setChoice({ ...choice, [key]: m.player_id })} />
-                  <span><b>{m.team_name ? `«${m.team_name}»dan ko‘chirish` : "Jamoasiz o‘yinchini biriktirish"}</b>{m.number != null && ` (#${m.number})`}<div className="muted small">Statistika va matchlar tarixi saqlanadi</div></span></label>
+                  <span><b>{m.team_name ? `«${m.team_name}»dan ko‘chirish` : "Jamoasiz o‘yinchini biriktirish"}</b>{m.number != null && ` (#${m.number})`}<div className="muted small">{m.birth_date ? `${m.full_name}, ${fmtBirth(m.birth_date)} · ` : ""}Statistika va matchlar tarixi saqlanadi</div></span></label>
               ))}
               <label className="radio-line"><input type="radio" name={key} checked={!choice[key]} onChange={() => setChoice({ ...choice, [key]: 0 })} /><span><b>Yangi o‘yinchi sifatida yaratish</b><div className="muted small">Boshqa odam bo‘lsa</div></span></label>
               <label className="radio-line"><input type="radio" name={key} checked={choice[key] === -1} onChange={() => setChoice({ ...choice, [key]: -1 })} /><span><b>Tarkibga qo‘shmaslik</b></span></label>
