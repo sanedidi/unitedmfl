@@ -20,6 +20,8 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +38,7 @@ type Options struct {
 
 type Bot struct {
 	tg     *client
+	botID  int64 // the number before ":" in the token
 	db     *sql.DB
 	tokens *auth.Issuer
 	api    http.Handler
@@ -70,7 +73,7 @@ type operator struct {
 
 func New(o Options) *Bot {
 	return &Bot{
-		tg: newClient(o.APIURL, o.Token), db: o.DB, tokens: o.Tokens, api: o.API,
+		tg: newClient(o.APIURL, o.Token), botID: botIDFromToken(o.Token), db: o.DB, tokens: o.Tokens, api: o.API,
 		now: time.Now, sessions: map[int64]*session{},
 	}
 }
@@ -201,6 +204,29 @@ func (b *Bot) link(ctx context.Context, from *tgUser, chatID int64, rawPhone str
 
 func (b *Bot) unlink(ctx context.Context, tgUserID int64) {
 	_, _ = b.db.ExecContext(ctx, `DELETE FROM telegram_links WHERE tg_user_id = $1`, tgUserID)
+}
+
+// noteStart records who sent /start: when this bot also keeps the Telegram
+// sticker sets, the admin picks the set owner from these accounts.
+func (b *Bot) noteStart(ctx context.Context, u *tgUser) {
+	if b.db == nil || b.botID == 0 || u == nil {
+		return
+	}
+	name := strings.TrimSpace(u.FirstName)
+	if _, err := b.db.ExecContext(ctx, `INSERT INTO tg_bot_starts (bot_id, tg_user_id, username, name) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (bot_id, tg_user_id) DO UPDATE SET username = EXCLUDED.username, name = EXCLUDED.name, at = now()`,
+		b.botID, u.ID, u.Username, name); err != nil {
+		slog.Warn("telegram bot: record /start", "err", err)
+	}
+}
+
+func botIDFromToken(token string) int64 {
+	i := strings.IndexByte(token, ':')
+	if i <= 0 {
+		return 0
+	}
+	id, _ := strconv.ParseInt(token[:i], 10, 64)
+	return id
 }
 
 func newKey() string {

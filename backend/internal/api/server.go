@@ -33,6 +33,7 @@ type Server struct {
 	trackLimiter   *httpx.RateLimiter // site visitors: per visitor
 	ai             aiJobs
 	kit            *kitWorker
+	stk            *stickerSvc // Telegram stickers from team logos
 
 	// team self-registration
 	sms              sms.Sender
@@ -50,6 +51,7 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 		web:            newWebNotifier(cfg.WebRevalidateURL, cfg.RevalidateSecret),
 		loginLimiter:   httpx.NewRateLimiter(10, 10*time.Minute),
 		kit:            &kitWorker{wake: make(chan struct{}, 1), running: map[string]context.CancelFunc{}},
+		stk:            newStickerSvc(stickerSecret(cfg)),
 		contactLimiter: httpx.NewRateLimiter(5, 10*time.Minute),
 		viewLimiter:    httpx.NewRateLimiter(1, 30*time.Minute), // one view per IP per article per 30 min
 		trackLimiter:   httpx.NewRateLimiter(300, 10*time.Minute),
@@ -60,6 +62,14 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 		regOTPLimiter:    httpx.NewRateLimiter(20, 10*time.Minute),
 		regUploadLimiter: httpx.NewRateLimiter(120, 10*time.Minute),
 	}
+}
+
+// stickerSecret: tests build Config by hand without SecretsKey.
+func stickerSecret(cfg *config.Config) []byte {
+	if len(cfg.SecretsKey) > 0 {
+		return cfg.SecretsKey
+	}
+	return cfg.JWTSecret
 }
 
 func (s *Server) imagesDir() string    { return filepath.Join(s.Cfg.UploadDir, "images") }
@@ -189,6 +199,7 @@ func (s *Server) Routes() http.Handler {
 			r.With(s.can(auth.PermBanners)).Put("/banners/order", s.reorderBanners)
 			s.mountHomepage(r)
 			s.mountPartners(r)
+			s.mountStickers(r) // Telegram stickers from team logos
 			s.mountCRUD(r, auth.PermVideos, "/videos", videosRes)
 			r.With(s.can(auth.PermVideos)).Post("/video-uploads", s.uploadVideo)
 			r.Group(func(r chi.Router) {

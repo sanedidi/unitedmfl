@@ -35,6 +35,9 @@ func (b *Bot) onMessage(ctx context.Context, m *tgMessage) {
 		return
 	}
 	chatID := m.Chat.ID
+	if strings.HasPrefix(strings.TrimSpace(m.Text), "/start") {
+		b.noteStart(ctx, m.From)
+	}
 
 	if m.Contact != nil {
 		b.onContact(ctx, m)

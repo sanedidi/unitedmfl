@@ -490,7 +490,11 @@ var teamsRes = &resource{table: "teams", entity: "team", touch: true, order: "gr
 	fields: map[string]field{"slug": slugF, "name": reqTxt(80), "short_name": txt(8), "group_id": optInt,
 		"crest_url": txt(500), "colors": textList, "leader": txt(120), "instagram": txt(200), "telegram": txt(200), "is_active": boolean,
 		"kit_url": txt(500), "kit_description": txt(2000), "kit_has_number": boolean, "kit_number_style": txt(300)},
-	afterWrite: teamKitChanged}
+	afterWrite: func(s *Server, id int64, old, cur map[string]any) {
+		teamKitChanged(s, id, old, cur)
+		teamStickerChanged(s)
+	},
+	afterDelete: func(s *Server, id int64, old map[string]any) { teamStickerChanged(s) }}
 
 var playersRes = &resource{table: "players", entity: "player", touch: true, order: "team_id, jersey_ord(number) NULLS LAST, number NULLS LAST, full_name",
 	search: []string{"full_name"}, filters: map[string]string{"team_id": "team_id", "position": "position", "active": "is_active"},

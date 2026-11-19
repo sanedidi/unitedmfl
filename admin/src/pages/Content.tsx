@@ -9,6 +9,7 @@ import { ImageInput, useToast } from "@/components/ui";
 import type { Player, Team } from "@/lib/types";
 import { SITE_URL } from "@/components/Layout";
 import { TeamExtras } from "@/components/TeamExtras";
+import { TeamStickerCard } from "@/pages/Stickers";
 import { PlayerPhotoCard, TeamKitSection } from "@/components/Kit";
 import { groupTitle, TeamGroupCard } from "@/pages/Groups";
 import { useMatchOptions } from "@/lib/matchOptions";
@@ -32,7 +33,7 @@ export function TeamsPage() {
     { name: "kit_url", label: "Forma", hidden: true },
   ];
   return (
-    <CrudSection<Team & Record<string, any>> base="/teams" cards={(c) => <TeamKitSection c={c} />} sideCards={(c) => <TeamGroupCard c={c} />} onChanged={invalidateRefs} title="Jamoalar" resource="/admin/teams" singular="Jamoa" deleteText="Jamoa bilan birga uning barcha o‘yinchilari, media shaxslari va murabbiylari ham o‘chadi. Bu amalni qaytarib bo‘lmaydi." searchable fields={fields} defaults={{ is_active: true, group_id: null }}
+    <CrudSection<Team & Record<string, any>> base="/teams" cards={(c) => <TeamKitSection c={c} />} sideCards={(c) => <><TeamGroupCard c={c} />{c.item?.id ? <TeamStickerCard teamId={c.item.id} version={c.version} /> : null}</>} onChanged={invalidateRefs} title="Jamoalar" resource="/admin/teams" singular="Jamoa" deleteText="Jamoa bilan birga uning barcha o‘yinchilari, media shaxslari va murabbiylari ham o‘chadi. Bu amalni qaytarib bo‘lmaydi." searchable fields={fields} defaults={{ is_active: true, group_id: null }}
       filters={[{ param: "group_id", label: "Guruh", options: groups.map((g) => ({ value: String(g.id), label: groupTitle(g) })) }]}
       columns={[
         { label: "Jamoa", render: (t) => <span className="row"><Crest team={t} /> <b>{t.name}</b></span> },

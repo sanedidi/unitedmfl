@@ -44,6 +44,8 @@ services:
       LINEUP_BENCH_MAX: ${LINEUP_BENCH_MAX:-9}
       # Telegram Live-pult bot; empty = disabled
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # encrypts tokens kept in the database (Telegram stickers bot), same key as the AI service
+      AI_MASTER_KEY: ${AI_MASTER_KEY}
       # Instagram feed on /media: normally connected in the admin (Instagram page);
       # this optional token is used only if nothing is connected yet
       INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}

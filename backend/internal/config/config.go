@@ -47,6 +47,7 @@ type Config struct {
 	EskizFrom          string
 	EskizURL           string
 	SMSCodeText        string // %s is replaced by the code (Eskiz checks texts against approved templates)
+	SecretsKey         []byte // encrypts tokens stored in the database (Telegram stickers); AI_MASTER_KEY, else JWT_SECRET
 }
 
 func env(key, def string) string {
@@ -117,6 +118,10 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("JWT_SECRET must be at least 32 characters in production")
 		}
 		c.JWTSecret = []byte("dev-only-secret-change-me-dev-only-secret")
+	}
+	c.SecretsKey = []byte(env("AI_MASTER_KEY", ""))
+	if len(c.SecretsKey) < 16 {
+		c.SecretsKey = c.JWTSecret
 	}
 	return c, nil
 }

@@ -17,6 +17,7 @@ import { AuditPage, RolesPage, UsersPage } from "@/pages/System";
 import { AiPage } from "@/pages/Ai";
 import { ApplicationsSection } from "@/pages/Applications";
 import { HomepageBuilder } from "@/pages/homepage/Builder";
+import { StickersPage } from "@/pages/Stickers";
 
 function Guard({ perm, children }: { perm: string; children: React.ReactNode }) {
   const { can } = useAuth();
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="products/*" element={<Guard perm="merch"><ProductsPage /></Guard>} />
         <Route path="requests/*" element={<Guard perm="requests"><RequestsPage /></Guard>} />
         <Route path="ai/*" element={<Guard perm="users"><AiPage /></Guard>} />
+        <Route path="telegram-stickers" element={<Guard perm="users"><StickersPage /></Guard>} />
         <Route path="users" element={<Guard perm="users"><UsersPage /></Guard>} />
         <Route path="roles" element={<Guard perm="users"><RolesPage /></Guard>} />
         <Route path="audit" element={<Guard perm="users"><AuditPage /></Guard>} />
