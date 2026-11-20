@@ -452,6 +452,7 @@ func (s *Server) adminApplication(w http.ResponseWriter, r *http.Request) {
 	if s.Cfg.RegisterURL != "" {
 		repURL = s.Cfg.RegisterURL + "/a/" + a.Token
 	}
+	minP, maxP := a.rosterLimits(l)
 	httpx.JSON(w, 200, map[string]any{
 		"id": a.ID, "number": a.number(), "status": a.Status, "link": link,
 		"team": a.Team, "rep": a.Rep, "players": a.Players, "staff": a.Staff, "consents": a.Consents,
@@ -459,6 +460,7 @@ func (s *Server) adminApplication(w http.ResponseWriter, r *http.Request) {
 		"comments": a.Comments, "changes_deadline": a.ChangesDeadline, "reject_reason": a.RejectReason, "internal_note": a.InternalNote,
 		"submitted_at": a.SubmittedAt, "decided_at": a.DecidedAt, "created_at": a.CreatedAt, "updated_at": a.UpdatedAt,
 		"checks": checkApplication(a, l, env), "duplicates": dups, "events": events, "created_team": team, "rep_url": repURL,
+		"max_players": a.MaxPlayers, "roster_min": minP, "roster_max": maxP,
 	})
 }
 
@@ -468,14 +470,42 @@ func (s *Server) patchApplication(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, r, err)
 		return
 	}
+	// only the fields that came in are changed
 	var in struct {
-		InternalNote string `json:"internal_note"`
+		InternalNote *string         `json:"internal_note"`
+		MaxPlayers   json.RawMessage `json:"max_players"` // number — this team's roster limit; null — the link's limit
 	}
 	if err := httpx.Decode(r, &in); err != nil {
 		httpx.Fail(w, r, err)
 		return
 	}
-	res, err := s.DB.ExecContext(r.Context(), `UPDATE team_applications SET internal_note = $2, updated_at = now() WHERE id = $1`, id, clip(in.InternalNote, 2000))
+	sets, args := []string{}, []any{id}
+	if in.InternalNote != nil {
+		args = append(args, clip(*in.InternalNote, 2000))
+		sets = append(sets, fmt.Sprintf("internal_note = $%d", len(args)))
+	}
+	var limitNote string
+	if len(in.MaxPlayers) > 0 {
+		var n *int
+		if string(in.MaxPlayers) != "null" {
+			var v int
+			if err := json.Unmarshal(in.MaxPlayers, &v); err != nil || v < 1 || v > 70 {
+				httpx.Fail(w, r, httpx.Validation(map[string]any{"max_players": "1 dan 70 gacha son kiriting"}))
+				return
+			}
+			n = &v
+			limitNote = fmt.Sprintf("Tarkib limiti: %d kishi", v)
+		} else {
+			limitNote = "Tarkib limiti: havola bo‘yicha"
+		}
+		args = append(args, n)
+		sets = append(sets, fmt.Sprintf("max_players = $%d", len(args)))
+	}
+	if len(sets) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	res, err := s.DB.ExecContext(r.Context(), `UPDATE team_applications SET `+strings.Join(sets, ", ")+`, updated_at = now() WHERE id = $1`, args...)
 	if err != nil {
 		httpx.Fail(w, r, err)
 		return
@@ -483,6 +513,13 @@ func (s *Server) patchApplication(w http.ResponseWriter, r *http.Request) {
 	if n, _ := res.RowsAffected(); n == 0 {
 		httpx.Fail(w, r, httpx.ErrNotFound)
 		return
+	}
+	if limitNote != "" {
+		var uid *int64
+		if c := claimsFrom(r.Context()); c != nil {
+			uid = &c.UserID
+		}
+		s.appEvent(r.Context(), id, "limit", limitNote, uid)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

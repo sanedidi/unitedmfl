@@ -214,6 +214,7 @@ type application struct {
 	RejectReason    string
 	InternalNote    string
 	TeamID          *int64
+	MaxPlayers      *int // per-team roster limit set by an admin; nil — the link's limit
 	SubmittedAt     *time.Time
 	DecidedAt       *time.Time
 	CreatedAt       time.Time
@@ -221,7 +222,7 @@ type application struct {
 }
 
 const appCols = `id, link_id, token, status, team, rep, players, staff, consents, rep_phone, phone_verified_at, comments,
-	changes_deadline, reject_reason, internal_note, team_id, submitted_at, decided_at, created_at, updated_at`
+	changes_deadline, reject_reason, internal_note, team_id, submitted_at, decided_at, created_at, updated_at, max_players`
 
 const appSelect = `SELECT ` + appCols + ` FROM team_applications`
 
@@ -229,7 +230,7 @@ func scanApp(row interface{ Scan(...any) error }) (*application, error) {
 	a := &application{}
 	var team, rep, players, staff, consents, comments []byte
 	if err := row.Scan(&a.ID, &a.LinkID, &a.Token, &a.Status, &team, &rep, &players, &staff, &consents, &a.RepPhone, &a.PhoneVerifiedAt,
-		&comments, &a.ChangesDeadline, &a.RejectReason, &a.InternalNote, &a.TeamID, &a.SubmittedAt, &a.DecidedAt, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		&comments, &a.ChangesDeadline, &a.RejectReason, &a.InternalNote, &a.TeamID, &a.SubmittedAt, &a.DecidedAt, &a.CreatedAt, &a.UpdatedAt, &a.MaxPlayers); err != nil {
 		return nil, err
 	}
 	_ = json.Unmarshal(team, &a.Team)
@@ -254,6 +255,19 @@ func scanApp(row interface{ Scan(...any) error }) (*application, error) {
 }
 
 func (a *application) number() string { return fmt.Sprintf("UMF-%04d", a.ID) }
+
+// rosterLimits: the link's min/max people, with the admin's per-team max on top.
+func (a *application) rosterLimits(l *regLink) (minP, maxP int) {
+	minP, maxP = 8, 21
+	if l != nil {
+		minP, maxP = l.MinPlayers, l.MaxPlayers
+	}
+	if a.MaxPlayers != nil {
+		maxP = *a.MaxPlayers
+		minP = min(minP, maxP)
+	}
+	return minP, maxP
+}
 
 func (s *Server) appByToken(ctx context.Context, token string) (*application, *regLink, error) {
 	s.expireApplications(ctx)
@@ -433,11 +447,11 @@ func checkApplication(a *application, l *regLink, env checkEnv) []appCheck {
 		add("error", "rep", "rep.authorized", "Jamoa nomidan ariza berishga vakolatingizni tasdiqlang", nil)
 	}
 
-	minP, maxP := 8, 21
+	minP, maxP := a.rosterLimits(l)
 	var minAge *int
 	requirePhoto, requireMedical := false, false
 	if l != nil {
-		minP, maxP, minAge, requirePhoto, requireMedical = l.MinPlayers, l.MaxPlayers, l.MinAge, l.RequirePhoto, l.RequireMedical
+		minAge, requirePhoto, requireMedical = l.MinAge, l.RequirePhoto, l.RequireMedical
 	}
 	gk, missingMedical := 0, 0
 	for _, p := range a.Players {
@@ -599,7 +613,11 @@ func (s *Server) repView(ctx context.Context, a *application, l *regLink) (map[s
 	ed := editable(a, l, now)
 	var link any
 	if l != nil {
-		link = s.publicLink(l)
+		pl := s.publicLink(l)
+		if req, ok := pl["requirements"].(map[string]any); ok {
+			req["min_players"], req["max_players"] = a.rosterLimits(l)
+		}
+		link = pl
 	}
 	var teamURL string
 	if a.TeamID != nil && s.Cfg.SiteURL != "" {

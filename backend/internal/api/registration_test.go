@@ -212,6 +212,43 @@ func TestTeamRegistration(t *testing.T) {
 		t.Fatalf("submit with errors: %d", c)
 	}
 
+	// a per-team roster limit set by an admin overrides the link's 5
+	var draftID int64
+	conn.QueryRow(`SELECT id FROM team_applications WHERE token = $1`, v.Token).Scan(&draftID)
+	appPath := fmt.Sprintf("/api/v1/admin/applications/%d", draftID)
+	if c := admin("PATCH", appPath, map[string]any{"max_players": 3}, nil); c != 204 {
+		t.Fatalf("set team limit: %d", c)
+	}
+	var lim struct {
+		Link struct {
+			Requirements struct {
+				MaxPlayers int `json:"max_players"`
+			} `json:"requirements"`
+		} `json:"link"`
+	}
+	pub("GET", base, nil, &lim)
+	pub("GET", base, nil, &v)
+	if !has("roster.max") || lim.Link.Requirements.MaxPlayers != 3 {
+		t.Fatalf("team limit 3 not applied: %d %+v", lim.Link.Requirements.MaxPlayers, v.Checks)
+	}
+	var ad map[string]any
+	if admin("GET", appPath, nil, &ad); ad["max_players"] != float64(3) || ad["roster_max"] != float64(3) {
+		t.Fatalf("admin view limit: %+v %+v", ad["max_players"], ad["roster_max"])
+	}
+	if c := admin("PATCH", appPath, map[string]any{"max_players": 0}, nil); c != 422 {
+		t.Fatalf("limit 0: %d", c)
+	}
+	if c := admin("PATCH", appPath, map[string]any{"max_players": nil}, nil); c != 204 {
+		t.Fatalf("reset team limit: %d", c)
+	}
+	pub("GET", base, nil, &v)
+	if has("roster.max") {
+		t.Fatalf("link limit back: %+v", v.Checks)
+	}
+	if admin("GET", appPath, nil, &ad); ad["max_players"] != nil || ad["roster_max"] != float64(5) {
+		t.Fatalf("admin view after reset: %+v %+v", ad["max_players"], ad["roster_max"])
+	}
+
 	// SMS code (development sender returns it)
 	var otp map[string]any
 	if c := pub("POST", base+"/otp/send", map[string]any{"phone": "+998 90 123 45 67"}, &otp); c != 200 || otp["dev_code"] == nil {

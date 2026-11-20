@@ -39,6 +39,7 @@ type AppDetail = {
   submitted_at: string | null; decided_at: string | null; created_at: string;
   checks: Check[]; duplicates: Dup[]; events: { kind: string; note: string; created_at: string; user: string }[];
   created_team: { id: number; slug: string; name: string } | null; rep_url: string;
+  max_players: number | null; roster_min: number; roster_max: number;
 };
 
 const STATUS: Record<string, { label: string; tone: string }> = {
@@ -60,6 +61,7 @@ const LINK_STATE: Record<LinkState, { label: string; tone: string }> = {
 const EVENT: Record<string, string> = {
   created: "Qoralama yaratildi", phone_verified: "Telefon tasdiqlandi", submitted: "Ariza yuborildi", resubmitted: "Tuzatilib qayta yuborildi",
   review: "Ko‘rib chiqish boshlandi", changes: "Tuzatishga qaytarildi", approved: "Tasdiqlandi", rejected: "Rad etildi", expired: "Tuzatish muddati o‘tdi",
+  limit: "Tarkib limiti o‘zgartirildi",
 };
 const SECTIONS: Record<string, string> = { team: "Jamoa", rep: "Vakil", roster: "Tarkib" };
 const STAFF_ROLES: Record<string, string> = { head_coach: "Bosh murabbiy", assistant: "Yordamchi", gk_coach: "Darvozabonlar murabbiyi", fitness: "Jismoniy tayyorgarlik", doctor: "Shifokor", manager: "Menejer", other: "Boshqa" };
@@ -530,6 +532,7 @@ function ApplicationReview() {
               {a.comments.map((c, i) => <div key={i} className="small"><b>{SECTIONS[c.section]}:</b> {c.text}</div>)}
             </div>}
           </div>
+          <RosterLimitCard app={a} onSaved={d.reload} />
           <div className="card">
             <div className="card-head"><h3>Forma va hujjatlar</h3></div>
             <div className="card-pad stack" style={{ gap: 12 }}>
@@ -567,6 +570,54 @@ function ApplicationReview() {
       {modal === "delete" && <DeleteModal id={a.id} onClose={() => setModal("")} onDone={() => nav("/applications")} />}
       {modal === "reject" && <RejectModal app={a} sms={!!cfg?.sms} onClose={() => setModal("")} onDone={() => { setModal(""); d.reload(); }} />}
     </>
+  );
+}
+
+/* per-team roster limit: overrides the link's «Maks. kishi» for this application only */
+function RosterLimitCard({ app, onSaved }: { app: AppDetail; onSaved: () => void }) {
+  const toast = useToast();
+  const [val, setVal] = useState(app.max_players != null ? String(app.max_players) : "");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setVal(app.max_players != null ? String(app.max_players) : ""), [app.max_players]);
+  const linkMax = app.link?.max_players ?? 21;
+  const total = app.players.length + app.staff.length;
+  const locked = app.status === "approved" || app.status === "rejected";
+  const next = val.trim() === "" ? null : Number(val);
+  const dirty = next !== app.max_players;
+
+  async function save(v: number | null) {
+    setErr("");
+    if (v != null && (!Number.isInteger(v) || v < 1 || v > 70)) { setErr("1 dan 70 gacha son kiriting"); return; }
+    setBusy(true);
+    try {
+      await api.patch(`/admin/applications/${app.id}`, { max_players: v });
+      toast(v == null ? "Havola limiti qaytarildi" : `Limit: ${v} kishi`);
+      onSaved();
+    } catch (e: any) {
+      if (e?.fields?.max_players) setErr(e.fields.max_players);
+      toast(e instanceof Error ? e.message : "Saqlanmadi", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="card-head"><h3>Tarkib limiti</h3><Badge tone={total > app.roster_max ? "danger" : "ok"}>{total} / {app.roster_max}</Badge></div>
+      <div className="card-pad stack" style={{ gap: 10 }}>
+        <Field label="Shu jamoa uchun maks. kishi" error={err} hint={`bo‘sh — havola bo‘yicha (${linkMax}); o‘yinchilar + media + murabbiylar`}>
+          <input className="input" inputMode="numeric" value={val} placeholder={String(linkMax)} disabled={locked || busy}
+            onChange={(e) => setVal(e.target.value.replace(/\D/g, "").slice(0, 2))}
+            onKeyDown={(e) => { if (e.key === "Enter" && dirty) save(next); }} />
+        </Field>
+        {!locked && <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          <button className="btn btn-sm btn-primary" disabled={!dirty || busy} onClick={() => save(next)}>Saqlash</button>
+          {app.max_players != null && <button className="btn btn-sm btn-ghost" disabled={busy} onClick={() => save(null)}>Havola limitiga qaytarish</button>}
+        </div>}
+        {app.max_players != null && <span className="muted small">Bu jamoa uchun alohida limit: {app.max_players} kishi (havolada {linkMax})</span>}
+      </div>
+    </div>
   );
 }
 
@@ -847,7 +898,7 @@ function LinkEdit() {
           {card("Talablar", <>
             <div className="form-grid" style={{ gridTemplateColumns: "repeat(3, minmax(0,1fr))" }}>
               <Field label="Min. kishi" error={errs.min_players}><input className="input" inputMode="numeric" value={v.min_players ?? ""} onChange={(e) => set("min_players", num(e.target.value.replace(/\D/g, "")) ?? 0)} /></Field>
-              <Field label="Maks. kishi" hint="o‘yinchilar + media + murabbiylar" error={errs.max_players}><input className="input" inputMode="numeric" value={v.max_players ?? ""} onChange={(e) => set("max_players", num(e.target.value.replace(/\D/g, "")) ?? 0)} /></Field>
+              <Field label="Maks. kishi" hint="o‘yinchilar + media + murabbiylar; alohida jamoaga — arizadagi «Tarkib limiti»" error={errs.max_players}><input className="input" inputMode="numeric" value={v.max_players ?? ""} onChange={(e) => set("max_players", num(e.target.value.replace(/\D/g, "")) ?? 0)} /></Field>
               <Field label="Min. yosh" hint="bo‘sh — tekshirilmaydi" error={errs.min_age}><input className="input" inputMode="numeric" value={v.min_age ?? ""} onChange={(e) => set("min_age", num(e.target.value.replace(/\D/g, "")))} /></Field>
             </div>
             <Toggle label="Logotip majburiy" sub="PNG/JPG, kamida 512×512 tavsiya etiladi" checked={!!v.require_logo} onChange={(x) => set("require_logo", x)} />
