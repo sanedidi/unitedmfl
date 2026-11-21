@@ -57,6 +57,8 @@ func run() error {
 	}()
 	// Telegram stickers from team logos (no-op until connected in the admin)
 	server.StartStickerWorker(ctx)
+	// Wildberries: cards, photos, prices out; prices and WB-warehouse stocks back (no-op until connected)
+	server.StartWBWorker(ctx)
 	// Instagram feed for /media (no-op until a token is connected in the admin)
 	go server.RunInstagramSync(ctx)
 	// site visitors: forget quiet tabs, daily totals, raw hits kept 90 days

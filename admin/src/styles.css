@@ -1153,7 +1153,6 @@ video.pt-video { object-fit: contain; cursor: auto; }
 .stk-foot { display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: var(--n-25); border-radius: 0 0 var(--r-md) var(--r-md); }
 .stk-how { margin: 0; padding: 16px 20px 16px 36px; display: flex; flex-direction: column; gap: 12px; font-size: 14px; }
 .stk-how li::marker { color: var(--text-muted); font-weight: 600; font-size: 12px; }
-@media (max-width: 1100px) { .stk-cols { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .stk-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stk-stats > div:nth-child(3) { border-left: 0; } .stk-stats > div:nth-child(n+3) { border-top: 1px solid var(--border); } .stk-foot { flex-direction: column; align-items: stretch; } }
 
 .stk-tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--n-100); border-radius: var(--r-md); margin-bottom: 20px; }
@@ -1181,3 +1180,58 @@ video.pt-video { object-fit: contain; cursor: auto; }
 .stk-teamrow { display: flex; gap: 14px; align-items: flex-start; padding: 16px 20px; }
 .stk-teamrow + .stk-teamrow { border-top: 1px solid var(--border); }
 @media (max-width: 640px) { .stk-intro { flex-direction: column; align-items: flex-start; } }
+
+/* ---------- Wildberries (Merch, product page, Tizim → Wildberries) ---------- */
+.ok-text { color: var(--lime-800); }
+.wb-thumb { display: grid; place-items: center; flex: none; width: 36px; height: 40px; box-sizing: border-box; border-radius: var(--r-xs); object-fit: cover; background: var(--n-50); border: 1px solid var(--border); color: var(--text-muted); }
+.wb-prod { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+.wb-prod > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wb-prod b { white-space: nowrap; }
+.wb-import-row .wb-thumb { width: 36px; height: 40px; }
+.stk-cols .stk-status small { max-width: 190px; }
+.wb-log { display: flex; flex-direction: column; padding: 4px 20px 8px; }
+.wb-log > div { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; font-size: 12px; }
+.wb-log > div + div { border-top: 1px solid var(--border); }
+.wb-log .stk-dot { margin-top: 4px; }
+.wb-log span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wb-log b { font-weight: 600; overflow-wrap: anywhere; }
+.wb-log small { color: var(--text-muted); }
+.wb-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+.wb-tile { position: relative; aspect-ratio: 3 / 4; border-radius: var(--r-sm); overflow: hidden; background: var(--n-50); border: 1px solid var(--border); }
+.wb-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wb-tile.warn { border-color: var(--amber-500); box-shadow: inset 0 0 0 1px var(--amber-500); }
+.wb-tile-tag { position: absolute; left: 8px; top: 8px; padding: 2px 6px; border-radius: var(--r-xs); background: var(--bg-inverse); color: #fff; font-size: 11px; font-weight: 700; }
+.wb-tile-tag.warn { left: auto; right: 8px; background: var(--amber-500); color: var(--n-950); }
+.wb-tile-tools { position: absolute; right: 6px; bottom: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity .12s; }
+.wb-tile:hover .wb-tile-tools, .wb-tile:focus-within .wb-tile-tools { opacity: 1; }
+.wb-tile-tools .btn { background: rgba(255, 255, 255, .92); }
+.wb-tile.add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px dashed var(--border-strong); background: var(--n-25); cursor: pointer; color: var(--text); font: inherit; }
+.wb-tile.add small { color: var(--text-muted); font-size: 11px; }
+.wb-tile.add:hover { border-color: var(--n-400); }
+.wb-subject { position: relative; }
+.wb-subject-list { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); max-height: 280px; overflow: auto; background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--r-sm); box-shadow: 0 8px 24px rgba(11, 13, 16, .12); }
+.wb-subject-list button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 9px 12px; border: 0; background: none; text-align: left; cursor: pointer; font: inherit; }
+.wb-subject-list button + button { border-top: 1px solid var(--border); }
+.wb-subject-list button:hover { background: var(--n-50); }
+.wb-pkg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 720px) { .wb-pkg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.wb-err, .wb-info { display: flex; gap: 8px; align-items: flex-start; padding: 10px 20px; border-top: 1px solid var(--border); font-size: 12px; }
+.wb-err { background: var(--danger-subtle); color: var(--red-600); }
+.wb-info { background: var(--n-25); color: var(--text-2); }
+.wb-err svg, .wb-info svg { flex-shrink: 0; margin-top: 1px; }
+.wb-import { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--r-sm); max-height: 420px; overflow: auto; }
+.wb-import-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; }
+.wb-import-row + .wb-import-row { border-top: 1px solid var(--border); }
+.wb-import-row input { width: 16px; height: 16px; accent-color: var(--n-900); }
+.wb-scopes { border-radius: var(--r-sm); background: var(--n-25); border: 1px solid var(--border); }
+.wb-scopes > div { display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 13px; }
+.wb-scopes > div + div { border-top: 1px solid var(--border); }
+.wb-scopes > div.off { color: var(--text-muted); }
+.wb-scopes > div > svg { flex-shrink: 0; }
+.wb-scopes-head { justify-content: space-between; font-size: 11px !important; font-weight: 600; color: var(--text-muted); letter-spacing: .04em; }
+.wb-steps { display: flex; flex-direction: column; gap: 12px; }
+.wb-steps > div { display: flex; gap: 10px; align-items: flex-start; }
+.wb-steps span { display: inline-grid; place-items: center; flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--bg-inverse); color: #fff; font-size: 11px; font-weight: 700; margin-top: 1px; }
+.wb-steps span.on { background: var(--accent); color: var(--n-950); }
+.wb-steps p { margin: 0; font-size: 13px; line-height: 1.45; }
+@media (max-width: 1100px) { .stk-cols { grid-template-columns: minmax(0, 1fr); } }

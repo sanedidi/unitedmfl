@@ -8,7 +8,9 @@ import { MatchEditPage, MatchesPage } from "@/pages/Matches";
 import { LiveConsolePage, LivePickPage } from "@/pages/Live";
 import { ProtocolReviewPage, ProtocolsPage } from "@/pages/Protocols";
 import { GroupsSection } from "@/pages/Groups";
-import { NewsPage, PlayersPage, ProductsPage, RequestsPage, SeasonsPage, TeamsPage, VideosPage } from "@/pages/Content";
+import { NewsPage, PlayersPage, RequestsPage, SeasonsPage, TeamsPage, VideosPage } from "@/pages/Content";
+import { ProductsPage } from "@/pages/Merch";
+import { WildberriesPage } from "@/pages/Wildberries";
 import { BannersPage } from "@/pages/Banners";
 import { PartnersPage } from "@/pages/Partners";
 import { InstagramPage } from "@/pages/Instagram";
@@ -62,6 +64,7 @@ export default function App() {
         <Route path="requests/*" element={<Guard perm="requests"><RequestsPage /></Guard>} />
         <Route path="ai/*" element={<Guard perm="users"><AiPage /></Guard>} />
         <Route path="telegram-stickers" element={<Guard perm="users"><StickersPage /></Guard>} />
+        <Route path="wildberries" element={<Guard perm="users"><WildberriesPage /></Guard>} />
         <Route path="users" element={<Guard perm="users"><UsersPage /></Guard>} />
         <Route path="roles" element={<Guard perm="users"><RolesPage /></Guard>} />
         <Route path="audit" element={<Guard perm="users"><AuditPage /></Guard>} />

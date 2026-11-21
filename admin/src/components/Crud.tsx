@@ -12,7 +12,7 @@ export type Opt = { value: string; label: string };
 export type FieldSpec = {
   name: string;
   label: string;
-  type?: "text" | "textarea" | "markdown" | "number" | "jersey" | "bool" | "select" | "image" | "date" | "datetime" | "tags" | "colors" | "slug" | "url";
+  type?: "text" | "textarea" | "markdown" | "number" | "jersey" | "bool" | "select" | "image" | "date" | "datetime" | "tags" | "colors" | "slug" | "url" | "json";
   options?: Opt[];
   nullable?: boolean; // empty select / number → null
   numeric?: boolean; // select whose values are ids
@@ -37,12 +37,14 @@ export function fieldValueIn(f: FieldSpec, v: any) {
   if (f.type === "date") return v ? String(v).slice(0, 10) : "";
   if (f.type === "tags" || f.type === "colors") return Array.isArray(v) ? v.join(", ") : "";
   if (f.type === "bool") return !!v;
+  if (f.type === "json") return Array.isArray(v) ? v : [];
   if (v == null) return "";
   return String(v);
 }
 export function fieldValueOut(f: FieldSpec, v: any) {
   switch (f.type) {
     case "bool": return !!v;
+    case "json": return Array.isArray(v) ? v : [];
     case "number": return v === "" || v == null ? (f.nullable ? null : 0) : Number(v);
     case "jersey": return jerseyInput(String(v ?? "")) || null; // shirt number: «10» or «Z10»
     case "datetime": return fromLocalInput(v);

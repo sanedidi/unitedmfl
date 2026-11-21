@@ -374,19 +374,34 @@ func (s *Server) publicVideos(w http.ResponseWriter, r *http.Request) {
 		WHERE status = 'published' ORDER BY published_at DESC NULLS LAST LIMIT $1 OFFSET $2) v`, limit, offset)
 }
 
+// wbProductCols: a product sold on Wildberries shows WB's price (with the
+// discount), a link to its WB page and the WB-warehouse stock.
+const wbProductFrom = `FROM products p CROSS JOIN wb_settings ws
+	CROSS JOIN LATERAL (SELECT p.wb_enabled AND p.wb_nm_id IS NOT NULL AND ws.token_enc IS NOT NULL AS linked) l
+	CROSS JOIN LATERAL (SELECT l.linked AND coalesce(p.wb_cur_price, 0) > 0 AND ws.currency = 'UZS' AS wbp, l.linked AND p.wb_show_button AS wbl) x`
+
+const wbProductCols = `CASE WHEN x.wbp THEN p.wb_cur_price ELSE p.price_uzs END AS price_uzs,
+	CASE WHEN x.wbp THEN NULLIF(p.wb_cur_final, p.wb_cur_price) ELSE p.sale_price_uzs END AS sale_price_uzs,
+	CASE WHEN x.wbp AND p.wb_cur_final < p.wb_cur_price THEN p.wb_cur_discount END AS discount_pct,
+	x.wbp AS wb_price,
+	CASE WHEN x.wbl THEN 'https://' || ws.link_domain || '/catalog/' || p.wb_nm_id || '/detail.aspx' ELSE '' END AS wb_url,
+	CASE WHEN l.linked THEN p.wb_stock END AS wb_stock`
+
 func (s *Server) publicProducts(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	s.respondQuery(w, r, `SELECT coalesce(json_agg(p ORDER BY p.ord, p.id), '[]') FROM (
-		SELECT id, slug, name, category, price_uzs, sale_price_uzs, images, external_url, featured, status, ord FROM products
-		WHERE visible AND status <> 'hidden' AND ($1 = '' OR featured::text = $1) AND ($2 = '' OR category = $2)) p`,
+	s.respondQuery(w, r, `SELECT coalesce(json_agg(t ORDER BY t.ord, t.id), '[]') FROM (
+		SELECT p.id, p.slug, p.name, p.category, `+wbProductCols+`, p.images, p.external_url, p.featured, p.status, p.ord `+wbProductFrom+`
+		WHERE p.visible AND p.status <> 'hidden' AND ($1 = '' OR p.featured::text = $1) AND ($2 = '' OR p.category = $2)) t`,
 		q.Get("featured"), q.Get("category"))
 }
 
 func (s *Server) publicProduct(w http.ResponseWriter, r *http.Request) {
-	s.respondQuery(w, r, `SELECT json_build_object('product', row_to_json(p),
-		'variants', (SELECT coalesce(json_agg(v ORDER BY v.id), '[]') FROM (SELECT id, size, sku, available FROM product_variants WHERE product_id = p.id) v))
-		FROM (SELECT id, slug, name, category, price_uzs, sale_price_uzs, description, images, external_url, status FROM products
-		      WHERE slug = $1 AND visible AND status <> 'hidden') p`, chi.URLParam(r, "slug"))
+	s.respondQuery(w, r, `SELECT json_build_object('product', row_to_json(t),
+		'variants', (SELECT coalesce(json_agg(v ORDER BY v.id), '[]') FROM (
+			SELECT id, size, sku, available AND (NOT t.linked OR wb_stock IS NULL OR wb_stock > 0) AS available,
+			CASE WHEN t.linked THEN wb_stock END AS stock FROM product_variants WHERE product_id = t.id) v))
+		FROM (SELECT p.id, p.slug, p.name, p.category, `+wbProductCols+`, l.linked, p.description, p.images, p.external_url, p.status `+wbProductFrom+`
+		      WHERE p.slug = $1 AND p.visible AND p.status <> 'hidden') t`, chi.URLParam(r, "slug"))
 }
 
 func (s *Server) createContact(w http.ResponseWriter, r *http.Request) {

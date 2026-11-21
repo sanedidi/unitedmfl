@@ -48,8 +48,8 @@ export function ProductCard({ p }: { p: Product }) {
     <Link href={productPath(p)} className="product-card">
       <div className="product-img">
         {p.images?.[0] ? <Img src={p.images[0]} alt={p.name} sizes="(max-width: 720px) 50vw, 300px" /> : <div className="ph" aria-hidden>MFL</div>}
-        {p.status === "out_of_stock" && <span className="badge badge-muted" style={{ position: "absolute", top: 12, left: 12 }}>Tugagan</span>}
-        {sale && <span className="badge badge-accent" style={{ position: "absolute", top: 12, right: 12 }}>Chegirma</span>}
+        {(p.status === "out_of_stock" || p.wb_stock === 0) && <span className="badge badge-muted" style={{ position: "absolute", top: 12, left: 12 }}>Tugagan</span>}
+        {sale && <span className="badge badge-accent" style={{ position: "absolute", top: 12, right: 12 }}>{p.discount_pct ? `−${p.discount_pct}%` : "Chegirma"}</span>}
       </div>
       <div className="product-body">
         <span className="overline" style={{ color: "var(--text-muted)" }}>{p.category}</span>

@@ -225,6 +225,11 @@ export type Product = {
   ord: number;
   description?: string;
   variants?: { id: number; label: string; sku: string; stock: number }[];
+  /** Wildberries: the price above is WB's when wb_price; the button opens wb_url */
+  discount_pct?: number | null;
+  wb_price?: boolean;
+  wb_url?: string;
+  wb_stock?: number | null;
 };
 
 export type Season = {

@@ -47,6 +47,7 @@ type Config struct {
 	EskizFrom          string
 	EskizURL           string
 	SMSCodeText        string // %s is replaced by the code (Eskiz checks texts against approved templates)
+	WBAPIURL           string // Wildberries API: one base URL for every category (tests, a proxy); empty = WB's own domains
 	SecretsKey         []byte // encrypts tokens stored in the database (Telegram stickers); AI_MASTER_KEY, else JWT_SECRET
 }
 
@@ -106,6 +107,7 @@ func Load() (*Config, error) {
 		EskizPassword:      env("ESKIZ_PASSWORD", ""),
 		EskizFrom:          env("ESKIZ_FROM", "4546"),
 		EskizURL:           strings.TrimRight(env("ESKIZ_URL", "https://notify.eskiz.uz"), "/"),
+		WBAPIURL:           strings.TrimRight(env("WB_API_URL", ""), "/"),
 		SMSCodeText:        env("SMS_CODE_TEXT", "United MFL: jamoa arizasi uchun tasdiqlash kodi %s"),
 	}
 	for _, o := range strings.Split(env("CORS_ORIGINS", "*"), ",") {

@@ -34,8 +34,10 @@ export default async function ProductPage({ params }: { params: P }) {
   if (!d) notFound();
   const { product: p, variants } = d;
   const sale = p.sale_price_uzs != null && p.sale_price_uzs < p.price_uzs;
-  const buy = p.external_url || process.env.SHOP_URL || "";
-  const availability = p.status === "out_of_stock" ? "OutOfStock" : p.status === "in_review" ? "PreOrder" : "InStock";
+  const wbUrl = p.wb_url || "";
+  const buy = wbUrl || p.external_url || process.env.SHOP_URL || "";
+  const soldOut = p.status === "out_of_stock" || p.wb_stock === 0;
+  const availability = soldOut ? "OutOfStock" : p.status === "in_review" ? "PreOrder" : "InStock";
   const productLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -45,7 +47,7 @@ export default async function ProductPage({ params }: { params: P }) {
     ...(p.category ? { category: p.category } : {}),
     ...(p.description ? { description: clip(p.description, 500) } : {}),
     brand: { "@type": "Brand", name: "United MFL" },
-    offers: { "@type": "Offer", url: abs(productPath(p)), priceCurrency: "UZS", price: sale ? p.sale_price_uzs : p.price_uzs, availability: `https://schema.org/${availability}`, seller: orgRef },
+    offers: { "@type": "Offer", url: wbUrl || abs(productPath(p)), priceCurrency: "UZS", price: sale ? p.sale_price_uzs : p.price_uzs, availability: `https://schema.org/${availability}`, seller: orgRef },
   };
   return (
     <div className="container">
@@ -62,19 +64,38 @@ export default async function ProductPage({ params }: { params: P }) {
         <div className="stack" style={{ gap: 20 }}>
           <span className="overline">{p.category}</span>
           <h1 className="h1" style={{ textTransform: "none", fontFamily: "var(--font-ui)" }}>{p.name}</h1>
-          <div className="price" style={{ fontSize: 28 }}>{fmtUZS(sale ? p.sale_price_uzs! : p.price_uzs)}{sale && <s>{fmtUZS(p.price_uzs)}</s>}</div>
-          {variants.length > 0 && (
-            <div>
-              <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>O‘lcham</div>
-              <div className="chips">{variants.map((v) => <span key={v.id} className="chip" style={!v.available || v.stock === 0 ? { opacity: .4, textDecoration: "line-through" } : undefined}>{v.size}</span>)}</div>
+          <div className="price" style={{ fontSize: 28 }}>{fmtUZS(sale ? p.sale_price_uzs! : p.price_uzs)}</div>
+          {(sale || p.wb_price) && (
+            <div className="row" style={{ gap: 10, marginTop: -8, flexWrap: "wrap" }}>
+              {sale && <s className="muted" style={{ fontSize: 16 }}>{fmtUZS(p.price_uzs)}</s>}
+              {sale && p.discount_pct ? <span className="badge badge-stage">−{p.discount_pct}%</span> : null}
+              {p.wb_price && <span className="muted" style={{ fontSize: 13 }}>Wildberries narxi</span>}
             </div>
           )}
-          {p.status === "out_of_stock" ? <span className="badge badge-muted">Vaqtincha tugagan</span> : buy ? (
+          {variants.length > 0 && !(variants.length === 1 && /^(yagona|—|-)$/i.test(variants[0].size)) && (
+            <div>
+              <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>O‘lcham</div>
+              <div className="chips">{variants.map((v) => <span key={v.id} className="chip" title={!v.available || v.stock === 0 ? "Tugagan" : undefined} style={!v.available || v.stock === 0 ? { opacity: .4, textDecoration: "line-through" } : undefined}>{v.size}</span>)}</div>
+            </div>
+          )}
+          {soldOut ? <span className="badge badge-muted" style={{ alignSelf: "flex-start" }}>Vaqtincha tugagan</span> : wbUrl ? (
+            <div className="stack" style={{ gap: 10 }}>
+              <a className="btn btn-primary btn-lg" href={wbUrl} target="_blank" rel="noopener noreferrer" style={{ justifyContent: "center" }}>Wildberries’da sotib olish</a>
+              <span className="muted" style={{ fontSize: 13 }}>Tugma mahsulotning Wildberries sahifasini yangi oynada ochadi. To‘lov va yetkazib berish — Wildberries orqali.</span>
+            </div>
+          ) : buy ? (
             <a className="btn btn-primary" href={buy} target="_blank" rel="noopener noreferrer" style={{ alignSelf: "flex-start" }}>Sotib olish</a>
           ) : (
             <Link className="btn btn-primary" href="/biz-haqimizda#aloqa" style={{ alignSelf: "flex-start" }}>Buyurtma berish</Link>
           )}
           {p.description && <Prose text={p.description} />}
+          {wbUrl && (
+            <dl className="kv card" style={{ padding: "4px 20px" }}>
+              <dt>Yetkazib berish</dt><dd>WB topshirish punktlari · 1–3 kun</dd>
+              <dt>To‘lov</dt><dd>Wildberries orqali</dd>
+              <dt>Mavjudligi</dt><dd style={{ color: soldOut ? "var(--text-muted)" : "var(--win, #1E8E3E)" }}>{soldOut ? "Vaqtincha tugagan" : p.wb_stock != null ? `Bor · ${p.wb_stock} dona` : "Bor"}</dd>
+            </dl>
+          )}
         </div>
       </div>
       <JsonLd data={productLd} />

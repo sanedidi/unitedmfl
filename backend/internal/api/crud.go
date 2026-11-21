@@ -29,6 +29,7 @@ const (
 	kDate
 	kTextArray
 	kJersey // shirt number: «10» or «Z10», NULL when empty
+	kJSON   // a JSON list (jsonb column)
 )
 
 type field struct {
@@ -260,6 +261,16 @@ func convert(name string, f field, v any) (any, error) {
 			out = append(out, strings.TrimSpace(s))
 		}
 		return pq.Array(out), nil
+	case kJSON:
+		arr, ok := v.([]any)
+		if !ok {
+			return nil, fmt.Errorf("%s ro‘yxat bo‘lishi kerak", name)
+		}
+		b, err := json.Marshal(arr)
+		if err != nil || (f.max > 0 && len(b) > f.max) {
+			return nil, fmt.Errorf("%s juda katta", name)
+		}
+		return string(b), nil
 	}
 	return nil, fmt.Errorf("unknown field kind")
 }
@@ -483,6 +494,7 @@ var (
 	textList = field{kind: kTextArray}
 	jerseyNo = field{kind: kJersey, nullable: true}
 	slugF    = field{kind: kText, required: true, max: 120, pattern: reSlug}
+	jsonList = func(maxBytes int) field { return field{kind: kJSON, max: maxBytes} }
 )
 
 var teamsRes = &resource{table: "teams", entity: "team", touch: true, order: "group_label, name",
@@ -547,14 +559,24 @@ var videosRes = &resource{table: "videos", entity: "video", order: "coalesce(pub
 	prepare: prepareVideo, afterWrite: videoChanged, afterDelete: videoDeleted}
 
 var productsRes = &resource{table: "products", entity: "product", touch: true, order: "ord, id",
-	search: []string{"name"}, filters: map[string]string{"status": "status", "category": "category"},
+	search: []string{"name", "wb_vendor_code"}, filters: map[string]string{"status": "status", "category": "category", "wb_state": "wb_state", "wb": "wb_enabled"},
 	fields: map[string]field{"slug": slugF, "name": reqTxt(120), "category": txt(40), "price_uzs": reqInt, "sale_price_uzs": optInt,
 		"description": txt(5000), "images": textList, "external_url": txt(500), "visible": boolean, "featured": boolean,
-		"status": enum("active", "in_review", "out_of_stock", "hidden"), "ord": {kind: kInt}}}
+		"status": enum("active", "in_review", "out_of_stock", "hidden"), "ord": {kind: kInt},
+		// Wildberries card (the worker keeps the wb_state/wb_nm_id… columns)
+		"wb_enabled": boolean, "wb_subject_id": optInt, "wb_subject_name": txt(200), "wb_brand": txt(100),
+		"wb_vendor_code": {kind: kText, max: 72, pattern: reWBVendor}, "wb_title": txt(wbTitleMax), "wb_description": txt(5000),
+		"wb_desc_from_site": boolean, "wb_chars": jsonList(64 << 10), "wb_price": optInt, "wb_discount": {kind: kInt},
+		"wb_show_button": boolean, "pkg_length": optInt, "pkg_width": optInt, "pkg_height": optInt, "pkg_weight_g": optInt},
+	afterWrite: wbProductChanged}
 
 var variantsRes = &resource{table: "product_variants", entity: "product_variant", order: "product_id, id",
 	filters: map[string]string{"product_id": "product_id"},
-	fields:  map[string]field{"product_id": reqInt, "size": reqTxt(20), "sku": txt(60), "stock": optInt, "available": boolean}}
+	fields: map[string]field{"product_id": reqInt, "size": reqTxt(20), "sku": txt(60), "stock": optInt, "available": boolean,
+		"wb_size": txt(20), "barcode": {kind: kText, max: 40, pattern: reBarcode}},
+	afterWrite: wbVariantChanged, afterDelete: wbVariantDeleted}
+
+var reBarcode = regexp.MustCompile(`^[0-9A-Za-z-]{4,40}$`)
 
 var requestsRes = &resource{table: "contact_requests", entity: "contact_request", touch: true, order: "created_at DESC",
 	search: []string{"name", "phone"}, filters: map[string]string{"status": "status", "topic": "topic"},

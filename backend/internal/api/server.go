@@ -34,6 +34,7 @@ type Server struct {
 	ai             aiJobs
 	kit            *kitWorker
 	stk            *stickerSvc // Telegram stickers from team logos
+	wb             *wbSvc      // Wildberries store
 
 	// team self-registration
 	sms              sms.Sender
@@ -52,6 +53,7 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 		loginLimiter:   httpx.NewRateLimiter(10, 10*time.Minute),
 		kit:            &kitWorker{wake: make(chan struct{}, 1), running: map[string]context.CancelFunc{}},
 		stk:            newStickerSvc(stickerSecret(cfg)),
+		wb:             newWBSvc(stickerSecret(cfg), cfg.WBAPIURL),
 		contactLimiter: httpx.NewRateLimiter(5, 10*time.Minute),
 		viewLimiter:    httpx.NewRateLimiter(1, 30*time.Minute), // one view per IP per article per 30 min
 		trackLimiter:   httpx.NewRateLimiter(300, 10*time.Minute),
@@ -212,6 +214,7 @@ func (s *Server) Routes() http.Handler {
 			})
 			s.mountCRUD(r, auth.PermMerch, "/products", productsRes)
 			s.mountCRUD(r, auth.PermMerch, "/product-variants", variantsRes)
+			s.mountWB(r) // Wildberries store
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermRequests))
 				r.Get("/requests", s.crud(requestsRes).list)
