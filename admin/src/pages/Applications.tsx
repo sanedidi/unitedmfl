@@ -10,6 +10,7 @@ import { PageHead } from "@/components/Layout";
 import { Badge, Empty, ErrorBox, Field, Loading, Modal, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
 import { PhotoThumb, PhotoViewer, type PhotoItem } from "@/components/PlayerPhotos";
+import { ArizalarTabs, CabinetPage, CabinetsList, ChangeReview, ChangesList } from "./TeamCabinets";
 
 /* ---------- types ---------- */
 type LinkState = "open" | "paused" | "soon" | "closed" | "full" | "used";
@@ -298,6 +299,7 @@ function ApplicationsList() {
           <Link className="btn" to="/applications/links"><I.link size={16} /> Havolalar</Link>
           <Link className="btn btn-primary" to="/applications/links/new"><I.plus size={16} /> Yangi havola</Link>
         </>} />
+      <ArizalarTabs current="apps" />
       {links.data && (active ? (
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="link-banner">
@@ -954,6 +956,10 @@ export function ApplicationsSection() {
       <Route path="links" element={<LinksList />} />
       <Route path="links/new" element={<LinkEdit />} />
       <Route path="links/:id" element={<LinkEdit />} />
+      <Route path="changes" element={<ChangesList />} />
+      <Route path="changes/:id" element={<ChangeReview />} />
+      <Route path="cabinets" element={<CabinetsList />} />
+      <Route path="cabinets/:id" element={<CabinetPage />} />
       <Route path=":id" element={<ApplicationReview />} />
     </Routes>
   );

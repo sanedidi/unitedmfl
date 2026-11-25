@@ -3,7 +3,7 @@ import { api, ApiError, type Application, type Check, type ImportResult, type Pl
 import { REP_ROLES, STAFF_ROLES, emptyPlayer, fmtBirth, fmtDeadline, fullName, sizeSummary } from "@/lib/format";
 import { CompactHero, HELP_URL, Hero, Page } from "@/components/Shell";
 import { CheckLine, Field, Spinner, useToast } from "@/components/ui";
-import { ImportButton, ImportModal, PlayerModal, PlayersTable, StaffModal, StaffTable, rowFlags } from "@/components/Roster";
+import { ImportButton, ImportModal, PlayerModal, PlayersTable, StaffModal, StaffTable, appUploader, rowFlags } from "@/components/Roster";
 import { I } from "@/components/Icons";
 
 type Doc = Pick<Application, "team" | "rep" | "players" | "staff" | "consents">;
@@ -450,7 +450,7 @@ function RosterStep({ token, app, doc, update, locked, canLogo, color, checks, f
         </div>
         <div className="row">
           <a className="btn btn-ghost" href={api.templateUrl}><I.download size={16} /> Shablon (.xlsx)</a>
-          {!locked && <ImportButton token={token} onResult={(file, r2) => setImp({ file, r: r2 })} />}
+          {!locked && <ImportButton up={appUploader(token)} onResult={(file, r2) => setImp({ file, r: r2 })} />}
         </div>
       </div>
       {(general.length > 0 || rowErrors > 0) && (
@@ -481,7 +481,7 @@ function RosterStep({ token, app, doc, update, locked, canLogo, color, checks, f
         <StaffTable rows={doc.staff} flags={rowFlags(checks, true)} locked={locked} onEdit={(i) => setEditStaff({ i, s: doc.staff[i] })}
           onDelete={(i) => window.confirm("O‘chirilsinmi?") && update((d) => ({ ...d, staff: d.staff.filter((_, j) => j !== i) }))} />
       </RosterSection>
-      {edit && <PlayerModal key={edit.i + ":" + doc.players.length} token={token} initial={edit.p} color={color} taken={taken(edit.i)} onSave={savePlayer} onClose={() => setEdit(null)} />}
+      {edit && <PlayerModal key={edit.i + ":" + doc.players.length} up={appUploader(token)} initial={edit.p} color={color} taken={taken(edit.i)} onSave={savePlayer} onClose={() => setEdit(null)} />}
       {editStaff && <StaffModal initial={editStaff.s} onClose={() => setEditStaff(null)}
         onSave={(s) => { update((d) => ({ ...d, staff: editStaff.i >= 0 ? d.staff.map((x, j) => (j === editStaff.i ? s : x)) : [...d.staff, s] })); setEditStaff(null); }} />}
       {imp && <ImportModal file={imp.file} result={imp.r} hasRoster={doc.players.length + doc.staff.length > 0} canLogo={canLogo} onApply={applyImport} onClose={() => setImp(null)} />}

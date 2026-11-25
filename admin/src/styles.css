@@ -1235,3 +1235,24 @@ video.pt-video { object-fit: contain; cursor: auto; }
 .wb-steps span.on { background: var(--accent); color: var(--n-950); }
 .wb-steps p { margin: 0; font-size: 13px; line-height: 1.45; }
 @media (max-width: 1100px) { .stk-cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* team cabinet (Arizalar → O‘zgarishlar / Kabinetlar) */
+.tab-count { margin-left: 6px; display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--n-900); color: #fff; font-size: 11px; }
+.table tr.row-new td { background: var(--lime-50); }
+.chg-row { display: flex; gap: 12px; align-items: flex-start; padding: 14px 20px; border-top: 1px solid var(--n-100); }
+.chg-row > input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--n-900); flex: none; }
+.chg-row.remove { background: var(--red-50); }
+.chg-row.err { background: var(--red-50); }
+.chg-row.warn { background: var(--amber-50); }
+.chg-fields { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.chg-fields > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chg-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); background: var(--n-50); }
+.chg-img.sm { width: 32px; height: 32px; }
+.swatch { display: inline-block; width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border); }
+.copy-field { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--n-25); font-weight: 600; min-width: 0; }
+.copy-field .grow { overflow-wrap: anywhere; }
+.cab-msg { margin: 0; padding: 14px 16px; border-radius: var(--r-sm); background: var(--n-900); color: #c9ced6; font-family: inherit; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+.sec-list > div > span:first-child { display: flex; flex-direction: column; gap: 2px; color: var(--text); }
+.sec-list > div > span:first-child small { color: var(--text-2); font-weight: 400; font-size: 12px; }
+.sec-list > div { align-items: center; padding-top: 14px; padding-bottom: 14px; }
+a.alert { text-decoration: none; }

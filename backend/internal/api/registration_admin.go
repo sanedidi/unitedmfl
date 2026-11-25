@@ -28,6 +28,7 @@ import (
 // Admin side of team self-registration (Arizalar): links and applications.
 
 func (s *Server) mountRegistrationAdmin(r chi.Router) {
+	s.mountTeamCabinetAdmin(r)
 	r.Group(func(r chi.Router) {
 		r.Use(s.can(auth.PermApplications))
 		h := s.crud(regLinksRes)

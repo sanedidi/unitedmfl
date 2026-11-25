@@ -394,7 +394,8 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 			'news_drafts', (SELECT count(*) FROM news WHERE status='draft'),
 			'requests_new', (SELECT count(*) FROM contact_requests WHERE status='new'),
 			'protocols_review', (SELECT count(*) FROM protocols WHERE status='review'),
-			'applications_new', (SELECT count(*) FROM team_applications WHERE status='submitted')),
+			'applications_new', (SELECT count(*) FROM team_applications WHERE status='submitted')
+				+ (SELECT count(*) FROM team_change_requests WHERE status='submitted')),
 		'upcoming', (SELECT coalesce(json_agg(x ORDER BY x.kickoff_at), '[]') FROM (`+matchSelect+`
 			WHERE (m.season_id=$1 OR m.season_id IS NULL) AND m.status IN ('scheduled','live','halftime') ORDER BY m.kickoff_at NULLS LAST LIMIT 5) x),
 		'recent_results', (SELECT coalesce(json_agg(x ORDER BY x.kickoff_at DESC), '[]') FROM (`+matchSelect+`

@@ -42,6 +42,11 @@ type Server struct {
 	regSaveLimiter   *httpx.RateLimiter
 	regOTPLimiter    *httpx.RateLimiter
 	regUploadLimiter *httpx.RateLimiter
+
+	// team cabinet (login + password)
+	teamLoginLimiter  *httpx.RateLimiter
+	teamSaveLimiter   *httpx.RateLimiter
+	teamUploadLimiter *httpx.RateLimiter
 }
 
 func New(db *sql.DB, cfg *config.Config) *Server {
@@ -63,6 +68,10 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 		regSaveLimiter:   httpx.NewRateLimiter(600, 10*time.Minute), // autosave
 		regOTPLimiter:    httpx.NewRateLimiter(20, 10*time.Minute),
 		regUploadLimiter: httpx.NewRateLimiter(120, 10*time.Minute),
+
+		teamLoginLimiter:  httpx.NewRateLimiter(20, 10*time.Minute),
+		teamSaveLimiter:   httpx.NewRateLimiter(600, 10*time.Minute), // autosave
+		teamUploadLimiter: httpx.NewRateLimiter(120, 10*time.Minute),
 	}
 }
 
@@ -119,6 +128,7 @@ func (s *Server) Routes() http.Handler {
 		r.With(s.contactLimiter.Middleware).Post("/contact", s.createContact)
 		r.Get("/live/{id}", s.liveStream)
 		s.mountRegistration(r) // team self-registration site
+		s.mountTeamCabinet(r)  // team cabinet on the same site (login + password)
 
 		// ---------- auth ----------
 		r.With(s.loginLimiter.Middleware).Post("/auth/login", s.login)

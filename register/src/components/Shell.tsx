@@ -7,11 +7,11 @@ export const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined) ||
 export const HELP_URL = (import.meta.env.VITE_HELP_URL as string | undefined) || "https://t.me/united_mfl";
 const HELP_LABEL = HELP_URL.replace(/^https?:\/\/(t\.me\/)?/, "@").replace(/\/$/, "");
 
-export function Header() {
+export function Header({ tag = "Jamoa arizasi" }: { tag?: string }) {
   return (
     <header className="hdr">
       <a className="brand" href={SITE_URL}><img src="/logo.svg" alt="" />United MFL</a>
-      <span className="hdr-tag">Jamoa arizasi</span>
+      <span className="hdr-tag">{tag}</span>
       <div className="grow" />
       <a className="hdr-help" href={HELP_URL} target="_blank" rel="noopener noreferrer"><I.telegram size={16} /><span>Yordam: {HELP_LABEL}</span></a>
     </header>
@@ -28,10 +28,10 @@ export function Footer() {
   );
 }
 
-export function Page({ children }: { children: ReactNode }) {
+export function Page({ children, tag }: { children: ReactNode; tag?: string }) {
   return (
     <>
-      <Header />
+      <Header tag={tag} />
       <main className="page">{children}</main>
       <Footer />
     </>

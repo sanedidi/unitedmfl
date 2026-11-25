@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { api, type Check, type ImportResult, type Player, type Role, type Staff } from "@/lib/api";
+import { api, type Check, type ImportResult, type MedFile, type Player, type Role, type Staff } from "@/lib/api";
 import { KIT_SIZES, ROLE_LABEL, STAFF_ROLES, emptyPlayer, fmtBirth, fullName, initials, jerseyInput } from "@/lib/format";
 import { CheckLine, Field, Modal, Spinner, useToast } from "./ui";
 import { I } from "./Icons";
@@ -22,12 +22,24 @@ export function Jersey({ color, name, number }: { color: string; name: string; n
   );
 }
 
+/* ---------- uploads: the registration wizard and the team cabinet ---------- */
+export type Uploader = {
+  photo: (f: File) => Promise<{ url: string }>;
+  medical: (f: File) => Promise<MedFile>;
+  importRoster: (f: File) => Promise<ImportResult>;
+};
+export const appUploader = (token: string): Uploader => ({
+  photo: (f) => api.uploadImage(token, "photo", f),
+  medical: (f) => api.uploadMedical(token, f),
+  importRoster: (f) => api.importRoster(token, f),
+});
+
 /* ---------- player modal ---------- */
-export function PlayerModal({ token, initial, color, taken, onSave, onClose }: {
-  token: string; initial: Player; color: string; taken: string[]; onSave: (p: Player, more: boolean) => void; onClose: () => void;
+export function PlayerModal<T extends Player>({ up, initial, color, taken, onSave, onClose }: {
+  up: Uploader; initial: T; color: string; taken: string[]; onSave: (p: T, more: boolean) => void; onClose: () => void;
 }) {
   const toast = useToast();
-  const [p, setP] = useState<Player>(initial);
+  const [p, setP] = useState<T>(initial);
   const [jerseyTouched, setJerseyTouched] = useState(!!initial.jersey_name);
   const [busy, setBusy] = useState<"" | "photo" | "medical">("");
   const [tried, setTried] = useState(false);
@@ -52,7 +64,7 @@ export function PlayerModal({ token, initial, color, taken, onSave, onClose }: {
     if (!f) return;
     setBusy("photo");
     try {
-      set("photo_url", (await api.uploadImage(token, "photo", f)).url);
+      set("photo_url", (await up.photo(f)).url);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Yuklashda xato", "error");
     } finally {
@@ -63,7 +75,7 @@ export function PlayerModal({ token, initial, color, taken, onSave, onClose }: {
     if (!f) return;
     setBusy("medical");
     try {
-      set("medical", await api.uploadMedical(token, f));
+      set("medical", await up.medical(f));
     } catch (e) {
       toast(e instanceof Error ? e.message : "Yuklashda xato", "error");
     } finally {
@@ -75,7 +87,7 @@ export function PlayerModal({ token, initial, color, taken, onSave, onClose }: {
     if (!ok) return;
     onSave({ ...p, jersey_name: p.jersey_name.toUpperCase().trim() }, more);
     if (more) {
-      setP(emptyPlayer(p.role === "goalkeeper" ? "player" : p.role));
+      setP({ ...initial, ...emptyPlayer(p.role === "goalkeeper" ? "player" : p.role) });
       setJerseyTouched(false);
       setTried(false);
     }
@@ -147,8 +159,8 @@ export function PlayerModal({ token, initial, color, taken, onSave, onClose }: {
 }
 
 /* ---------- staff modal ---------- */
-export function StaffModal({ initial, onSave, onClose }: { initial: Staff; onSave: (s: Staff) => void; onClose: () => void }) {
-  const [s, setS] = useState<Staff>(initial);
+export function StaffModal<T extends Staff>({ initial, onSave, onClose, phone = true }: { initial: T; onSave: (s: T) => void; onClose: () => void; phone?: boolean }) {
+  const [s, setS] = useState<T>(initial);
   const [tried, setTried] = useState(false);
   const set = <K extends keyof Staff>(k: K, v: Staff[K]) => setS((x) => ({ ...x, [k]: v }));
   const ok = s.first_name.trim() && s.last_name.trim();
@@ -170,7 +182,7 @@ export function StaffModal({ initial, onSave, onClose }: { initial: Staff; onSav
         <span className="lbl">Forma o‘lchami <span className="opt">ixtiyoriy</span></span>
         <div className="sizes">{KIT_SIZES.map((x) => <button type="button" key={x} className={s.kit_size === x ? "on" : ""} onClick={() => set("kit_size", s.kit_size === x ? "" : x)}>{x}</button>)}</div>
       </div>
-      <Field label="Telefon" opt="ixtiyoriy"><input className="input" type="tel" value={s.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+998" /></Field>
+      {phone && <Field label="Telefon" opt="ixtiyoriy"><input className="input" type="tel" value={s.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+998" /></Field>}
     </Modal>
   );
 }
@@ -293,7 +305,7 @@ export function StaffTable({ rows, flags, locked, onEdit, onDelete }: { rows: St
   );
 }
 
-export function ImportButton({ token, onResult, disabled }: { token: string; onResult: (file: string, r: ImportResult) => void; disabled?: boolean }) {
+export function ImportButton({ up, onResult, disabled }: { up: Uploader; onResult: (file: string, r: ImportResult) => void; disabled?: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -301,7 +313,7 @@ export function ImportButton({ token, onResult, disabled }: { token: string; onR
     if (!f) return;
     setBusy(true);
     try {
-      onResult(f.name, await api.importRoster(token, f));
+      onResult(f.name, await up.importRoster(f));
     } catch (e) {
       toast(e instanceof Error ? e.message : "Faylni o‘qib bo‘lmadi", "error");
     } finally {
