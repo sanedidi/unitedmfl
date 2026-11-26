@@ -43,5 +43,7 @@ export const I = {
   download: ({ size }: P) => <svg {...a(size)}><path d="M12 4v12M7 11l5 5 5-5M4 20h16" /></svg>,
   telegram: ({ size }: P) => <svg {...a(size)}><path d="M21 4L3 11l6 2 2 6 3-4 5 4z" /><path d="M9 13l12-9" /></svg>,
   copy: ({ size }: P) => <svg {...a(size)}><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 012-2h10" /></svg>,
+  ticket: ({ size }: P) => <svg {...a(size)}><path d="M3 8a2 2 0 002-2h14a2 2 0 002 2v2a2 2 0 000 4v2a2 2 0 00-2 2H5a2 2 0 00-2-2v-2a2 2 0 000-4z" /><path d="M14 6v2M14 11v2M14 16v2" /></svg>,
+  stadium: ({ size }: P) => <svg {...a(size)}><ellipse cx="12" cy="12" rx="9" ry="6" /><rect x="8" y="9.5" width="8" height="5" rx="1" /><path d="M12 9.5v5" /></svg>,
   qr: ({ size }: P) => <svg {...a(size)}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h4v4h-4" /></svg>,
 };

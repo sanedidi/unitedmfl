@@ -94,7 +94,10 @@ export async function request<T = unknown>(method: string, path: string, body?: 
     const headers: Record<string, string> = { Accept: "application/json", ...extraHeaders };
     if (session) headers.Authorization = `Bearer ${session.access_token}`;
     let payload: BodyInit | undefined;
-    if (body instanceof FormData) payload = body;
+    if (body instanceof FormData || body instanceof Blob) {
+      payload = body;
+      if (body instanceof Blob && body.type) headers["Content-Type"] = body.type;
+    }
     else if (body !== undefined) {
       headers["Content-Type"] = "application/json";
       payload = JSON.stringify(body);

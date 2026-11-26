@@ -46,7 +46,7 @@ export const EVENT_LABEL: Record<string, string> = {
 };
 
 export const POSITIONS: Record<string, string> = { GK: "Darvozabon", DF: "Himoyachi", MF: "Yarim himoyachi", FW: "Hujumchi" };
-export const ROLE_LABEL: Record<string, string> = { admin: "Administrator", editor: "Muharrir", operator: "Match operatori", shop: "Do‘kon menejeri" };
+export const ROLE_LABEL: Record<string, string> = { admin: "Administrator", editor: "Muharrir", operator: "Match operatori", shop: "Do‘kon menejeri", controller: "Nazoratchi" };
 
 export function initials(name: string, short?: string) {
   if (short) return short.slice(0, 3).toUpperCase();

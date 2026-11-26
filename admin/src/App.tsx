@@ -20,6 +20,9 @@ import { AiPage } from "@/pages/Ai";
 import { ApplicationsSection } from "@/pages/Applications";
 import { HomepageBuilder } from "@/pages/homepage/Builder";
 import { StickersPage } from "@/pages/Stickers";
+import { TicketsSection } from "@/pages/Tickets";
+import { StadiumsSection } from "@/pages/Stadiums";
+import { ScanPage } from "@/pages/Scan";
 
 function Guard({ perm, children }: { perm: string; children: React.ReactNode }) {
   const { can } = useAuth();
@@ -31,6 +34,8 @@ function Home() {
   const { can } = useAuth();
   if (can("dashboard")) return <DashboardPage />;
   if (can("live")) return <Navigate to="/live" replace />;
+  if (can("tickets")) return <Navigate to="/tickets" replace />;
+  if (can("scan")) return <Navigate to="/scan" replace />;
   return <Empty title="Xush kelibsiz" />;
 }
 
@@ -40,6 +45,7 @@ export default function App() {
   if (!user) return <LoginPage />;
   return (
     <Routes>
+      <Route path="scan" element={<Guard perm="scan"><ScanPage /></Guard>} />
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="matches" element={<Guard perm="matches:read"><MatchesPage /></Guard>} />
@@ -60,6 +66,8 @@ export default function App() {
         <Route path="videos/*" element={<Guard perm="videos"><VideosPage /></Guard>} />
         <Route path="partners/*" element={<Guard perm="partners"><PartnersPage /></Guard>} />
         <Route path="instagram" element={<Guard perm="videos"><InstagramPage /></Guard>} />
+        <Route path="tickets/*" element={<Guard perm="tickets"><TicketsSection /></Guard>} />
+        <Route path="stadiums/*" element={<Guard perm="stadiums"><StadiumsSection /></Guard>} />
         <Route path="products/*" element={<Guard perm="merch"><ProductsPage /></Guard>} />
         <Route path="requests/*" element={<Guard perm="requests"><RequestsPage /></Guard>} />
         <Route path="ai/*" element={<Guard perm="users"><AiPage /></Guard>} />

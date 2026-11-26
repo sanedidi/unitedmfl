@@ -415,7 +415,7 @@ func (s *Server) deleteUser(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) listRoles(w http.ResponseWriter, r *http.Request) {
 	out := []map[string]any{}
-	for _, role := range []string{auth.RoleAdmin, auth.RoleEditor, auth.RoleOperator, auth.RoleShop} {
+	for _, role := range []string{auth.RoleAdmin, auth.RoleEditor, auth.RoleOperator, auth.RoleShop, auth.RoleController} {
 		out = append(out, map[string]any{"role": role, "permissions": auth.PermissionsFor(role)})
 	}
 	httpx.JSON(w, 200, out)

@@ -127,8 +127,9 @@ func (s *Server) Routes() http.Handler {
 		r.Get("/sitemap", s.publicSitemap)
 		r.With(s.contactLimiter.Middleware).Post("/contact", s.createContact)
 		r.Get("/live/{id}", s.liveStream)
-		s.mountRegistration(r) // team self-registration site
-		s.mountTeamCabinet(r)  // team cabinet on the same site (login + password)
+		s.mountRegistration(r)  // team self-registration site
+		s.mountTeamCabinet(r)   // team cabinet on the same site (login + password)
+		s.mountTicketsPublic(r) // match tickets: zones, checkout, order and ticket pages, payments
 
 		// ---------- auth ----------
 		r.With(s.loginLimiter.Middleware).Post("/auth/login", s.login)
@@ -224,7 +225,10 @@ func (s *Server) Routes() http.Handler {
 			})
 			s.mountCRUD(r, auth.PermMerch, "/products", productsRes)
 			s.mountCRUD(r, auth.PermMerch, "/product-variants", variantsRes)
-			s.mountWB(r) // Wildberries store
+			s.mountWB(r)           // Wildberries store
+			s.mountStadiums(r)     // stadium constructor (Stadionlar)
+			s.mountTicketsAdmin(r) // Chiptalar: sales, orders, refunds, security
+			s.mountScanner(r)      // gate scanner (nazoratchi)
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermRequests))
 				r.Get("/requests", s.crud(requestsRes).list)

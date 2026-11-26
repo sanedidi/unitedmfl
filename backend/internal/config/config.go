@@ -48,7 +48,17 @@ type Config struct {
 	EskizURL           string
 	SMSCodeText        string // %s is replaced by the code (Eskiz checks texts against approved templates)
 	WBAPIURL           string // Wildberries API: one base URL for every category (tests, a proxy); empty = WB's own domains
-	SecretsKey         []byte // encrypts tokens stored in the database (Telegram stickers); AI_MASTER_KEY, else JWT_SECRET
+	// match tickets: payments and the face check service
+	PaymeMerchantID     string // Payme merchant (kassa) id; empty = Payme off
+	PaymeKey            string // Payme merchant API key (Basic auth password of callbacks)
+	PaymeCheckoutURL    string
+	ClickServiceID      string // Click Shop API; empty = Click off
+	ClickMerchantID     string
+	ClickSecretKey      string
+	ClickMerchantUserID string
+	FaceServiceURL      string // face comparison service (in Uzbekistan); empty = controllers compare photos by eye
+	TestPayments        bool   // "test" provider (instant payment) — never in production
+	SecretsKey          []byte // encrypts tokens stored in the database (Telegram stickers); AI_MASTER_KEY, else JWT_SECRET
 }
 
 func env(key, def string) string {
@@ -91,24 +101,33 @@ func Load() (*Config, error) {
 		PointsDraw: envInt("POINTS_DRAW", 1),
 		PointsLoss: envInt("POINTS_LOSS", 0),
 		// Bench size is a proposal until confirmed by the league regulations.
-		LineupBenchMax:     envInt("LINEUP_BENCH_MAX", 9),
-		TelegramToken:      env("TELEGRAM_BOT_TOKEN", ""),
-		TelegramAPIURL:     strings.TrimRight(env("TELEGRAM_API_URL", "https://api.telegram.org"), "/"),
-		InstagramToken:     env("INSTAGRAM_ACCESS_TOKEN", ""),
-		InstagramAPIURL:    strings.TrimRight(env("INSTAGRAM_API_URL", "https://graph.instagram.com"), "/"),
-		FacebookGraphURL:   strings.TrimRight(env("FACEBOOK_GRAPH_URL", "https://graph.facebook.com"), "/"),
-		InstagramSyncEvery: time.Duration(max(envInt("INSTAGRAM_SYNC_MIN", 30), 5)) * time.Minute,
-		AIServiceURL:       strings.TrimRight(env("AI_SERVICE_URL", ""), "/"),
-		AIInternalToken:    env("AI_INTERNAL_TOKEN", ""),
-		WebInternalURL:     strings.TrimRight(env("WEB_INTERNAL_URL", "http://web:3000"), "/"),
-		SiteURL:            strings.TrimRight(env("SITE_URL", ""), "/"),
-		RegisterURL:        strings.TrimRight(env("REGISTER_PUBLIC_URL", ""), "/"),
-		EskizEmail:         env("ESKIZ_EMAIL", ""),
-		EskizPassword:      env("ESKIZ_PASSWORD", ""),
-		EskizFrom:          env("ESKIZ_FROM", "4546"),
-		EskizURL:           strings.TrimRight(env("ESKIZ_URL", "https://notify.eskiz.uz"), "/"),
-		WBAPIURL:           strings.TrimRight(env("WB_API_URL", ""), "/"),
-		SMSCodeText:        env("SMS_CODE_TEXT", "United MFL: jamoa arizasi uchun tasdiqlash kodi %s"),
+		LineupBenchMax:      envInt("LINEUP_BENCH_MAX", 9),
+		TelegramToken:       env("TELEGRAM_BOT_TOKEN", ""),
+		TelegramAPIURL:      strings.TrimRight(env("TELEGRAM_API_URL", "https://api.telegram.org"), "/"),
+		InstagramToken:      env("INSTAGRAM_ACCESS_TOKEN", ""),
+		InstagramAPIURL:     strings.TrimRight(env("INSTAGRAM_API_URL", "https://graph.instagram.com"), "/"),
+		FacebookGraphURL:    strings.TrimRight(env("FACEBOOK_GRAPH_URL", "https://graph.facebook.com"), "/"),
+		InstagramSyncEvery:  time.Duration(max(envInt("INSTAGRAM_SYNC_MIN", 30), 5)) * time.Minute,
+		AIServiceURL:        strings.TrimRight(env("AI_SERVICE_URL", ""), "/"),
+		AIInternalToken:     env("AI_INTERNAL_TOKEN", ""),
+		WebInternalURL:      strings.TrimRight(env("WEB_INTERNAL_URL", "http://web:3000"), "/"),
+		SiteURL:             strings.TrimRight(env("SITE_URL", ""), "/"),
+		RegisterURL:         strings.TrimRight(env("REGISTER_PUBLIC_URL", ""), "/"),
+		EskizEmail:          env("ESKIZ_EMAIL", ""),
+		EskizPassword:       env("ESKIZ_PASSWORD", ""),
+		EskizFrom:           env("ESKIZ_FROM", "4546"),
+		EskizURL:            strings.TrimRight(env("ESKIZ_URL", "https://notify.eskiz.uz"), "/"),
+		WBAPIURL:            strings.TrimRight(env("WB_API_URL", ""), "/"),
+		PaymeMerchantID:     env("PAYME_MERCHANT_ID", ""),
+		PaymeKey:            env("PAYME_KEY", ""),
+		PaymeCheckoutURL:    strings.TrimRight(env("PAYME_CHECKOUT_URL", "https://checkout.paycom.uz"), "/"),
+		ClickServiceID:      env("CLICK_SERVICE_ID", ""),
+		ClickMerchantID:     env("CLICK_MERCHANT_ID", ""),
+		ClickSecretKey:      env("CLICK_SECRET_KEY", ""),
+		ClickMerchantUserID: env("CLICK_MERCHANT_USER_ID", ""),
+		FaceServiceURL:      strings.TrimRight(env("FACE_SERVICE_URL", ""), "/"),
+		TestPayments:        env("TEST_PAYMENTS", "") == "1",
+		SMSCodeText:         env("SMS_CODE_TEXT", "United MFL: jamoa arizasi uchun tasdiqlash kodi %s"),
 	}
 	for _, o := range strings.Split(env("CORS_ORIGINS", "*"), ",") {
 		if o = strings.TrimSpace(o); o != "" {
@@ -120,6 +139,9 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("JWT_SECRET must be at least 32 characters in production")
 		}
 		c.JWTSecret = []byte("dev-only-secret-change-me-dev-only-secret")
+	}
+	if c.Env == "production" {
+		c.TestPayments = false
 	}
 	c.SecretsKey = []byte(env("AI_MASTER_KEY", ""))
 	if len(c.SecretsKey) < 16 {

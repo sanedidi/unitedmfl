@@ -51,7 +51,7 @@ function periodOf(e: MatchEvent) {
 
 type Tab = "media" | "overview" | "lineups" | "officials";
 
-export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail; ticketFallback?: string }) {
+export function MatchCentre({ initial, ticketFallback, ticketOwn }: { initial: MatchDetail; ticketFallback?: string; ticketOwn?: string }) {
   const [d, setD] = useState(initial);
   const photos = d.photos ?? [];
   const hasMedia = photos.length > 0 || d.videos.length > 0 || !!d.match.video_url;
@@ -187,7 +187,9 @@ export function MatchCentre({ initial, ticketFallback }: { initial: MatchDetail;
         </div>
 
         <div className="row" style={{ justifyContent: "center", marginTop: 24, flexWrap: "wrap" }}>
-          {m.status === "scheduled" && ticket && (
+          {m.status === "scheduled" && ticketOwn ? (
+            <Link className="btn btn-primary" href={ticketOwn}>Chipta sotib olish <Ticket /></Link>
+          ) : m.status === "scheduled" && ticket && (
             <a className="btn btn-primary" href={ticket} target="_blank" rel="noopener noreferrer">Chipta sotib olish <Ticket /></a>
           )}
           {m.video_url && (

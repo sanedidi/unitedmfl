@@ -30,6 +30,9 @@ const NAV: { group?: string; items: Item[] }[] = [
     { to: "/instagram", label: "Instagram", icon: <I.camera />, perm: "videos" },
   ] },
   { group: "Do‘kon va aloqa", items: [
+    { to: "/tickets", label: "Chiptalar", icon: <I.ticket />, perm: "tickets" },
+    { to: "/stadiums", label: "Stadionlar", icon: <I.stadium />, perm: "stadiums" },
+    { to: "/scan", label: "Kirish nazorati", icon: <I.qr />, perm: "scan" },
     { to: "/products", label: "Merch", icon: <I.bag />, perm: "merch" },
     { to: "/requests", label: "Murojaatlar", icon: <I.inbox />, perm: "requests", count: "requests" },
   ] },

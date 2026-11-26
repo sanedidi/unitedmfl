@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
-import { apiOrNull } from "@/lib/api";
+import { apiOrNull, safe } from "@/lib/api";
 import { fmtDate, fmtTime, isLive } from "@/lib/format";
 import { abs, breadcrumbLd, clip, idFromParam, matchPath, matchTitle, orgRef, pageMeta, teamPath } from "@/lib/seo";
 import type { MatchDetail } from "@/lib/types";
@@ -46,6 +46,9 @@ export default async function MatchPage({ params }: { params: P }) {
   const m = d.match;
   const canonical = matchPath(m);
   if (`/matchlar/${param}` !== canonical) permanentRedirect(canonical);
+  // our own ticket sale (constructor + Payme/Click) wins over an external ticket link
+  const sale = m.status === "scheduled" ? await safe(apiOrNull<{ status: string }>(`/matches/${m.id}/tickets`, { revalidate: 30 }), null) : null;
+  const ownTickets = sale && ["open", "soon", "sold_out"].includes(sale.status) ? `${canonical}/chipta` : undefined;
 
   const statusMap: Record<string, string> = { postponed: "EventPostponed", cancelled: "EventCancelled" };
   const teamLd = (t: NonNullable<typeof m.home>) => ({ "@type": "SportsTeam", name: t.name, url: abs(teamPath(t)), ...(t.crest_url ? { logo: abs(t.crest_url) } : {}) });
@@ -81,7 +84,7 @@ export default async function MatchPage({ params }: { params: P }) {
         {m.stage && <><Link href={`/matchlar?bosqich=${m.stage.id}`}>{m.stage.name}</Link><ChevronRight size={12} /></>}
         <b>{eventLd.name}</b>
       </nav>
-      <MatchCentre initial={d} ticketFallback={process.env.TICKETS_URL} />
+      <MatchCentre initial={d} ticketFallback={process.env.TICKETS_URL} ticketOwn={ownTickets} />
       <JsonLd data={eventLd} />
       <JsonLd data={breadcrumbLd(crumbs.filter((c) => !c.path.includes("?")))} />
     </div>
