@@ -65,6 +65,18 @@ services:
       ESKIZ_PASSWORD: ${ESKIZ_PASSWORD:-}
       ESKIZ_FROM: ${ESKIZ_FROM:-4546}
       SMS_CODE_TEXT: ${SMS_CODE_TEXT:-}
+      # match tickets: payment providers (empty = provider switched off)
+      PAYME_MERCHANT_ID: ${PAYME_MERCHANT_ID:-}
+      PAYME_KEY: ${PAYME_KEY:-}
+      PAYME_CHECKOUT_URL: ${PAYME_CHECKOUT_URL:-https://checkout.paycom.uz}
+      CLICK_SERVICE_ID: ${CLICK_SERVICE_ID:-}
+      CLICK_MERCHANT_ID: ${CLICK_MERCHANT_ID:-}
+      CLICK_SECRET_KEY: ${CLICK_SECRET_KEY:-}
+      CLICK_MERCHANT_USER_ID: ${CLICK_MERCHANT_USER_ID:-}
+      # optional face matching service (must run in Uzbekistan); empty = controller compares the photo
+      FACE_SERVICE_URL: ${FACE_SERVICE_URL:-}
+      # instant fake payments for testing; ignored when APP_ENV=production
+      TEST_PAYMENTS: ${TEST_PAYMENTS:-}
     volumes:
       - uploads:/data/uploads
 
