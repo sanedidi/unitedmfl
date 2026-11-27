@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Clock, Info, Lock, Minus, Plus, Shield } from "./ui";
-import { StadiumMap } from "./StadiumMap";
+import { StadiumMap, zoneTint } from "./StadiumMap";
 import { PROVIDERS, TicketApiError, fmtSum, tapi, type PublicSale, type ZoneOffer } from "@/lib/tickets";
 import { fmtDate, fmtTime } from "@/lib/format";
 
@@ -130,7 +130,7 @@ export function Checkout({ matchId, onStep }: { matchId: number; onStep?: (s: 1 
                 <div className="tk-head"><h2 className="h4">1. Zonani tanlang</h2><small className="muted">Sxemadagi sektorni yoki pastdagi kartochkani bosing</small></div>
                 <StadiumMap layout={sale.layout} offers={zones} selected={selected} onPick={(k) => { const z = zones.find((x) => x.zone_key === k); if (z && !qty[k]) set(z, 1); }} />
                 <div className="tk-legend">
-                  {zones.map((z) => <span key={z.zone_key}><i className={z.kind === "vip" ? "vip" : ""} />{z.title} · {fmtSum(z.price)}</span>)}
+                  {zones.map((z) => <span key={z.zone_key}><i style={{ background: zoneTint(z) }} />{z.title} · {fmtSum(z.price)}</span>)}
                   <span><i className="on" />Tanlangan</span><span><i className="off" />Sotilgan</span>
                 </div>
               </section>
@@ -142,7 +142,7 @@ export function Checkout({ matchId, onStep }: { matchId: number; onStep?: (s: 1 
                   const q = qty[z.zone_key] || 0, sold = z.left === 0;
                   return (
                     <div key={z.zone_key} className={`tk-type${z.kind === "vip" ? " vip" : ""}${q ? " on" : ""}${sold ? " sold" : ""}`} onClick={() => !q && !sold && set(z, 1)}>
-                      <div className="tk-type-top"><span className="overline">{z.kind === "vip" ? "VIP zona" : "Oddiy zona"}</span>{q > 0 && <span className="tk-pill"><Check size={12} /> Tanlandi</span>}{sold && <span className="tk-pill off">Sotildi</span>}</div>
+                      <div className="tk-type-top"><span className="overline">{z.kind === "vip" ? "VIP zona" : zoneTint(z) !== "#C3C8CF" ? "Narx toifasi" : "Oddiy zona"}</span>{q > 0 && <span className="tk-pill"><Check size={12} /> Tanlandi</span>}{sold && <span className="tk-pill off">Sotildi</span>}</div>
                       <h3 className="h3">{z.title}</h3>
                       <p className="tk-sub">{ZONE_SUB(z)}</p>
                       <div className="tk-price"><b>{new Intl.NumberFormat("ru-RU").format(z.price)}</b><span>so‘m / 1 kishi</span></div>

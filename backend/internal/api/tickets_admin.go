@@ -444,7 +444,7 @@ func (s *Server) putTicketSale(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var zk, seat string
 			_ = rows.Scan(&zk, &seat)
-			if (seat != "" && !nl.IsSellable(seat)) || len(nl.ZoneSections(zk)) == 0 {
+			if (seat != "" && (!nl.IsSellable(seat) || nl.SeatZone(seat) != zk)) || len(nl.ZoneSections(zk)) == 0 {
 				rows.Close()
 				httpx.Fail(w, r, httpx.NewError(409, "sold", "Yangi sxemada sotilgan chiptalarning zona yoki o‘rinlari yo‘q"))
 				return

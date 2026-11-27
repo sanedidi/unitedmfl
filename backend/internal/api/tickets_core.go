@@ -395,7 +395,7 @@ func (s *Server) pickSeats(ctx context.Context, q queryer, sale *ticketSale, l *
 		var out []tickets.Seat
 		for _, id := range it.Seats {
 			sec, row, n, _ := tickets.ParseSeatID(id)
-			if !l.IsSellable(id) || taken[id] || l.Section(sec) == nil || l.Section(sec).Zone != it.Zone {
+			if !l.IsSellable(id) || taken[id] || l.Section(sec) == nil || l.SeatZone(id) != it.Zone {
 				return nil, httpx.NewError(409, "seat_taken", id+" o‘rni band yoki mavjud emas")
 			}
 			taken[id] = true

@@ -1,6 +1,7 @@
 package tickets
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -53,6 +54,8 @@ func TestLayoutValidation(t *testing.T) {
 		`{"stands":[{"sections":[{"key":"A","zone":"x"}]}]}`,
 		`{"stands":[{"sections":[{"key":"A B"}]}]}`,
 		`{"stands":[{"sections":[{"key":"A","rows":[{"label":"1","seats":1000}]}]}]}`,
+		`{"pitch":{"w":20,"h":190},"stands":[]}`,
+		`{"pitch":{"w":300,"h":9000},"stands":[]}`,
 	}
 	for _, b := range bad {
 		if _, err := Parse([]byte(b)); err == nil {
@@ -95,5 +98,54 @@ func TestQR(t *testing.T) {
 	}
 	if q, ok := ParseCode(" umfl-1 "); !ok || q.Window != -1 || q.Number != "UMFL-1" {
 		t.Fatal("manual number")
+	}
+}
+
+func TestSeatZones(t *testing.T) {
+	doc := `{"zones":[{"key":"oddiy","name":"Oddiy"},{"key":"mk","name":"Markaziy"},{"key":"vip","name":"VIP","kind":"vip"}],
+	 "stands":[{"key":"s","sections":[
+	   {"key":"D1","zone":"oddiy","seat_mode":"free","rows":[
+	     {"label":"1","seats":10,"blocked":[5],"zone_seats":{"mk":[4,5,6,7,99],"oddiy":[1],"nope":[2]}},
+	     {"label":"2","seats":10,"removed":[5],"zone_seats":{"mk":[5,6],"vip":[6]}}]}]}]}`
+	l, err := Parse([]byte(doc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sec := l.Section("D1")
+	if sec.SeatMode != "numbered" {
+		t.Fatal("price categories must switch the section to numbered seats")
+	}
+	r1, r2 := sec.Rows[0], sec.Rows[1]
+	if fmt.Sprint(r1.ZoneSeats) != "map[mk:[4 5 6 7]]" {
+		t.Fatalf("row 1 zones cleaned wrong: %v", r1.ZoneSeats)
+	}
+	// removed seat 5 dropped, seat 6 claimed by mk first (sorted keys), vip gets nothing
+	if fmt.Sprint(r2.ZoneSeats) != "map[mk:[6]]" {
+		t.Fatalf("row 2 zones cleaned wrong: %v", r2.ZoneSeats)
+	}
+	st := l.Stats()
+	// row1: 10 seats, 1 blocked (5, in mk) → mk 3, oddiy 6; row2: 9 seats → mk 1, oddiy 8
+	if st.ByZone["mk"] != 4 || st.ByZone["oddiy"] != 14 {
+		t.Fatalf("by zone: %v", st.ByZone)
+	}
+	mk := l.SellableSeats("mk")
+	if len(mk) != 4 || mk[0].ID != "D1:1:6" {
+		t.Fatalf("mk seats: %v", mk)
+	}
+	for _, s := range l.SellableSeats("oddiy") {
+		if l.SeatZone(s.ID) != "oddiy" {
+			t.Fatal("oddiy list has a category seat", s.ID)
+		}
+	}
+	if l.SeatZone("D1:1:4") != "mk" || l.SeatZone("D1:1:1") != "oddiy" || l.SeatZone("D1:2:5") != "" {
+		t.Fatal("SeatZone")
+	}
+	if got := l.ZoneSections("mk"); len(got) != 1 || l.ZoneMode("mk") != "numbered" || len(l.ZoneSections("vip")) != 0 {
+		t.Fatal("zone sections", got)
+	}
+	old, _ := Parse([]byte(doc))
+	old.Section("D1").Rows[0].ZoneSeats = nil
+	if d := Diff(old, l); len(d) != 1 || !strings.Contains(d[0].Note, "narx toifalari") {
+		t.Fatalf("diff: %+v", d)
 	}
 }

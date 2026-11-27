@@ -261,3 +261,26 @@ h3 { margin: 0; }
 .seg button.on:hover { color: #fff; }
 .field .num { width: 100%; }
 .form-grid.three .num button { width: 28px; }
+
+/* seat price categories (S10) */
+.seat-zones { display: flex; flex-direction: column; gap: 6px; }
+.seat-zone { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--n-50); font-size: 13px; }
+.seat-zone > i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.seat-zone > i.hollow, .seat-zone-menu i.hollow { background: #fff; border: 1.5px solid; }
+.seat-zone span.grow { display: flex; flex-direction: column; min-width: 0; }
+.seat-zone small { font-size: 11px; color: var(--text-muted); }
+.seat-zone-n { display: flex; flex-direction: column; align-items: flex-end; }
+.seat-zone .link { border: 0; background: none; padding: 0; font: 500 11px var(--font); color: #B4581A; cursor: pointer; }
+.seat-zone-pick { position: relative; }
+.seat-ed-actions .seat-zone-pick > button.on { background: rgba(255,255,255,.22); }
+.seat-zone-menu { position: absolute; bottom: calc(100% + 10px); left: 0; width: 270px; display: flex; flex-direction: column; gap: 2px; padding: 6px; background: #fff; color: var(--text); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow-lg); white-space: normal; }
+.seat-zone-menu > small { padding: 4px 10px 6px; font-size: 11px; color: var(--text-muted); }
+.seat-ed-actions .seat-zone-menu button { height: auto; padding: 8px 10px; border-radius: 6px; background: none; color: var(--text); display: flex; align-items: center; gap: 10px; text-align: left; font-weight: 500; }
+.seat-ed-actions .seat-zone-menu button:hover { background: var(--n-50); }
+.seat-ed-actions .seat-zone-menu button.on { background: #F1FADF; }
+.seat-zone-menu button i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.seat-zone-menu button span { display: flex; flex-direction: column; flex: 1; }
+.seat-zone-menu button small { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+.seat-zone-menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+.seat-zone-new { display: flex; gap: 6px; padding: 4px; }
+.seat-ed-actions .seat-zone-new .btn { background: var(--lime-500); color: var(--n-950); height: 30px; }

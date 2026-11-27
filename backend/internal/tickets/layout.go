@@ -75,6 +75,19 @@ type Row struct {
 	Seats   int    `json:"seats"`
 	Removed []int  `json:"removed"` // no seat at this number (empty cell)
 	Blocked []int  `json:"blocked"` // seat exists but is not sold (camera, service)
+	// ZoneSeats gives single seats another zone than their section (price category,
+	// e.g. the centre of a row): zone key → seat numbers. Only in numbered sections.
+	ZoneSeats map[string][]int `json:"zone_seats,omitempty"`
+}
+
+// ZoneOf is the zone of seat n in this row of section sec.
+func (r *Row) ZoneOf(sec *Section, n int) string {
+	for z, nums := range r.ZoneSeats {
+		if contains(nums, n) {
+			return z
+		}
+	}
+	return sec.Zone
 }
 
 // Limits keep a broken document from eating the database.
@@ -102,7 +115,19 @@ func Parse(raw []byte) (*Layout, error) {
 }
 
 // Normalize fills defaults, sorts number lists and validates the document.
+// Pitch size limits, canvas units (one seat step is 10).
+const (
+	MinPitch = 60
+	MaxPitch = 4000
+)
+
 func (l *Layout) Normalize() error {
+	if l.Pitch.W == 0 && l.Pitch.H == 0 {
+		l.Pitch = Rect{W: 300, H: 190} // layouts saved before the pitch was editable
+	}
+	if l.Pitch.W < MinPitch || l.Pitch.H < MinPitch || l.Pitch.W > MaxPitch || l.Pitch.H > MaxPitch {
+		return fmt.Errorf("maydon o‘lchami %d–%d oralig‘ida bo‘lishi kerak", MinPitch, MaxPitch)
+	}
 	zones := map[string]bool{}
 	for i := range l.Zones {
 		z := &l.Zones[i]
@@ -178,6 +203,37 @@ func (l *Layout) Normalize() error {
 				row.Blocked = cleanNums(row.Blocked, row.Seats)
 				row.Blocked = minus(row.Blocked, row.Removed)
 				total += row.Seats - len(row.Removed)
+				if len(row.ZoneSeats) > 0 {
+					keys := make([]string, 0, len(row.ZoneSeats))
+					for z := range row.ZoneSeats {
+						keys = append(keys, z)
+					}
+					sort.Strings(keys)
+					taken := map[int]bool{}
+					clean := map[string][]int{}
+					for _, z := range keys {
+						if !zones[z] || z == sec.Zone {
+							continue // unknown zone (template, copy without zones) or same as the section
+						}
+						var nums []int
+						for _, n := range minus(cleanNums(row.ZoneSeats[z], row.Seats), row.Removed) {
+							if !taken[n] {
+								taken[n] = true
+								nums = append(nums, n)
+							}
+						}
+						if len(nums) > 0 {
+							clean[z] = nums
+						}
+					}
+					row.ZoneSeats = clean
+					if len(clean) == 0 {
+						row.ZoneSeats = nil
+					} else {
+						// a price category needs fixed seats
+						sec.SeatMode = "numbered"
+					}
+				}
 			}
 			sec.AisleAfter = cleanNums(sec.AisleAfter, maxSeats(sec))
 		}
@@ -255,7 +311,13 @@ func (l *Layout) Stats() Stats {
 				st.Removed += len(r.Removed)
 				st.Blocked += len(r.Blocked)
 				st.Sellable += n - len(r.Blocked)
-				st.ByZone[sec.Zone] += n - len(r.Blocked)
+				own := n - len(r.Blocked)
+				for z, nums := range r.ZoneSeats {
+					c := len(minus(nums, r.Blocked))
+					st.ByZone[z] += c
+					own -= c
+				}
+				st.ByZone[sec.Zone] += own
 			}
 		}
 	}
@@ -303,14 +365,14 @@ func (l *Layout) SellableSeats(zone string) []Seat {
 	var out []Seat
 	for _, s := range l.Stands {
 		for _, sec := range s.Sections {
-			if sec.Zone != zone || sec.SeatMode != "numbered" {
+			if sec.SeatMode != "numbered" || !sec.HasZone(zone) {
 				continue
 			}
 			for _, r := range sec.Rows {
 				mid := float64(r.Seats+1) / 2
 				nums := []int{}
 				for n := 1; n <= r.Seats; n++ {
-					if !contains(r.Removed, n) && !contains(r.Blocked, n) {
+					if !contains(r.Removed, n) && !contains(r.Blocked, n) && r.ZoneOf(&sec, n) == zone {
 						nums = append(nums, n)
 					}
 				}
@@ -348,6 +410,44 @@ func (l *Layout) IsSellable(id string) bool {
 	return false
 }
 
+// SeatZone is the zone a seat id is sold in ("" if the seat does not exist).
+func (l *Layout) SeatZone(id string) string {
+	sk, rl, n, ok := ParseSeatID(id)
+	if !ok {
+		return ""
+	}
+	sec := l.Section(sk)
+	if sec == nil {
+		return ""
+	}
+	for i := range sec.Rows {
+		if r := &sec.Rows[i]; r.Label == rl && n <= r.Seats && !contains(r.Removed, n) {
+			return r.ZoneOf(sec, n)
+		}
+	}
+	return ""
+}
+
+// HasZone reports whether any seat of the section belongs to the zone.
+func (sec *Section) HasZone(zone string) bool {
+	if zone == "" {
+		return false
+	}
+	for _, r := range sec.Rows {
+		over := 0
+		for z, nums := range r.ZoneSeats {
+			if z == zone && len(nums) > 0 {
+				return true
+			}
+			over += len(nums)
+		}
+		if sec.Zone == zone && r.Seats-len(r.Removed)-over > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // FreeCapacity is the sellable capacity of free-seating sections in a zone.
 func (l *Layout) FreeCapacity(zone string) int {
 	c := 0
@@ -368,7 +468,7 @@ func (l *Layout) ZoneSections(zone string) []string {
 	var out []string
 	for _, s := range l.Stands {
 		for _, sec := range s.Sections {
-			if sec.Zone == zone {
+			if sec.HasZone(zone) {
 				out = append(out, sec.Key)
 			}
 		}
@@ -380,7 +480,7 @@ func (l *Layout) ZoneSections(zone string) []string {
 func (l *Layout) ZoneMode(zone string) string {
 	for _, s := range l.Stands {
 		for _, sec := range s.Sections {
-			if sec.Zone == zone && sec.SeatMode == "numbered" {
+			if sec.SeatMode == "numbered" && sec.HasZone(zone) {
 				return "numbered"
 			}
 		}
@@ -392,7 +492,7 @@ func (l *Layout) ZoneMode(zone string) string {
 func (l *Layout) FirstGate(zone string) string {
 	for _, s := range l.Stands {
 		for _, sec := range s.Sections {
-			if sec.Zone == zone && sec.Gate != "" {
+			if sec.Gate != "" && sec.HasZone(zone) {
 				return sec.Gate
 			}
 		}
@@ -421,16 +521,22 @@ func Diff(old, cur *Layout) []SectionDiff {
 		zone  string
 		gate  string
 		mode  string
+		cats  string // seat price categories
 	}
 	collect := func(l *Layout) map[string]info {
 		m := map[string]info{}
 		for _, s := range l.Stands {
 			for _, sec := range s.Sections {
 				n := 0
+				cats := []string{}
 				for _, r := range sec.Rows {
 					n += r.Seats - len(r.Removed)
+					for z, nums := range r.ZoneSeats {
+						cats = append(cats, fmt.Sprint(r.Label, z, nums))
+					}
 				}
-				m[sec.Key] = info{n, sec.Zone, sec.Gate, sec.SeatMode}
+				sort.Strings(cats)
+				m[sec.Key] = info{n, sec.Zone, sec.Gate, sec.SeatMode, strings.Join(cats, ";")}
 			}
 		}
 		return m
@@ -446,6 +552,9 @@ func Diff(old, cur *Layout) []SectionDiff {
 		var notes []string
 		if o.zone != v.zone {
 			notes = append(notes, "zona")
+		}
+		if o.cats != v.cats {
+			notes = append(notes, "narx toifalari")
 		}
 		if o.gate != v.gate {
 			notes = append(notes, "kirish")

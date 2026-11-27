@@ -1,7 +1,8 @@
 // Stadium layout model (constructor) and ticket types shared by the admin pages.
 
 export type Zone = { key: string; name: string; kind: "oddiy" | "vip"; color: string };
-export type Row = { label: string; seats: number; removed: number[]; blocked: number[] };
+/** zone_seats: seats of the row sold in another zone than the section (price category, e.g. the centre). */
+export type Row = { label: string; seats: number; removed: number[]; blocked: number[]; zone_seats?: Record<string, number[]> };
 export type Section = {
   key: string; name: string; zone: string; gate: string;
   seat_mode: "free" | "numbered"; numbering: "ltr" | "rtl"; aisle_after: number[];
@@ -20,7 +21,7 @@ export type LayoutView = { id: number; venue_id: number; venue_name: string; ver
 export type Template = { id: number; name: string; description: string; kind: "stand" | "section"; doc: Stand | Section; zones: Zone[]; seats: number; version: number; visibility: "private" | "all"; owner: string; mine: boolean; updated_at: string; linked_in: number };
 export type LibraryStand = { venue_id: number; venue_name: string; layout_id: number; version: number; status: string; stand: Stand; zones: Zone[]; seats: number; name: string };
 
-export const ZONE_COLORS = ["#9AA1AB", "#7AC70C", "#1F5FD6", "#E0A100", "#D93A4A", "#8B5CF6", "#0E9F8E", "#111418"];
+export const ZONE_COLORS = ["#9AA1AB", "#7AC70C", "#E8833A", "#1F5FD6", "#E0A100", "#D93A4A", "#8B5CF6", "#0E9F8E", "#111418"];
 
 /* ---------- geometry ---------- */
 export const P = 10; // seat pitch in canvas units
@@ -49,13 +50,83 @@ export function stats(l: Layout): Stats {
     for (const r of sec.rows) {
       const n = r.seats - r.removed.length;
       st.seats += n; st.removed += r.removed.length; st.blocked += r.blocked.length; st.sellable += n - r.blocked.length;
-      st.by_zone[sec.zone] = (st.by_zone[sec.zone] || 0) + n - r.blocked.length;
+      let own = n - r.blocked.length;
+      for (const [z, nums] of Object.entries(r.zone_seats || {})) {
+        const c = nums.filter((x) => !r.blocked.includes(x) && !r.removed.includes(x) && x <= r.seats).length;
+        st.by_zone[z] = (st.by_zone[z] || 0) + c; own -= c;
+      }
+      st.by_zone[sec.zone] = (st.by_zone[sec.zone] || 0) + own;
     }
   }
   return st;
 }
 
 export const seatId = (sec: string, row: string, n: number) => `${sec}:${row}:${n}`;
+
+/* ---------- seat price categories ---------- */
+/** Zone of seat n in row r of section sec. */
+export function seatZone(sec: Section, r: Row, n: number) {
+  for (const [z, nums] of Object.entries(r.zone_seats || {})) if (nums.includes(n)) return z;
+  return sec.zone;
+}
+/** Drops numbers that no longer exist, lists equal to the section zone and empty lists; same rules as the server. */
+export function cleanRowZones(sec: Section) {
+  let any = false;
+  for (const r of sec.rows) {
+    if (!r.zone_seats) continue;
+    const out: Record<string, number[]> = {}, taken = new Set<number>();
+    for (const z of Object.keys(r.zone_seats).sort()) {
+      if (z === sec.zone) continue;
+      const nums = [...new Set(r.zone_seats[z])].filter((n) => n >= 1 && n <= r.seats && !r.removed.includes(n) && !taken.has(n)).sort((a, b) => a - b);
+      nums.forEach((n) => taken.add(n));
+      if (nums.length) out[z] = nums;
+    }
+    if (Object.keys(out).length) { r.zone_seats = out; any = true; } else delete r.zone_seats;
+  }
+  if (any) sec.seat_mode = "numbered"; // a price category needs fixed seats
+  return any;
+}
+/** Puts the picked seats into a zone; the section's own zone clears the category. */
+export function setSeatZone(sec: Section, picks: [string, number[]][], zone: string) {
+  for (const [label, nums] of picks) {
+    const r = sec.rows.find((x) => x.label === label);
+    if (!r) continue;
+    const zs = { ...(r.zone_seats || {}) };
+    for (const z of Object.keys(zs)) zs[z] = zs[z].filter((n) => !nums.includes(n));
+    if (zone && zone !== sec.zone) zs[zone] = [...(zs[zone] || []), ...nums];
+    r.zone_seats = zs;
+  }
+  cleanRowZones(sec);
+}
+/** Existing seats per zone in a section (blocked seats included). */
+export function sectionZoneCounts(sec: Section) {
+  const out: Record<string, number> = {};
+  for (const r of sec.rows) for (let n = 1; n <= r.seats; n++) {
+    if (r.removed.includes(n)) continue;
+    const z = seatZone(sec, r, n);
+    out[z] = (out[z] || 0) + 1;
+  }
+  return out;
+}
+export const hasCategories = (sec: Section) => sec.rows.some((r) => r.zone_seats && Object.keys(r.zone_seats).length > 0);
+/** Removes a zone from every seat category of the layout (zone deleted or a template without it). */
+export function dropZoneSeats(l: Layout, keep: (zone: string) => boolean) {
+  for (const st of l.stands) for (const sec of st.sections) {
+    for (const r of sec.rows) if (r.zone_seats) for (const z of Object.keys(r.zone_seats)) if (!keep(z)) delete r.zone_seats[z];
+    cleanRowZones(sec);
+  }
+}
+
+/** Adds a zone (ticket kind) to the layout; returns its key. */
+export function addZone(l: Layout, name: string): string {
+  const base = name.toLowerCase().replace(/[‘’ʻʼ']/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 20) || "zona";
+  let key = base, n = 2;
+  while (l.zones.some((z) => z.key === key)) key = `${base}-${n++}`;
+  const used = new Set(l.zones.map((z) => z.color));
+  const color = ZONE_COLORS.find((c) => !used.has(c)) || ZONE_COLORS[l.zones.length % ZONE_COLORS.length];
+  l.zones.push({ key, name, kind: "oddiy", color });
+  return key;
+}
 
 /* ---------- builders ---------- */
 export function newRow(label: string, seats: number): Row { return { label, seats, removed: [], blocked: [] }; }
@@ -136,6 +207,39 @@ export function standBox(st: Stand) {
   }
   if (!isFinite(x0)) return { x: 0, y: 0, w: 0, h: 0 };
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+/* ---------- pitch ---------- */
+export type Rect = { x: number; y: number; w: number; h: number };
+export const PITCH_MIN = 60, PITCH_MAX = 4000;
+
+/** Centre of a stand in canvas coordinates. */
+export function standCenter(st: Stand) {
+  const b = standBox(st), r = (st.rotation * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+  const lx = b.x + b.w / 2, ly = b.y + b.h / 2;
+  return { x: st.x + lx * c - ly * s, y: st.y + lx * s + ly * c };
+}
+
+/**
+ * Resizes the pitch. With `push` the stands travel with the edges they face, so the
+ * gap between the pitch and the tribunes stays the same: a stand beside the east edge
+ * moves with that edge, a stand along the north side moves with the north edge and
+ * keeps centred horizontally, a corner stand follows both edges.
+ */
+export function resizePitch(l: Layout, next: Rect, push: boolean): Layout {
+  const p = l.pitch;
+  const n = { x: Math.round(next.x), y: Math.round(next.y), w: Math.round(Math.min(PITCH_MAX, Math.max(PITCH_MIN, next.w))), h: Math.round(Math.min(PITCH_MAX, Math.max(PITCH_MIN, next.h))) };
+  if (push) {
+    const dl = n.x - p.x, dr = n.x + n.w - (p.x + p.w), dt = n.y - p.y, db = n.y + n.h - (p.y + p.h);
+    for (const st of l.stands) {
+      if (!st.sections.length) continue;
+      const c = standCenter(st);
+      st.x += Math.round(c.x < p.x ? dl : c.x > p.x + p.w ? dr : (dl + dr) / 2);
+      st.y += Math.round(c.y < p.y ? dt : c.y > p.y + p.h ? db : (dt + db) / 2);
+    }
+  }
+  l.pitch = n;
+  return l;
 }
 
 /** Bounding box of the whole layout in canvas units (for «Sig‘dirish»). */

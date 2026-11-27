@@ -2,7 +2,7 @@
 // and a tiny browser-side client for the public ticket API.
 
 export type Zone = { key: string; name: string; kind: "oddiy" | "vip"; color: string };
-export type Row = { label: string; seats: number; removed: number[] | null; blocked: number[] | null };
+export type Row = { label: string; seats: number; removed: number[] | null; blocked: number[] | null; zone_seats?: Record<string, number[]> };
 export type Section = { key: string; name: string; zone: string; gate: string; seat_mode: "free" | "numbered"; numbering: "ltr" | "rtl"; aisle_after: number[] | null; x: number; y: number; rotation: number; rows: Row[] };
 export type Stand = { key: string; name: string; x: number; y: number; rotation: number; sections: Section[] };
 export type Layout = { pitch: { x: number; y: number; w: number; h: number }; zones: Zone[]; stands: Stand[] };
@@ -69,18 +69,21 @@ export function sectionSize(s: Section) {
   const n = maxSeats(s), a = (s.aisle_after || []).filter((x) => x < n).length;
   return { w: Math.max(1, n) * P + a * AISLE - (P - SEAT), h: Math.max(1, s.rows.length) * P - (P - SEAT) };
 }
-export function seatPath(s: Section) {
-  let d = "";
+/** Seat squares of a section grouped by zone: price categories (zone_seats) get their own path. */
+export function seatPaths(s: Section): Record<string, string> {
+  const out: Record<string, string> = {};
   const n = maxSeats(s);
   s.rows.forEach((r, ri) => {
     for (let i = 1; i <= r.seats; i++) {
       if (r.removed?.includes(i)) continue;
       const pos = s.numbering === "rtl" ? n + 1 - i : i;
       const x = (pos - 1) * P + (s.aisle_after || []).filter((a) => a < pos).length * AISLE;
-      d += `M${x} ${ri * P}h${SEAT}v${SEAT}h-${SEAT}z`;
+      let z = s.zone;
+      for (const [k, nums] of Object.entries(r.zone_seats || {})) if (nums.includes(i)) z = k;
+      out[z] = (out[z] || "") + `M${x} ${ri * P}h${SEAT}v${SEAT}h-${SEAT}z`;
     }
   });
-  return d;
+  return out;
 }
 type M = [number, number, number, number, number, number];
 const mul = (m: M, n: M): M => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];

@@ -335,6 +335,9 @@ func copyOptions(l *tickets.Layout, zones, blocked, gates, links bool) {
 			sec := &st.Sections[j]
 			if !zones {
 				sec.Zone = ""
+				for k := range sec.Rows {
+					sec.Rows[k].ZoneSeats = nil
+				}
 			}
 			if !gates {
 				sec.Gate = ""
@@ -462,30 +465,32 @@ func (s *Server) layoutByID(r *http.Request, id int64) (*layoutView, error) {
 		v.Stats = l.Stats()
 		v.Warnings = layoutWarnings(l)
 	}
-	v.SoldSeats, v.SoldSections, err = s.soldOnVenue(r, v.VenueID)
+	v.SoldSeats, v.SoldSections, _, err = s.soldOnVenue(r, v.VenueID)
 	return &v, err
 }
 
 // soldOnVenue lists what live tickets occupy on any version of the venue:
 // the constructor keeps these seats and sections.
-func (s *Server) soldOnVenue(r *http.Request, venueID int64) ([]string, []string, error) {
-	rows, err := s.DB.QueryContext(r.Context(), `SELECT DISTINCT COALESCE(t.seat_id,''), t.section_key FROM tickets t
+func (s *Server) soldOnVenue(r *http.Request, venueID int64) ([]string, []string, map[string]string, error) {
+	rows, err := s.DB.QueryContext(r.Context(), `SELECT DISTINCT COALESCE(t.seat_id,''), t.section_key, t.zone_key FROM tickets t
 		JOIN ticket_sales ts ON ts.id = t.sale_id JOIN venue_layouts l ON l.id = ts.layout_id
 		JOIN matches m ON m.id = ts.match_id
 		WHERE l.venue_id=$1 AND t.status IN ('pending','active') AND (m.kickoff_at IS NULL OR m.kickoff_at > now() - interval '1 day')`, venueID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer rows.Close()
 	seats, secs := []string{}, []string{}
+	zoneOf := map[string]string{}
 	seenSec := map[string]bool{}
 	for rows.Next() {
-		var seat, sec string
-		if err := rows.Scan(&seat, &sec); err != nil {
-			return nil, nil, err
+		var seat, sec, zone string
+		if err := rows.Scan(&seat, &sec, &zone); err != nil {
+			return nil, nil, nil, err
 		}
 		if seat != "" {
 			seats = append(seats, seat)
+			zoneOf[seat] = zone
 		}
 		// free-seating tickets list every section of their zone ("A1, A2, …")
 		for _, k := range strings.Split(sec, ",") {
@@ -495,7 +500,7 @@ func (s *Server) soldOnVenue(r *http.Request, venueID int64) ([]string, []string
 			}
 		}
 	}
-	return seats, secs, rows.Err()
+	return seats, secs, zoneOf, rows.Err()
 }
 
 func layoutWarnings(l *tickets.Layout) []string {
@@ -585,7 +590,7 @@ func (s *Server) saveDraft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// sold seats and sections must survive the edit
-	sold, soldSecs, err := s.soldOnVenue(r, venueID)
+	sold, soldSecs, soldZone, err := s.soldOnVenue(r, venueID)
 	if err != nil {
 		httpx.Fail(w, r, err)
 		return
@@ -599,6 +604,10 @@ func (s *Server) saveDraft(w http.ResponseWriter, r *http.Request) {
 	for _, seat := range sold {
 		if !l.IsSellable(seat) {
 			httpx.Fail(w, r, httpx.NewError(409, "sold", seat+" o‘rni sotilgan — uni o‘chirib yoki bloklab bo‘lmaydi"))
+			return
+		}
+		if z := soldZone[seat]; z != "" && l.SeatZone(seat) != z {
+			httpx.Fail(w, r, httpx.NewError(409, "sold", seat+" o‘rni sotilgan — uning zonasini o‘zgartirib bo‘lmaydi"))
 			return
 		}
 	}

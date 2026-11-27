@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "./Icons";
-import { newRow, seatCount, seatId, type Section, type Zone } from "@/lib/tickets";
+import { cleanRowZones, newRow, seatCount, seatId, seatZone, sectionZoneCounts, setSeatZone, type Section, type Zone } from "@/lib/tickets";
 
 /** S3: seat-level editing of one section — select, remove, block, split, rows. */
-export function SeatEditor({ section: s, zones, sold, path, onBack, onChange, onSplit }: {
+export function SeatEditor({ section: s, zones, sold, path, onBack, onChange, onSplit, onAddZone }: {
   section: Section; zones: Zone[]; sold: Set<string>; path: string[]; onBack: () => void;
   onChange: (fn: (s: Section) => void) => void; onSplit: (rows: [string, number[]][]) => void;
+  onAddZone: (name: string) => string; // creates a zone in the layout, returns its key
 }) {
   const [sel, setSel] = useState<Set<string>>(new Set());
+  const [zoneMenu, setZoneMenu] = useState(false);
+  const [newZone, setNewZone] = useState<string | null>(null);
+  useEffect(() => { if (!sel.size) { setZoneMenu(false); setNewZone(null); } }, [sel.size]);
+  const colorOf = (k: string) => zones.find((z) => z.key === k)?.color || "#9AA1AB";
+  const counts = sectionZoneCounts(s);
+  const usedZones = Object.keys(counts).filter((k) => k !== s.zone);
   const dragging = useRef<null | { add: boolean }>(null);
   useEffect(() => { setSel(new Set()); }, [s.key]);
   useEffect(() => { const up = () => (dragging.current = null); window.addEventListener("pointerup", up); return () => window.removeEventListener("pointerup", up); }, []);
@@ -31,11 +38,16 @@ export function SeatEditor({ section: s, zones, sold, path, onBack, onChange, on
         if (kind === "block") r.blocked = [...new Set([...r.blocked, ...nums.filter((n) => !r.removed.includes(n))])].sort((a, b) => a - b);
         if (kind === "unblock") r.blocked = r.blocked.filter((n) => !nums.includes(n));
       }
+      cleanRowZones(x);
     });
     setSel(new Set());
   };
   const restore = (row: string, n: number) => onChange((x) => { const r = x.rows.find((q) => q.label === row)!; r.removed = r.removed.filter((q) => q !== n); });
-  const setRowSeats = (label: string, n: number) => onChange((x) => { const r = x.rows.find((q) => q.label === label)!; r.seats = Math.max(0, Math.min(400, n)); r.removed = r.removed.filter((q) => q <= r.seats); r.blocked = r.blocked.filter((q) => q <= r.seats); });
+  const setRowSeats = (label: string, n: number) => onChange((x) => { const r = x.rows.find((q) => q.label === label)!; r.seats = Math.max(0, Math.min(400, n)); r.removed = r.removed.filter((q) => q <= r.seats); r.blocked = r.blocked.filter((q) => q <= r.seats); cleanRowZones(x); });
+  const selZones = () => new Set(byRow.flatMap(([label, nums]) => { const r = s.rows.find((x) => x.label === label)!; return nums.map((n) => seatZone(s, r, n)); }));
+  const selZone = () => { const z = selZones(); return z.size === 1 ? [...z][0] : ""; };
+  const selZoneName = () => { const z = selZone(); return z ? zones.find((q) => q.key === z)?.name || z : "aralash"; };
+  const applyZone = (k: string) => { onChange((x) => setSeatZone(x, byRow, k)); setZoneMenu(false); setNewZone(null); setSel(new Set()); };
   const rowSold = (label: string) => [...sold].some((id) => id.startsWith(`${s.key}:${label}:`));
 
   return (
@@ -61,8 +73,8 @@ export function SeatEditor({ section: s, zones, sold, path, onBack, onChange, on
                 if (removed) return <button key={pos} className={`seat removed${aisle ? " aisle" : ""}`} title="O‘rinni qaytarish" onClick={() => restore(r.label, n)}>+</button>;
                 return (
                   <button key={pos} className={`seat${sel.has(k) ? " sel" : ""}${blocked ? " blocked" : ""}${isSold ? " sold" : ""}${aisle ? " aisle" : ""}`}
-                    style={!sel.has(k) && !blocked && !isSold ? { background: zone?.color || "#9AA1AB" } : undefined}
-                    title={isSold ? "Sotilgan" : blocked ? "Bloklangan" : `${r.label}-qator, ${n}-o‘rin`}
+                    style={!sel.has(k) && !blocked && !isSold ? { background: colorOf(seatZone(s, r, n)) } : undefined}
+                    title={isSold ? "Sotilgan" : blocked ? "Bloklangan" : `${r.label}-qator, ${n}-o‘rin · ${zones.find((z) => z.key === seatZone(s, r, n))?.name || "zonasiz"}`}
                     onPointerDown={(e) => { e.preventDefault(); const add = !sel.has(k); dragging.current = { add }; toggle(k, add); }}
                     onPointerEnter={() => dragging.current && toggle(k, dragging.current.add)}>{n}</button>
                 );
@@ -72,11 +84,21 @@ export function SeatEditor({ section: s, zones, sold, path, onBack, onChange, on
           ))}
           <button className="seat-ed-addrow" onClick={() => onChange((x) => { x.rows.push(newRow(String(x.rows.length + 1), x.rows[x.rows.length - 1]?.seats ?? 10)); })}><I.plus size={14} /> Qator qo‘shish ({s.rows.length + 1}-qator)</button>
           <div className="seat-ed-legend">
-            <span><i className="seat-mini" style={{ background: zone?.color || "#9AA1AB" }} /> Bo‘sh</span><span><i className="seat-mini sel" /> Tanlangan</span><span><i className="seat-mini blocked" /> Bloklangan</span>
+            <span><i className="seat-mini" style={{ background: zone?.color || "#9AA1AB" }} /> {zone?.name || "Bo‘sh"}</span>
+            {usedZones.map((k) => <span key={k}><i className="seat-mini" style={{ background: colorOf(k) }} /> {zones.find((z) => z.key === k)?.name || k}</span>)}<span><i className="seat-mini sel" /> Tanlangan</span><span><i className="seat-mini blocked" /> Bloklangan</span>
             <span><i className="seat-mini sold" /> Sotilgan</span><span><i className="seat-mini removed" /> O‘chirilgan — bosib qaytarish</span>
           </div>
         </div></div>
         <div className="seat-ed-rows">
+          <div className="row"><b className="grow">Sektordagi zonalar</b><small className="muted">narx toifalari</small></div>
+          <div className="seat-zones">
+            <div className="seat-zone"><i className="hollow" style={{ borderColor: colorOf(s.zone) }} /><span className="grow"><b>{zone?.name || "Zonasiz"}</b><small>Sektor zonasi · qolgan o‘rinlar</small></span><b>{counts[s.zone] || 0}</b></div>
+            {usedZones.map((k) => (
+              <div key={k} className="seat-zone"><i style={{ background: colorOf(k) }} /><span className="grow"><b>{zones.find((z) => z.key === k)?.name || k}</b><small>{rowsOf(s, k)}</small></span>
+                <span className="seat-zone-n"><b>{counts[k]}</b><button className="link" onClick={() => onChange((x) => { x.rows.forEach((r) => { if (r.zone_seats) delete r.zone_seats[k]; }); cleanRowZones(x); })}>Olib tashlash</button></span></div>
+            ))}
+            {!usedZones.length && <small className="muted">Markaziy o‘rinlar qimmatroq bo‘lsin desangiz — ularni belgilang va pastdagi «Zona» tugmasini bosing.{s.seat_mode === "free" ? " Sektor raqamlangan o‘rindiqqa o‘tadi." : ""}</small>}
+          </div>
           <div className="row"><b className="grow">Qatorlar</b><small className="muted">o‘rinlar soni</small></div>
           {s.rows.map((r, i) => (
             <div key={r.label} className="row seat-ed-row">
@@ -101,7 +123,33 @@ export function SeatEditor({ section: s, zones, sold, path, onBack, onChange, on
       {sel.size > 0 && (
         <div className="seat-ed-actions">
           <b>{sel.size} o‘rin tanlandi</b>
-          <button className="lime" disabled={soldSel} onClick={() => { onSplit(byRow); setSel(new Set()); }}><I.plus size={14} /> Yangi sektorga ajratish</button>
+          <button className="lime" disabled={soldSel} onClick={() => { onSplit(byRow); setSel(new Set()); }}><I.plus size={14} /> Alohida sektor</button>
+          <span className="seat-zone-pick">
+            <button className={zoneMenu ? "on" : ""} disabled={soldSel} onClick={() => setZoneMenu(!zoneMenu)}>Zona: {selZoneName()} {zoneMenu ? "▴" : "▾"}</button>
+            {zoneMenu && (
+              <div className="seat-zone-menu">
+                <small>Tanlangan o‘rinlar narx toifasi</small>
+                {[s.zone, ...zones.map((z) => z.key).filter((k) => k !== s.zone)].filter(Boolean).map((k) => {
+                  const z = zones.find((q) => q.key === k);
+                  const own = k === s.zone;
+                  return (
+                    <button key={k} className={selZone() === k ? "on" : ""} onClick={() => applyZone(k)}>
+                      <i className={own ? "hollow" : ""} style={own ? { borderColor: colorOf(k) } : { background: colorOf(k) }} />
+                      <span><b>{own ? `Sektor zonasi (${z?.name})` : z?.name}</b><small>{own ? "Alohida toifani olib tashlash" : `${counts[k] || 0} o‘rin shu sektorda`}</small></span>
+                      {selZone() === k && <I.check size={14} />}
+                    </button>
+                  );
+                })}
+                <hr />
+                {newZone === null ? <button onClick={() => setNewZone("")}><I.plus size={14} /> <span><b>Yangi zona yaratish…</b></span></button> : (
+                  <form className="seat-zone-new" onSubmit={(e) => { e.preventDefault(); if (newZone.trim()) applyZone(onAddZone(newZone.trim())); }}>
+                    <input autoFocus className="input input-sm" placeholder="Markaziy" value={newZone} onChange={(e) => setNewZone(e.target.value)} />
+                    <button type="submit" className="btn btn-primary btn-sm" disabled={!newZone.trim()}>Qo‘shish</button>
+                  </form>
+                )}
+              </div>
+            )}
+          </span>
           <button onClick={() => act("block")} disabled={soldSel}><I.lock size={14} /> Bloklash</button>
           {blockedSel && <button onClick={() => act("unblock")}>Blokdan chiqarish</button>}
           <button className="red" disabled={soldSel} onClick={() => act("remove")}><I.trash size={14} /> O‘chirish</button>
@@ -111,4 +159,13 @@ export function SeatEditor({ section: s, zones, sold, path, onBack, onChange, on
       )}
     </div>
   );
+}
+
+/** "1–4 qator, 4–9 o‘rinlar"-style summary of where a zone sits in the section. */
+function rowsOf(s: Section, zone: string) {
+  const rows = s.rows.filter((r) => r.zone_seats?.[zone]?.length);
+  if (!rows.length) return "";
+  const nums = [...new Set(rows.flatMap((r) => r.zone_seats![zone]))].sort((a, b) => a - b);
+  const span = (a: string[]) => (a.length > 1 ? `${a[0]}–${a[a.length - 1]}` : a[0]);
+  return `${span(rows.map((r) => r.label))} qator, ${span(nums.map(String))} o‘rinlar`;
 }

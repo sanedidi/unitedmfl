@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AISLE, P, SEAT, layoutBox, seatX, sectionSize, type Layout, type Section, type Stand } from "@/lib/tickets";
+import { AISLE, P, PITCH_MAX, PITCH_MIN, SEAT, layoutBox, seatX, seatZone, sectionSize, type Layout, type Rect, type Section, type Stand } from "@/lib/tickets";
 
 /** SVG renderer of a stadium layout: view-only thumbnails and the editor canvas (pan, zoom, drag). */
 
-export type Sel = { stand?: string; section?: string } | null;
+export type Sel = { stand?: string; section?: string; pitch?: boolean } | null;
 type VB = { x: number; y: number; w: number; h: number };
 
 type Props = {
@@ -20,6 +20,7 @@ type Props = {
   onMoveSection?: (stand: string, key: string, x: number, y: number) => void;
   onOpenSection?: (stand: string, key: string) => void;
   onPlace?: (x: number, y: number) => void;
+  onResizePitch?: (r: Rect) => void;
   fitKey?: unknown; // change to re-fit the view
   zoomRef?: React.MutableRefObject<{ zoom: (f: number) => void; fit: () => void; pct: () => number } | null>;
   children?: ReactNode;
@@ -32,14 +33,17 @@ const apply = (m: M, x: number, y: number) => ({ x: m[0] * x + m[2] * y + m[4], 
 
 export function seatPaths(s: Section) {
   let normal = "", blocked = "";
+  const zones: Record<string, string> = {}; // seats in another zone than the section (price categories)
   s.rows.forEach((r, ri) => {
     for (let n = 1; n <= r.seats; n++) {
       if (r.removed.includes(n)) continue;
       const d = `M${seatX(s, n)} ${ri * P}h${SEAT}v${SEAT}h-${SEAT}z`;
-      if (r.blocked.includes(n)) blocked += d; else normal += d;
+      if (r.blocked.includes(n)) { blocked += d; continue; }
+      const z = r.zone_seats ? seatZone(s, r, n) : s.zone;
+      if (z !== s.zone) zones[z] = (zones[z] || "") + d; else normal += d;
     }
   });
-  return { normal, blocked };
+  return { normal, blocked, zones };
 }
 
 export function StadiumCanvas(p: Props) {
@@ -48,7 +52,7 @@ export function StadiumCanvas(p: Props) {
   const [vb, setVb] = useState<VB>(box);
   const base = useRef<VB>(box);
   useEffect(() => { setVb(box); base.current = box; }, [box]);
-  const drag = useRef<null | { kind: "pan" | "stand" | "section"; sx: number; sy: number; ox: number; oy: number; stand?: string; sec?: string; inv?: M; moved: boolean }>(null);
+  const drag = useRef<null | { kind: "pan" | "stand" | "section" | "resize"; sx: number; sy: number; ox: number; oy: number; stand?: string; sec?: string; inv?: M; moved: boolean; keep?: boolean; handle?: string; rect?: Rect }>(null);
   const [ghostAt, setGhostAt] = useState<{ x: number; y: number } | null>(null);
   const zoneColor = useMemo(() => Object.fromEntries(p.layout.zones.map((z) => [z.key, z.color || "#9AA1AB"])), [p.layout.zones]);
 
@@ -92,6 +96,20 @@ export function StadiumCanvas(p: Props) {
       drag.current = { kind: "pan", sx: e.clientX, sy: e.clientY, ox: vb.x, oy: vb.y, moved: false };
     }
   };
+  const downPitch = (e: React.PointerEvent) => {
+    if (!p.interactive || e.button !== 0 || p.ghost || !p.onResizePitch) return;
+    e.stopPropagation();
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    p.onSelect?.({ pitch: true });
+    drag.current = { kind: "pan", sx: e.clientX, sy: e.clientY, ox: vb.x, oy: vb.y, moved: false, keep: true };
+  };
+  const downHandle = (e: React.PointerEvent, handle: string) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    const w = toWorld(e.clientX, e.clientY);
+    drag.current = { kind: "resize", sx: w.x, sy: w.y, ox: 0, oy: 0, moved: false, handle, rect: { ...p.layout.pitch } };
+  };
   const move = (e: React.PointerEvent) => {
     if (p.ghost) { setGhostAt(toWorld(e.clientX, e.clientY)); return; }
     const d = drag.current; if (!d) return;
@@ -102,6 +120,19 @@ export function StadiumCanvas(p: Props) {
       return;
     }
     const w = toWorld(e.clientX, e.clientY);
+    if (d.kind === "resize") {
+      // Alt keeps the centre in place (both opposite edges move)
+      const r = d.rect!, h = d.handle!, dx = w.x - d.sx, dy = w.y - d.sy, sym = e.altKey;
+      let { x, y, w: rw, h: rh } = r;
+      const clamp = (v: number) => Math.min(PITCH_MAX, Math.max(PITCH_MIN, v));
+      if (h.includes("e")) { rw = clamp(r.w + (sym ? 2 * dx : dx)); if (sym) x = r.x - (rw - r.w) / 2; }
+      if (h.includes("w")) { rw = clamp(r.w - (sym ? 2 * dx : dx)); x = sym ? r.x - (rw - r.w) / 2 : r.x + r.w - rw; }
+      if (h.includes("s")) { rh = clamp(r.h + (sym ? 2 * dy : dy)); if (sym) y = r.y - (rh - r.h) / 2; }
+      if (h.includes("n")) { rh = clamp(r.h - (sym ? 2 * dy : dy)); y = sym ? r.y - (rh - r.h) / 2 : r.y + r.h - rh; }
+      d.moved = true;
+      p.onResizePitch?.({ x: Math.round(x), y: Math.round(y), w: Math.round(rw), h: Math.round(rh) });
+      return;
+    }
     if (d.kind === "stand") {
       const nx = Math.round(d.ox + w.x - d.sx), ny = Math.round(d.oy + w.y - d.sy);
       if (nx !== d.ox || ny !== d.oy) { d.moved = true; p.onMoveStand?.(d.stand!, nx, ny); }
@@ -114,7 +145,7 @@ export function StadiumCanvas(p: Props) {
   const up = (e: React.PointerEvent) => {
     if (p.ghost && ghostAt) { p.onPlace?.(Math.round(ghostAt.x), Math.round(ghostAt.y)); return; }
     const d = drag.current; drag.current = null;
-    if (d?.kind === "pan" && !d.moved) p.onSelect?.(null);
+    if (d?.kind === "pan" && !d.moved && !d.keep) p.onSelect?.(null);
     void e;
   };
 
@@ -124,7 +155,7 @@ export function StadiumCanvas(p: Props) {
     <svg ref={svg} className={`st-canvas${p.interactive ? " interactive" : ""}${p.ghost ? " placing" : ""}`} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       style={{ height: p.height ?? "100%" }} onPointerDown={(e) => down(e, "pan")} onPointerMove={move} onPointerUp={up}
       onDoubleClick={(e) => e.preventDefault()} preserveAspectRatio="xMidYMid meet" role="img" aria-label="Stadion sxemasi">
-      <g className="pitch">
+      <g className={`pitch${p.interactive && p.onResizePitch ? " pick" : ""}`} onPointerDown={downPitch}>
         <rect x={pitch.x} y={pitch.y} width={pitch.w} height={pitch.h} rx={4} fill="#2E6B45" />
         <rect x={pitch.x + 8} y={pitch.y + 8} width={pitch.w - 16} height={pitch.h - 16} fill="none" stroke="#fff" strokeOpacity={.85} strokeWidth={1.4} />
         <line x1={pitch.x + pitch.w / 2} y1={pitch.y + 8} x2={pitch.x + pitch.w / 2} y2={pitch.y + pitch.h - 8} stroke="#fff" strokeOpacity={.85} strokeWidth={1.4} />
@@ -158,6 +189,7 @@ export function StadiumCanvas(p: Props) {
                     stroke={isSel ? "#86D11C" : diff ? "#E0A100" : p.sold?.has(sec.key) ? "#1F5FD6" : standSel ? "#111418" : "transparent"}
                     strokeWidth={isSel ? 2 : 1.4} strokeDasharray={diff || (p.sold?.has(sec.key) && !isSel) ? "4 3" : undefined} />
                   <path d={paths.normal} fill={color} />
+                  {Object.entries(paths.zones).map(([z, d]) => <path key={z} d={d} fill={zoneColor[z] || "#C4C9D0"} />)}
                   {paths.blocked && <path d={paths.blocked} fill="#D5D9DF" />}
                   {sec.seat_mode === "free" && <text x={w / 2} y={h + 14} textAnchor="middle" fontSize={8} fill="#8A92A0" pointerEvents="none">erkin o‘rindiq</text>}
                 </g>
@@ -167,6 +199,25 @@ export function StadiumCanvas(p: Props) {
         );
       })}
       {labels}
+      {p.interactive && p.sel?.pitch && (() => {
+        const k = vb.w / 900; // handle size follows the zoom
+        const hs = 9 * k, xs = [pitch.x, pitch.x + pitch.w / 2, pitch.x + pitch.w], ys = [pitch.y, pitch.y + pitch.h / 2, pitch.y + pitch.h];
+        const hd: [string, number, number, string][] = [["nw", xs[0], ys[0], "nwse"], ["n", xs[1], ys[0], "ns"], ["ne", xs[2], ys[0], "nesw"], ["e", xs[2], ys[1], "ew"],
+          ["se", xs[2], ys[2], "nwse"], ["s", xs[1], ys[2], "ns"], ["sw", xs[0], ys[2], "nesw"], ["w", xs[0], ys[1], "ew"]];
+        return (
+          <g className="pitch-sel">
+            <rect x={pitch.x - 3 * k} y={pitch.y - 3 * k} width={pitch.w + 6 * k} height={pitch.h + 6 * k} fill="none" stroke="#86D11C" strokeWidth={2 * k} pointerEvents="none" />
+            <g transform={`translate(${pitch.x + pitch.w / 2} ${pitch.y - 16 * k})`} pointerEvents="none">
+              <rect x={-38 * k} y={-9 * k} width={76 * k} height={18 * k} rx={3 * k} fill="#111418" />
+              <text textAnchor="middle" y={4 * k} fontSize={10 * k} fontWeight={700} fill="#fff">{Math.round(pitch.w)} × {Math.round(pitch.h)}</text>
+            </g>
+            {hd.map(([id, x, y, cur]) => (
+              <rect key={id} x={x - hs / 2} y={y - hs / 2} width={hs} height={hs} rx={2 * k} fill="#fff" stroke="#111418" strokeWidth={1.5 * k}
+                style={{ cursor: `${cur}-resize` }} onPointerDown={(e) => downHandle(e, id)} />
+            ))}
+          </g>
+        );
+      })()}
       {p.ghost && ghostAt && (
         <g transform={`translate(${ghostAt.x} ${ghostAt.y}) rotate(${p.ghost.rotation})`} opacity={.75} pointerEvents="none">
           {p.ghost.sections.map((sec) => {
@@ -181,7 +232,7 @@ export function StadiumCanvas(p: Props) {
         </g>
       )}
       {p.children}
-      <style>{`.st-canvas .st-sec{cursor:${p.interactive ? "move" : "default"}}`}</style>
+      <style>{`.st-canvas .st-sec{cursor:${p.interactive ? "move" : "default"}}.st-canvas .pitch.pick{cursor:pointer}`}</style>
       <desc>{`aisle ${AISLE}`}</desc>
     </svg>
   );

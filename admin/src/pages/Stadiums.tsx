@@ -9,8 +9,8 @@ import { api, ApiError } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
 import { fmtDateTime } from "@/lib/format";
 import {
-  ZONE_COLORS, buildStand, cloneStand, freeKey, mergeZones, newRow, newSection, nextLetter, seatCount, sectionSize, standBox, standSeats, stats,
-  type Layout, type LayoutView, type LibraryStand, type Section, type Stand, type StandDraft, type Template, type Venue, type Zone,
+  ZONE_COLORS, PITCH_MAX, PITCH_MIN, addZone, buildStand, cleanRowZones, dropZoneSeats, hasCategories, seatZone, cloneStand, resizePitch, freeKey, mergeZones, newRow, newSection, nextLetter, seatCount, sectionSize, standBox, standSeats, stats,
+  type Layout, type LayoutView, type Rect, type LibraryStand, type Section, type Stand, type StandDraft, type Template, type Venue, type Zone,
 } from "@/lib/tickets";
 import "@/tickets.css";
 
@@ -179,6 +179,7 @@ function StadiumEditor() {
   const [saveTpl, setSaveTpl] = useState<null | { kind: "stand" | "section"; stand: string; section?: string }>(null);
   const [placing, setPlacing] = useState<null | { stand: Stand; zones: Zone[]; link?: { id: number; version: number }; name: string; prefix: string; linked: boolean; canLink: boolean }>(null);
   const [activeZone, setActiveZone] = useState<string>("");
+  const [pushStands, setPushStands] = useState(true);
   const [diff, setDiff] = useState<Record<string, string> | null>(null);
   const [saveState, setSaveState] = useState<{ at?: string; busy?: boolean; error?: string }>({});
   const hist = useRef<{ past: Layout[]; future: Layout[] }>({ past: [], future: [] });
@@ -295,6 +296,9 @@ function StadiumEditor() {
           {left === "tree" ? (
             <>
               <div className="st-tree">
+                <button className={`st-node${sel?.pitch ? " on" : ""}`} onClick={() => setSel({ pitch: true })}>
+                  <i style={{ background: "#2E6B45" }} /><span className="grow">Maydon</span><small>{Math.round(doc.pitch.w)}×{Math.round(doc.pitch.h)}</small>
+                </button>
                 {doc.stands.length === 0 && <div className="muted small" style={{ padding: 12 }}>Tribuna yo‘q. «Tribuna qo‘shish» yoki kutubxonadan qo‘ying.</div>}
                 {doc.stands.map((s) => (
                   <div key={s.key}>
@@ -331,19 +335,27 @@ function StadiumEditor() {
               path={[doc.stands.find((s) => s.key === seatEdit.stand)?.name || "", `Sektor ${seatSection.name}`]}
               onBack={() => setSeatEdit(null)}
               onChange={(fn) => updSection(seatEdit.stand, seatEdit.section, fn)}
+              onAddZone={(name) => { const l = structuredClone(doc); const key = addZone(l, name); change((x) => { x.zones = l.zones; return x; }); return key; }}
               onSplit={(rows) => change((l) => {
                 const s = l.stands.find((x) => x.key === seatEdit.stand)!;
                 const src = s.sections.find((x) => x.key === seatEdit.section)!;
                 const k = freeKey(l, `${src.key}-2`);
                 const right = Math.max(...s.sections.map((q) => q.x + sectionSize(q).w));
-                const ns = newSection(k, 0, 0, src.zone, right + 14, src.y);
+                // the new section takes the zone most of its seats had; the others keep theirs as categories
+                const moved = rows.flatMap(([label, nums]) => { const r = src.rows.find((x) => x.label === label)!; return nums.map((n) => seatZone(src, r, n)); });
+                const tally = moved.reduce<Record<string, number>>((m, z) => ({ ...m, [z]: (m[z] || 0) + 1 }), {});
+                const main = Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0] ?? src.zone;
+                const ns = newSection(k, 0, 0, main, right + 14, src.y);
                 ns.rotation = src.rotation; ns.gate = src.gate; ns.seat_mode = src.seat_mode;
                 for (const [label, nums] of rows) {
                   const r = src.rows.find((x) => x.label === label)!;
+                  const nr = newRow(label, nums.length);
+                  nums.forEach((n, i) => { const z = seatZone(src, r, n); if (z !== main) (nr.zone_seats ??= {})[z] = [...(nr.zone_seats?.[z] || []), i + 1]; });
                   r.removed = [...new Set([...r.removed, ...nums])].sort((a, b) => a - b);
                   r.blocked = r.blocked.filter((n) => !nums.includes(n));
-                  ns.rows.push(newRow(label, nums.length));
+                  ns.rows.push(nr);
                 }
+                cleanRowZones(src); cleanRowZones(ns);
                 s.sections.push(ns);
                 setTimeout(() => toast(`Yangi sektor: ${k} (${ns.rows.reduce((n, r) => n + r.seats, 0)} o‘rin)`));
                 return l;
@@ -353,10 +365,11 @@ function StadiumEditor() {
               <StadiumCanvas layout={doc} sel={sel} interactive={mode !== "preview"} colorBy={mode === "zones" || mode === "preview" ? "zone" : "structure"} diff={diff || undefined}
                 sold={soldSecs} ghost={placing?.stand} zoomRef={zoomRef} fitKey={venueId}
                 onSelect={(s) => {
-                  if (mode === "zones" && s?.section && activeZone) updSection(s.stand!, s.section, (x) => { x.zone = activeZone; });
+                  if (mode === "zones" && s?.section && activeZone) updSection(s.stand!, s.section, (x) => { x.zone = activeZone; cleanRowZones(x); });
                   setSel(s);
                 }}
                 onMoveStand={(k, x, y) => moveChange((l) => { const s = l.stands.find((q) => q.key === k)!; s.x = x; s.y = y; return l; })}
+                onResizePitch={mode === "structure" ? (r) => moveChange((l) => resizePitch(l, r, pushStands)) : undefined}
                 onMoveSection={(sk, k, x, y) => moveChange((l) => { const s = l.stands.find((q) => q.key === sk)!.sections.find((q) => q.key === k)!; s.x = x; s.y = y; return l; })}
                 onOpenSection={(sk, k) => mode === "structure" && setSeatEdit({ stand: sk, section: k })}
                 onPlace={(x, y) => {
@@ -366,6 +379,7 @@ function StadiumEditor() {
                     ns.name = placing.name || ns.name;
                     l.zones = mergeZones(l, placing.zones);
                     for (const sec of ns.sections) if (sec.zone && !l.zones.some((z) => z.key === sec.zone)) sec.zone = "";
+                    dropZoneSeats(l, (z) => l.zones.some((q) => q.key === z));
                     l.stands.push(ns);
                     setTimeout(() => setSel({ stand: ns.key }));
                     return l;
@@ -374,7 +388,7 @@ function StadiumEditor() {
                   setPlacing(null);
                 }} />
               {!diff && <div className="st-toolhint">
-                {placing ? "Sxemaga bosing — tribuna shu yerga qo‘yiladi · Esc — bekor" : mode === "zones" ? `Sektorni bosing — «${doc.zones.find((z) => z.key === activeZone)?.name || "zona"}» biriktiriladi` : mode === "preview" ? "Saytda chipta tanlash sahifasida shunday ko‘rinadi" : "Sektorni sudrang · ikki marta bosing — o‘rinlarni tahrirlash · g‘ildirak — masshtab"}
+                {placing ? "Sxemaga bosing — tribuna shu yerga qo‘yiladi · Esc — bekor" : mode === "zones" ? `Sektorni bosing — «${doc.zones.find((z) => z.key === activeZone)?.name || "zona"}» biriktiriladi` : mode === "preview" ? "Saytda chipta tanlash sahifasida shunday ko‘rinadi" : sel?.pitch ? "Burchak yoki chetidagi tutqichni torting · Alt — markaz joyida qoladi" : "Sektorni sudrang · ikki marta bosing — o‘rinlarni tahrirlash · maydonni bosing — o‘lchami · g‘ildirak — masshtab"}
               </div>}
               <div className="st-zoom">
                 <button onClick={() => zoomRef.current?.zoom(1.2)}>−</button>
@@ -405,6 +419,8 @@ function StadiumEditor() {
             <PlaceSettings p={placing} onChange={setPlacing} total={st.seats} />
           ) : mode === "zones" ? (
             <ZonesPanel layout={doc} st={st} active={activeZone} setActive={setActiveZone} change={change} />
+          ) : sel?.pitch ? (
+            <PitchInspector layout={doc} push={pushStands} setPush={setPushStands} onChange={(r) => change((l) => resizePitch(l, r, pushStands))} />
           ) : section && stand ? (
             <SectionInspector key={section.key} layout={doc} stand={stand} s={section} sold={soldSecs.has(section.key)}
               upd={(fn) => updSection(stand.key, section.key, fn)}
@@ -463,12 +479,42 @@ function StadiumEditor() {
 }
 
 /* ---------- inspectors ---------- */
-function Num({ value, onChange, min = 0, max = 400 }: { value: number; onChange: (n: number) => void; min?: number; max?: number }) {
+function Num({ value, onChange, min = 0, max = 400, step = 1 }: { value: number; onChange: (n: number) => void; min?: number; max?: number; step?: number }) {
   return (
     <div className="num">
-      <button onClick={() => onChange(Math.max(min, value - 1))} aria-label="Kamaytirish">−</button>
+      <button onClick={() => onChange(Math.max(min, value - step))} aria-label="Kamaytirish">−</button>
       <input value={value} inputMode="numeric" onChange={(e) => { const n = parseInt(e.target.value || "0", 10); if (!isNaN(n)) onChange(Math.min(max, Math.max(min, n))); }} />
-      <button onClick={() => onChange(Math.min(max, value + 1))} aria-label="Ko‘paytirish">+</button>
+      <button onClick={() => onChange(Math.min(max, value + step))} aria-label="Ko‘paytirish">+</button>
+    </div>
+  );
+}
+
+/* ---------- pitch ---------- */
+const PITCH_SHAPES: [string, string, number][] = [["Mini-futbol", "2 : 1", 2], ["Futbol", "105 : 68", 105 / 68], ["Kvadrat", "1 : 1", 1]];
+function PitchInspector({ layout, push, setPush, onChange }: { layout: Layout; push: boolean; setPush: (b: boolean) => void; onChange: (r: Rect) => void }) {
+  const p = layout.pitch;
+  // number inputs keep the centre of the pitch in place
+  const size = (w: number, h: number) => onChange({ x: p.x + (p.w - w) / 2, y: p.y + (p.h - h) / 2, w, h });
+  const clamp = (v: number) => Math.round(Math.min(PITCH_MAX, Math.max(PITCH_MIN, v)));
+  const scale = (k: number) => size(clamp(p.w * k), clamp(p.h * k));
+  return (
+    <div className="st-insp">
+      <div className="st-insp-head"><h3>Maydon</h3><small>O‘lcham sxema birligida: bitta o‘rin qadami — 10</small></div>
+      <div className="form-grid">
+        <div className="field"><label>Uzunligi</label><Num value={Math.round(p.w)} onChange={(w) => size(w, p.h)} min={PITCH_MIN} max={PITCH_MAX} step={10} /></div>
+        <div className="field"><label>Eni</label><Num value={Math.round(p.h)} onChange={(h) => size(p.w, h)} min={PITCH_MIN} max={PITCH_MAX} step={10} /></div>
+      </div>
+      <div className="label">Kattalashtirish</div>
+      <div className="seg block">
+        {[[0.8, "−20%"], [1.1, "+10%"], [1.25, "+25%"], [1.5, "+50%"]].map(([k, l]) => <button key={l} onClick={() => scale(k as number)}>{l}</button>)}
+      </div>
+      <div className="label">Proporsiya (uzunlik saqlanadi)</div>
+      <div className="seg block wrap">
+        {PITCH_SHAPES.map(([n, r, k]) => <button key={n} className={Math.abs(p.w / p.h - k) < 0.02 ? "on" : ""} onClick={() => size(p.w, clamp(p.w / k))}>{n} · {r}</button>)}
+      </div>
+      <label className="toggle-row"><span><b>Tribunalarni birga surish</b><small>Maydon kattalashsa, tribunalar chetlar bilan birga suriladi — oraliq saqlanadi</small></span>
+        <input type="checkbox" className="switch lime" checked={push} onChange={(e) => setPush(e.target.checked)} /></label>
+      <div className="tk-note">Sxemada maydonni bosing va burchak yoki chetidagi tutqichni torting. Alt tugmasi bilan — markaz joyida qoladi.</div>
     </div>
   );
 }
@@ -494,14 +540,15 @@ function SectionInspector({ layout, stand, s, sold, upd, onRename, onSeats, onSa
       </Field>
       <div className="label">Zona</div>
       <div className="seg block wrap">
-        {layout.zones.map((z) => <button key={z.key} className={s.zone === z.key ? "on" : ""} onClick={() => upd((x) => { x.zone = z.key; })}><i style={{ background: z.color }} /> {z.name}</button>)}
+        {layout.zones.map((z) => <button key={z.key} className={s.zone === z.key ? "on" : ""} onClick={() => upd((x) => { x.zone = z.key; cleanRowZones(x); })}><i style={{ background: z.color }} /> {z.name}</button>)}
       </div>
       <div className="form-grid">
         <div className="field"><label>Qatorlar</label><Num value={rows} onChange={setRows} min={1} max={200} /></div>
         <div className="field"><label>Har qatorda{!uniform && " (har xil)"}</label><Num value={perRow} onChange={(n) => upd((x) => x.rows.forEach((r) => { r.seats = n; r.removed = r.removed.filter((q) => q <= n); r.blocked = r.blocked.filter((q) => q <= n); }))} min={1} /></div>
       </div>
       <div className="label">O‘rin turi</div>
-      <div className="seg block"><button className={s.seat_mode === "numbered" ? "on" : ""} onClick={() => upd((x) => { x.seat_mode = "numbered"; })}>Raqamlangan</button><button className={s.seat_mode === "free" ? "on" : ""} onClick={() => upd((x) => { x.seat_mode = "free"; })}>Erkin</button></div>
+      <div className="seg block"><button className={s.seat_mode === "numbered" ? "on" : ""} onClick={() => upd((x) => { x.seat_mode = "numbered"; })}>Raqamlangan</button><button className={s.seat_mode === "free" ? "on" : ""} disabled={hasCategories(s)} title={hasCategories(s) ? "Sektorda narx toifali o‘rinlar bor — ular faqat raqamlangan bo‘ladi" : undefined} onClick={() => upd((x) => { x.seat_mode = "free"; })}>Erkin</button></div>
+      {hasCategories(s) && <div className="tk-note">Narx toifali o‘rinlar bor — sektor raqamlangan. Toifalar «O‘rinlarni tahrirlash»da.</div>}
       <div className="form-grid">
         <Field label="Kirish (darvoza)"><input className="input" value={s.gate} maxLength={12} placeholder="3, V…" onChange={(e) => upd((x) => { x.gate = e.target.value; })} /></Field>
         <Field label="Raqamlash"><select className="select" value={s.numbering} onChange={(e) => upd((x) => { x.numbering = e.target.value as "ltr" | "rtl"; })}><option value="ltr">Chapdan o‘ngga</option><option value="rtl">O‘ngdan chapga</option></select></Field>
@@ -581,7 +628,7 @@ function ZonesPanel({ layout, st, active, setActive, change }: { layout: Layout;
     <div className="st-insp">
       <div className="st-insp-head"><h3>Zonalar</h3><small>Zona — saytdagi chipta turi. Narxlar har bir match uchun «Chiptalar» bo‘limida qo‘yiladi</small></div>
       {layout.zones.map((z) => {
-        const secs = layout.stands.flatMap((s) => s.sections.filter((x) => x.zone === z.key).map((x) => x.name));
+        const secs = layout.stands.flatMap((s) => s.sections.flatMap((x) => x.zone === z.key ? [x.name] : x.rows.some((r) => r.zone_seats?.[z.key]?.length) ? [`${x.name} (qisman)`] : []));
         return (
           <div key={z.key} className={`tk-zone${active === z.key ? " on" : ""}`} onClick={() => setActive(z.key)}>
             <div className="row">
@@ -592,7 +639,7 @@ function ZonesPanel({ layout, st, active, setActive, change }: { layout: Layout;
             <div className="row small">
               <label className="row"><input type="checkbox" checked={z.kind === "vip"} onChange={(e) => upd(z.key, (x) => { x.kind = e.target.checked ? "vip" : "oddiy"; })} /> VIP (grafit chipta)</label>
               <span className="grow muted">{secs.length ? secs.join(", ") : "sektor yo‘q"}</span>
-              {!secs.length && <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); change((l) => { l.zones = l.zones.filter((x) => x.key !== z.key); return l; }); }}>O‘chirish</button>}
+              {!secs.length && <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); change((l) => { l.zones = l.zones.filter((x) => x.key !== z.key); dropZoneSeats(l, (k) => k !== z.key); return l; }); }}>O‘chirish</button>}
             </div>
           </div>
         );
@@ -683,9 +730,9 @@ function SaveTemplate({ layout, target, onClose, onSaved }: { layout: Layout; ta
   const seats = sec ? seatCount(sec) : standSeats(st);
   const save = async () => {
     setBusy(true);
-    const strip = (s: Section): Section => ({ ...s, zone: opt.zones ? s.zone : "", gate: opt.gates ? s.gate : "", rows: s.rows.map((r) => ({ ...r, blocked: opt.blocked ? r.blocked : [], removed: opt.blocked ? r.removed : [] })) });
+    const strip = (s: Section): Section => ({ ...s, zone: opt.zones ? s.zone : "", gate: opt.gates ? s.gate : "", rows: s.rows.map((r) => ({ ...r, blocked: opt.blocked ? r.blocked : [], removed: opt.blocked ? r.removed : [], zone_seats: opt.zones ? r.zone_seats : undefined })) });
     const doc = sec ? { ...strip(sec), x: 0, y: 0 } : { ...st, x: 0, y: 0, template_id: null, sections: st.sections.map(strip) };
-    const usedZones = new Set((sec ? [sec] : st.sections).map((s) => s.zone));
+    const usedZones = new Set((sec ? [sec] : st.sections).flatMap((s) => [s.zone, ...s.rows.flatMap((r) => Object.keys(r.zone_seats || {}))]));
     try {
       const t = await api.post<{ id: number }>("/admin/layout-templates", { name, description: desc, kind: target.kind, doc, zones: opt.zones ? layout.zones.filter((z) => usedZones.has(z.key)) : [], visibility: vis });
       toast("Kutubxonaga saqlandi");
