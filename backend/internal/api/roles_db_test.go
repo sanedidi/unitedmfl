@@ -65,14 +65,14 @@ func TestRolesAndPageAccess(t *testing.T) {
 	}
 	admin := tok(adminID)
 
-	// catalog: 27 pages
+	// catalog: 28 pages
 	var cat struct{ Total int }
-	if c := call(admin, "GET", "/permissions", nil, &cat); c != 200 || cat.Total != 27 {
+	if c := call(admin, "GET", "/permissions", nil, &cat); c != 200 || cat.Total != 28 {
 		t.Fatalf("catalog: %d %+v", c, cat)
 	}
 	// built-in roles were migrated with their access
 	var roles []roleDTO
-	if c := call(admin, "GET", "/roles", nil, &roles); c != 200 || len(roles) < 5 || roles[0].Slug != "admin" || !roles[0].IsSystem || roles[0].Pages != 27 {
+	if c := call(admin, "GET", "/roles", nil, &roles); c != 200 || len(roles) < 5 || roles[0].Slug != "admin" || !roles[0].IsSystem || roles[0].Pages != 28 {
 		t.Fatalf("roles: %d %+v", c, roles)
 	}
 	// v1 pages became every action of the page; Matchlar and deleting applications keep their old split

@@ -24,6 +24,7 @@ import { StickersPage } from "@/pages/Stickers";
 import { TicketsSection } from "@/pages/Tickets";
 import { StadiumsSection } from "@/pages/Stadiums";
 import { ScanPage } from "@/pages/Scan";
+import { MediaSection } from "@/pages/MediaPlan";
 
 import { tx } from "@/lib/i18n";
 function Guard({ perm, children }: { perm: string; children: React.ReactNode }) {
@@ -101,6 +102,7 @@ export default function App() {
         <Route path="videos/*" element={<Guard perm="videos"><VideosPage /></Guard>} />
         <Route path="partners/*" element={<Guard perm="partners"><PartnersPage /></Guard>} />
         <Route path="instagram" element={<Guard perm="instagram"><InstagramPage /></Guard>} />
+        <Route path="media/*" element={<Guard perm="media"><MediaSection /></Guard>} />
         <Route path="tickets/*" element={<Guard perm="tickets"><TicketsSection /></Guard>} />
         <Route path="stadiums/*" element={<Guard perm="stadiums"><StadiumsSection /></Guard>} />
         <Route path="products/*" element={<Guard perm="merch"><ProductsPage /></Guard>} />

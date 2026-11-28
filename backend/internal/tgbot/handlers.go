@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/sanedidi/unitedmfl/backend/internal/auth"
 )
 
 const (
@@ -23,8 +25,8 @@ var (
 )
 
 const (
-	textGreeting = "Assalomu alaykum! Bu <b>United MFL Live-pult</b> boti — faqat match operatorlari uchun.\n\nKirish uchun pastdagi tugma orqali telefon raqamingizni yuboring."
-	textNoAccess = "⛔ <b>Ruxsat yo‘q.</b>\n\nBu bot faqat United MFL match operatorlari uchun. Raqamingiz ro‘yxatda bo‘lmasa, administratorga murojaat qiling."
+	textGreeting = "Assalomu alaykum! Bu <b>United MFL</b> boti — match operatorlari, jamoa menejerlari va media moderatorlari uchun.\n\nKirish uchun pastdagi tugma orqali telefon raqamingizni yuboring."
+	textNoAccess = "⛔ <b>Ruxsat yo‘q.</b>\n\nBu bot faqat United MFL match operatorlari, jamoa menejerlari va moderatorlari uchun. Raqamingiz ro‘yxatda bo‘lmasa, administratorga murojaat qiling."
 	textNotOwn   = "Iltimos, pastdagi tugma orqali <b>o‘z</b> raqamingizni yuboring."
 )
 
@@ -41,6 +43,10 @@ func (b *Bot) onMessage(ctx context.Context, m *tgMessage) {
 
 	if m.Contact != nil {
 		b.onContact(ctx, m)
+		return
+	}
+	// team managers and Media reja moderators
+	if b.onMediaMessage(ctx, m) {
 		return
 	}
 
@@ -89,14 +95,34 @@ func (b *Bot) onContact(ctx context.Context, m *tgMessage) {
 		b.sendText(ctx, chatID, "Ichki xato. Birozdan so‘ng urinib ko‘ring.", nil)
 		return
 	}
-	if op == nil {
+	teams, err := b.linkManager(ctx, m.From, chatID, m.Contact.PhoneNumber)
+	if err != nil {
+		slog.Error("telegram bot: link manager", "err", err)
+		b.sendText(ctx, chatID, "Ichki xato. Birozdan so‘ng urinib ko‘ring.", nil)
+		return
+	}
+	if op == nil && len(teams) == 0 {
 		slog.Info("telegram bot: access denied", "tg_user_id", m.From.ID, "username", m.From.Username)
 		b.sendText(ctx, chatID, textNoAccess, removeKeyboard)
 		return
 	}
-	slog.Info("telegram bot: operator linked", "user_id", op.UserID, "tg_user_id", m.From.ID)
-	b.sendText(ctx, chatID, fmt.Sprintf("✅ Xush kelibsiz, <b>%s</b>!\n\nMatchni tanlang — hisob, voqealar va taymlar shu yerdan boshqariladi. Sayt darhol yangilanadi.", html.EscapeString(op.Name)), menuKeyboard)
-	b.showList(ctx, op, chatID, 0)
+	if op != nil && b.roles.Can(ctx, op.Role, auth.Key(auth.PermLive, auth.ActEdit)) {
+		slog.Info("telegram bot: operator linked", "user_id", op.UserID, "tg_user_id", m.From.ID)
+		b.sendText(ctx, chatID, fmt.Sprintf("✅ Xush kelibsiz, <b>%s</b>!\n\nMatchni tanlang — hisob, voqealar va taymlar shu yerdan boshqariladi. Sayt darhol yangilanadi.", html.EscapeString(op.Name)), menuKeyboard)
+		b.showList(ctx, op, chatID, 0)
+	} else if op != nil {
+		slog.Info("telegram bot: moderator linked", "user_id", op.UserID, "tg_user_id", m.From.ID)
+		b.sendText(ctx, chatID, fmt.Sprintf("✅ Xush kelibsiz, <b>%s</b>!\n\nMenejerlar yuborgan Instagram havolalari shu yerga keladi — «Tasdiqlash» yoki «Qaytarish» ni bosing. Ro‘yxat: /tekshiruv", html.EscapeString(op.Name)), removeKeyboard)
+	}
+	if len(teams) > 0 {
+		names := make([]string, len(teams))
+		for i, t := range teams {
+			names[i] = "<b>" + html.EscapeString(t.Name) + "</b>"
+		}
+		slog.Info("telegram bot: manager linked", "tg_user_id", m.From.ID, "teams", len(teams))
+		b.sendText(ctx, chatID, "✅ Siz "+strings.Join(names, ", ")+" jamoasi menejerisiz.\n\nMedia reja topshiriqlarini oldingi kuni kechqurun va o‘sha kuni ertalab shu yerga yuboraman. Post chiqqach, havolasini shu yerga yuboring.", managerKeyboard)
+		b.showManagerPlan(ctx, chatID, teams)
+	}
 }
 
 // ---------- callbacks ----------
@@ -104,6 +130,10 @@ func (b *Bot) onContact(ctx context.Context, m *tgMessage) {
 func (b *Bot) onCallback(ctx context.Context, q *tgCallback) {
 	if q.Message == nil || q.Message.Chat.Type != "private" {
 		_ = b.tg.answer(ctx, q.ID, "", false)
+		return
+	}
+	if strings.HasPrefix(q.Data, "Q") { // Media reja
+		b.onMediaCallback(ctx, q)
 		return
 	}
 	chatID, msgID := q.Message.Chat.ID, q.Message.MessageID

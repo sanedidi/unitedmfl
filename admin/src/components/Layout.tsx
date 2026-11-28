@@ -30,6 +30,7 @@ export const NAV: { group?: string; items: Item[] }[] = [
     { to: "/videos", label: tx("Videolar"), icon: <I.play />, perm: "videos" },
     { to: "/partners", label: tx("Hamkorlar"), icon: <I.link />, perm: "partners" },
     { to: "/instagram", label: "Instagram", icon: <I.camera />, perm: "instagram" },
+    { to: "/media", label: tx("Media reja"), icon: <I.calendar />, perm: "media" },
   ] },
   { group: tx("Do‘kon va aloqa"), items: [
     { to: "/tickets", label: tx("Chiptalar"), icon: <I.ticket />, perm: "tickets" },

@@ -64,6 +64,8 @@ const (
 	PermAI          = "ai"
 	PermStickers    = "stickers"
 	PermWildberries = "wildberries"
+	// Media reja: team Instagram plans; editing = creating plans and approving posts
+	PermMedia = "media"
 )
 
 // Actions a role may have on a page. A bare page key ("news") means view.
@@ -123,6 +125,7 @@ var Catalog = []PageGroup{
 		{PermVideos, "Videolar", "Video va yuklash", aVCED},
 		{PermPartners, "Hamkorlar", "Homiylar", aVCED},
 		{PermInstagram, "Instagram", "Ulash, postlarni yashirish", aVE},
+		{PermMedia, "Media reja", "Jamoalar Instagram rejasi, postlarni tekshirish", aVE},
 	}},
 	{"Do‘kon va aloqa", []Page{
 		{PermTickets, "Chiptalar", "Sotuv, buyurtmalar, qaytarish", aVCE},

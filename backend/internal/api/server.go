@@ -222,6 +222,7 @@ func (s *Server) Routes() http.Handler {
 			s.mountHomepage(r)
 			s.mountPartners(r)
 			s.mountStickers(r) // Telegram stickers from team logos
+			s.mountMedia(r)    // Media reja: team Instagram plans
 			s.mountCRUD(r, auth.PermVideos, "/videos", videosRes)
 			r.With(s.canAny(auth.Key(auth.PermVideos, auth.ActCreate), edit(auth.PermVideos))).Post("/video-uploads", s.uploadVideo)
 			r.Group(func(r chi.Router) {

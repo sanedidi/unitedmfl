@@ -1,5 +1,6 @@
 // Package tgbot is the Telegram Live-pult: match operators record a match from
-// Telegram instead of the web console.
+// Telegram instead of the web console. The same bot runs the Media reja for
+// team managers and moderators (media.go).
 //
 // Access: an administrator writes the operator's phone number on the user card
 // (Foydalanuvchilar). The bot asks for the Telegram contact and lets in only an
@@ -54,6 +55,10 @@ type Bot struct {
 type session struct {
 	side    map[int64]string // match id → selected side
 	pending *pending
+
+	// Media reja
+	await       *awaiting // the text this chat is asked for (a link, a reason, a comment)
+	pendingLink string    // a link sent without a task, while the manager picks one
 }
 
 // pending is an event being assembled in the player picker.
@@ -92,6 +97,8 @@ func (b *Bot) Run(ctx context.Context) {
 	}
 	_ = b.tg.call(ctx, "setMyCommands", map[string]any{"commands": []map[string]string{
 		{"command": "matches", "description": "Faol matchlar"},
+		{"command": "reja", "description": "Media reja (jamoa menejeri)"},
+		{"command": "tekshiruv", "description": "Media reja: tekshiruv (moderator)"},
 		{"command": "start", "description": "Boshlash"},
 		{"command": "logout", "description": "Botdan chiqish"},
 	}}, nil)
@@ -101,6 +108,8 @@ func (b *Bot) Run(ctx context.Context) {
 	} else {
 		slog.Info("telegram bot started", "username", me.Username)
 	}
+
+	go b.runMedia(ctx) // Media reja: outbox and reminders
 
 	var offset int64
 	backoff := time.Second
@@ -180,7 +189,8 @@ func (b *Bot) operatorFor(ctx context.Context, tgUserID int64) (*operator, error
 	return &op, nil
 }
 
-// link connects a Telegram account to the user whose phone matches the shared contact.
+// link connects a Telegram account to the user whose phone matches the shared
+// contact: a Live-pult operator or a Media reja moderator.
 func (b *Bot) link(ctx context.Context, from *tgUser, chatID int64, rawPhone string) (*operator, error) {
 	phone, ok := auth.NormalizePhone(rawPhone)
 	if !ok || phone == "" {
@@ -194,7 +204,7 @@ func (b *Bot) link(ctx context.Context, from *tgUser, chatID int64, rawPhone str
 	if err != nil {
 		return nil, err
 	}
-	if !b.roles.Can(ctx, op.Role, auth.Key(auth.PermLive, auth.ActEdit)) {
+	if !b.roles.Can(ctx, op.Role, auth.Key(auth.PermLive, auth.ActEdit)) && !b.roles.Can(ctx, op.Role, auth.Key(auth.PermMedia, auth.ActEdit)) {
 		return nil, nil
 	}
 	if _, err := b.db.ExecContext(ctx, `INSERT INTO telegram_links (tg_user_id, user_id, phone, chat_id, username) VALUES ($1, $2, $3, $4, $5)
