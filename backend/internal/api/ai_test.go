@@ -139,7 +139,11 @@ func TestAIGenerationFlow(t *testing.T) {
 	if c := call(editorTok, "PUT", "/ai/settings", map[string]any{"variants": 9}, nil); c != 403 {
 		t.Fatalf("editor put settings: %d", c)
 	}
-	adminTok, _, _ := s.Tokens.Sign(uid, "admin", "Bosh admin")
+	var adminID int64 // the role comes from the users row, not from the token
+	if err := conn.QueryRow(`INSERT INTO users (name, email, password_hash, role) VALUES ('Bosh admin', 'ai-admin-'||floor(random()*1e9)::text||'@x.uz', 'x', 'admin') RETURNING id`).Scan(&adminID); err != nil {
+		t.Fatal(err)
+	}
+	adminTok, _, _ := s.Tokens.Sign(adminID, "admin", "Bosh admin")
 	var e struct {
 		Error struct {
 			Code   string

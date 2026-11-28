@@ -21,14 +21,14 @@ import (
 )
 
 func (s *Server) mountWB(r chi.Router) {
-	r.Group(func(r chi.Router) { // connection: administrators only
-		r.Use(s.can(auth.PermUsers))
+	r.Group(func(r chi.Router) { // connection: the Wildberries page
+		r.Use(s.can(auth.PermWildberries))
 		r.Patch("/wb", s.wbPatch)
 		r.Put("/wb/token", s.wbToken)
 		r.Delete("/wb/token", s.wbDisconnect)
 	})
 	r.Group(func(r chi.Router) { // shop work
-		r.Use(s.can(auth.PermMerch))
+		r.Use(s.canAny(auth.PermMerch, auth.PermWildberries))
 		r.Get("/wb", s.wbState)
 		r.Post("/wb/sync", s.wbSyncNow)
 		r.Get("/wb/subjects", s.wbSubjects)

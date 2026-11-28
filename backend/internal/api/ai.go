@@ -72,9 +72,9 @@ func (s *Server) mountAI(r chi.Router) {
 		r.Post("/generations/{id}/cancel", s.aiCancel)
 		r.Post("/generations/{id}/apply", s.aiMark("applied"))
 		r.Post("/generations/{id}/save", s.aiMark("saved"))
-		// connections and shared settings: administrators only
+		// connections and shared settings: the AI-servis page
 		r.Group(func(r chi.Router) {
-			r.Use(s.can(auth.PermUsers))
+			r.Use(s.can(auth.PermAI))
 			r.Put("/settings", s.aiProxy(http.MethodPut, "/v1/settings"))
 			r.Put("/providers/{p}", s.aiProviderProxy(http.MethodPut, ""))
 			r.Post("/providers/{p}/test", s.aiProviderProxy(http.MethodPost, "/test"))

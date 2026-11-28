@@ -575,12 +575,12 @@ func loadAppTeam(ctx context.Context, q rowQuerier, teamID, appID int64) (*appTe
 // canDeleteApp: drafts and rejected applications may be removed by anyone who
 // works with applications; anything else, and the created team, only by an
 // administrator.
-func canDeleteApp(r *http.Request, status string, withTeam bool) bool {
+func (s *Server) canDeleteApp(r *http.Request, status string, withTeam bool) bool {
 	c := claimsFrom(r.Context())
 	if c == nil {
 		return false
 	}
-	if auth.Can(c.Role, auth.PermApplicationsDelete) {
+	if s.Roles.Can(r.Context(), c.Role, auth.PermApplicationsDelete) {
 		return true
 	}
 	return !withTeam && (status == "draft" || status == "rejected")
@@ -615,8 +615,8 @@ func (s *Server) applicationDeleteInfo(w http.ResponseWriter, r *http.Request) {
 		"id": a.ID, "number": a.number(), "status": a.Status, "team_name": a.Team.Name,
 		"players": len(a.Players), "staff": len(a.Staff), "medical_files": files,
 		"frees_slot": a.Status == "approved" && a.LinkID != nil,
-		"can_delete": canDeleteApp(r, a.Status, false), "confirm_number": a.Status == "approved",
-		"team": team, "can_delete_team": team != nil && team.Played == 0 && canDeleteApp(r, a.Status, true),
+		"can_delete": s.canDeleteApp(r, a.Status, false), "confirm_number": a.Status == "approved",
+		"team": team, "can_delete_team": team != nil && team.Played == 0 && s.canDeleteApp(r, a.Status, true),
 	})
 }
 
@@ -638,7 +638,7 @@ func (s *Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, r, err)
 		return
 	}
-	if !canDeleteApp(r, a.Status, withTeam) {
+	if !s.canDeleteApp(r, a.Status, withTeam) {
 		httpx.Fail(w, r, httpx.NewError(http.StatusForbidden, "forbidden", "Bu arizani faqat administrator o‘chira oladi"))
 		return
 	}

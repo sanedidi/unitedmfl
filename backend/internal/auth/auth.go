@@ -15,17 +15,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Roles from the admin design (Rollar va huquqlar).
-const (
-	RoleAdmin    = "admin"
-	RoleEditor   = "editor"
-	RoleOperator = "operator"
-	RoleShop     = "shop"
-	// RoleController scans tickets at the stadium gates (nazoratchi).
-	RoleController = "controller"
-)
+// RoleAdmin is the built-in administrator role: it can do everything and cannot be
+// changed. Every other role lives in the roles table (see Roles) and is edited in
+// the admin panel (Rollar va huquqlar).
+const RoleAdmin = "admin"
 
-// Permissions — one per admin section/action.
+// Permissions — one per admin page, plus a few extra actions inside a page.
 const (
 	PermDashboard   = "dashboard"
 	PermMatchesRead = "matches:read"
@@ -33,15 +28,22 @@ const (
 	PermLive        = "live"
 	PermProtocols   = "protocols"
 	PermTeams       = "teams"
+	PermGroups      = "groups"
+	PermPlayers     = "players"
 	PermStandings   = "standings"
 	PermSeasons     = "seasons"
 	PermNews        = "news"
 	PermBanners     = "banners"
 	PermVideos      = "videos"
+	PermInstagram   = "instagram"
 	PermMerch       = "merch"
 	PermRequests    = "requests"
 	PermUsers       = "users"
-	PermUploads     = "uploads"
+	PermRoles       = "roles"
+	PermAudit       = "audit"
+	// PermUploads is not a page: every role that has any page besides the gate
+	// scanner may upload images (see Roles.Can).
+	PermUploads = "uploads"
 	// team self-registration: links and applications
 	PermApplications = "applications"
 	// deleting sent or approved applications (and the team an approval created);
@@ -57,44 +59,131 @@ const (
 	PermTickets  = "tickets"
 	PermStadiums = "stadiums"
 	PermScan     = "scan"
+
+	// service connections and settings
+	PermAI          = "ai"
+	PermStickers    = "stickers"
+	PermWildberries = "wildberries"
 )
 
-var rolePerms = map[string][]string{
-	RoleEditor:     {PermDashboard, PermMatchesRead, PermTeams, PermApplications, PermNews, PermBanners, PermHomepage, PermPartners, PermVideos, PermRequests, PermUploads},
-	RoleOperator:   {PermDashboard, PermMatchesRead, PermMatchesEdit, PermLive, PermProtocols, PermUploads},
-	RoleShop:       {PermDashboard, PermMerch, PermRequests, PermUploads, PermTickets, PermScan},
-	RoleController: {PermScan},
+// Extra is an additional action inside a page (shown as a sub-checkbox).
+type Extra struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
 }
 
-// ValidRole reports whether r is a known role.
-func ValidRole(r string) bool {
-	switch r {
-	case RoleAdmin, RoleEditor, RoleOperator, RoleShop, RoleController:
-		return true
-	}
-	return false
+// Page is one admin page that a role may open.
+type Page struct {
+	Key    string  `json:"key"`
+	Label  string  `json:"label"`
+	Hint   string  `json:"hint"`
+	Extras []Extra `json:"extras,omitempty"`
 }
 
-// Can reports whether role has permission perm. Administrators can do everything.
-func Can(role, perm string) bool {
-	if role == RoleAdmin {
-		return true
+// PageGroup mirrors a group of the admin side menu.
+type PageGroup struct {
+	Label string `json:"label"`
+	Pages []Page `json:"pages"`
+}
+
+// Catalog lists every page in the order of the admin side menu.
+var Catalog = []PageGroup{
+	{"Asosiy", []Page{{Key: PermDashboard, Label: "Dashboard", Hint: "Statistika va sayt tashriflari"}}},
+	{"Turnir", []Page{
+		{Key: PermMatchesRead, Label: "Matchlar", Hint: "Ro‘yxat va match kartasi", Extras: []Extra{{PermMatchesEdit, "Tahrirlash ham mumkin"}}},
+		{Key: PermProtocols, Label: "Protokollar", Hint: "Yuklash va tasdiqlash"},
+		{Key: PermLive, Label: "Live-pult", Hint: "Match davomida voqealar, Telegram bot"},
+		{Key: PermTeams, Label: "Jamoalar", Hint: "Jamoalar, forma va jamoa kabinetlari"},
+		{Key: PermApplications, Label: "Arizalar", Hint: "Ro‘yxatdan o‘tish arizalari", Extras: []Extra{{PermApplicationsDelete, "Arizalarni o‘chirish ham mumkin"}}},
+		{Key: PermGroups, Label: "Guruhlar", Hint: "Guruhlar tarkibi"},
+		{Key: PermPlayers, Label: "O‘yinchilar", Hint: "O‘yinchilar bazasi"},
+		{Key: PermStandings, Label: "Turnir jadvali", Hint: "Jadvalni tuzatish"},
+		{Key: PermSeasons, Label: "Mavsumlar", Hint: "Mavsum va bosqichlar"},
+	}},
+	{"Kontent", []Page{
+		{Key: PermHomepage, Label: "Bosh sahifa", Hint: "Bloklar konstruktori"},
+		{Key: PermNews, Label: "Yangiliklar", Hint: "Maqolalar"},
+		{Key: PermBanners, Label: "Hero-bannerlar", Hint: "Bosh sahifa bannerlari"},
+		{Key: PermVideos, Label: "Videolar", Hint: "Video va yuklash"},
+		{Key: PermPartners, Label: "Hamkorlar", Hint: "Homiylar va hamkorlar"},
+		{Key: PermInstagram, Label: "Instagram", Hint: "Postlar lentasi"},
+	}},
+	{"Do‘kon va aloqa", []Page{
+		{Key: PermTickets, Label: "Chiptalar", Hint: "Sotuv, buyurtmalar, qaytarish"},
+		{Key: PermStadiums, Label: "Stadionlar", Hint: "Stadion konstruktori"},
+		{Key: PermScan, Label: "Kirish nazorati", Hint: "Chiptalarni skanerlash"},
+		{Key: PermMerch, Label: "Merch", Hint: "Mahsulotlar"},
+		{Key: PermRequests, Label: "Murojaatlar", Hint: "Saytdan xabarlar"},
+	}},
+	{"Tizim", []Page{
+		{Key: PermAI, Label: "AI-servis", Hint: "OpenAI va Gemini ulanishi"},
+		{Key: PermStickers, Label: "Telegram stikerlar", Hint: "Stiker paketlari"},
+		{Key: PermWildberries, Label: "Wildberries", Hint: "Do‘kon ulanishi"},
+		{Key: PermUsers, Label: "Foydalanuvchilar", Hint: "Admin foydalanuvchilari"},
+		{Key: PermRoles, Label: "Rollar va huquqlar", Hint: "Rollar va sahifalarga kirish"},
+		{Key: PermAudit, Label: "Audit jurnali", Hint: "Kim nima qildi"},
+	}},
+}
+
+// AllPermissions returns every page and extra permission from the catalog.
+func AllPermissions() []string {
+	var out []string
+	for _, g := range Catalog {
+		for _, p := range g.Pages {
+			out = append(out, p.Key)
+			for _, e := range p.Extras {
+				out = append(out, e.Key)
+			}
+		}
 	}
-	for _, p := range rolePerms[role] {
-		if p == perm {
+	return out
+}
+
+// KnownPermission reports whether p is a page or extra from the catalog.
+func KnownPermission(p string) bool {
+	for _, k := range AllPermissions() {
+		if k == p {
 			return true
 		}
 	}
 	return false
 }
 
-// PermissionsFor returns the permission list of a role (used by the admin UI).
-func PermissionsFor(role string) []string {
-	if role == RoleAdmin {
-		return []string{PermDashboard, PermMatchesRead, PermMatchesEdit, PermLive, PermProtocols, PermTeams,
-			PermApplications, PermApplicationsDelete, PermStandings, PermSeasons, PermNews, PermBanners, PermHomepage, PermPartners, PermVideos, PermMerch, PermRequests, PermUsers, PermUploads, PermTickets, PermStadiums, PermScan}
+// extraOwner maps an extra permission to the page it belongs to.
+func extraOwner(p string) string {
+	for _, g := range Catalog {
+		for _, pg := range g.Pages {
+			for _, e := range pg.Extras {
+				if e.Key == p {
+					return pg.Key
+				}
+			}
+		}
 	}
-	return append([]string(nil), rolePerms[role]...)
+	return ""
+}
+
+// NormalizePermissions drops unknown and duplicate keys, drops extras whose page
+// is not granted and returns the rest in catalog order.
+func NormalizePermissions(in []string) (out []string, unknown []string) {
+	set := map[string]bool{}
+	for _, p := range in {
+		if !KnownPermission(p) {
+			unknown = append(unknown, p)
+			continue
+		}
+		set[p] = true
+	}
+	for _, p := range AllPermissions() {
+		if !set[p] {
+			continue
+		}
+		if o := extraOwner(p); o != "" && !set[o] {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out, unknown
 }
 
 // NormalizePhone keeps digits only. A local Uzbek number (9 digits) gets the 998

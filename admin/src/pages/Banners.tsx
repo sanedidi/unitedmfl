@@ -396,7 +396,7 @@ function AiGenerator({ bannerId, title, layout, banner, onApply }: { bannerId: n
   return (
     <div className="stack ai-gen" style={{ gap: 16 }}>
       {!ready && (
-        <div className="alert warn"><I.alert size={16} /><div><b>AI-servis ulanmagan.</b> OpenAI yoki Gemini kaliti kiritilmagan.{can("users") ? <> <Link to="/ai">AI-servis → Ulanishlar</Link></> : " Administratorga murojaat qiling."}</div></div>
+        <div className="alert warn"><I.alert size={16} /><div><b>AI-servis ulanmagan.</b> OpenAI yoki Gemini kaliti kiritilmagan.{can("ai") ? <> <Link to="/ai">AI-servis → Ulanishlar</Link></> : " Administratorga murojaat qiling."}</div></div>
       )}
 
       <Steps step={step} gen={gen} />
@@ -413,7 +413,7 @@ function AiGenerator({ bannerId, title, layout, banner, onApply }: { bannerId: n
             onLogo={() => addAsset(logoAsset())} teams={teams} onCrest={(n, u) => addAsset(crestAsset(n, u))} onUpload={() => fileRef.current?.click()} />
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" hidden onChange={(e) => uploadAsset(e.target.files?.[0])} />
           <FormatsBlock settings={settings} enabled={enabledFormats} formats={formats} setFormats={setFormats} />
-          <SettingsSummary settings={settings} provider={active?.provider} model={model} canEdit={can("users")} />
+          <SettingsSummary settings={settings} provider={active?.provider} model={model} canEdit={can("ai")} />
           {err && <div className="alert danger"><I.alert size={16} /><div>{err}</div></div>}
           <div className="row wrap">
             <button type="button" className="btn btn-primary" onClick={improve} disabled={!ready || improving || text.trim().length < 5 || !formats.length}>

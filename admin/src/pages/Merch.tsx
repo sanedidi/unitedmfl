@@ -163,7 +163,7 @@ function MerchList() {
               </div>
               <div className="card-pad stack" style={{ gap: 8 }}>
                 <button className="btn btn-dark" disabled={busy} onClick={syncNow}><I.refresh size={16} /> Hozir sinxronlash</button>
-                {can("users") && <Link className="btn" to="/wildberries">Ulanish sozlamalari</Link>}
+                {can("wildberries") && <Link className="btn" to="/wildberries">Ulanish sozlamalari</Link>}
               </div>
             </div>
           ) : (
@@ -171,7 +171,7 @@ function MerchList() {
               <div className="card-head"><h2>Wildberries</h2><span className="row small b muted" style={{ gap: 6 }}><i className="stk-dot waiting" />Ulanmagan</span></div>
               <div className="card-pad stack" style={{ gap: 12 }}>
                 <p className="muted small" style={{ margin: 0 }}>Token qo‘shilgach, mahsulotlar adminkadan WB do‘koniga yuboriladi, narx va qoldiq saytga qaytadi.</p>
-                {can("users") ? <Link className="btn btn-primary" to="/wildberries">Wildberries’ni ulash</Link> : <span className="small muted">Administrator ulashi kerak.</span>}
+                {can("wildberries") ? <Link className="btn btn-primary" to="/wildberries">Wildberries’ni ulash</Link> : <span className="small muted">Administrator ulashi kerak.</span>}
               </div>
             </div>
           ))}
@@ -190,7 +190,7 @@ function Thumb({ src }: { src?: string }) {
 export function WBBanners({ s }: { s: WBState }) {
   const out: ReactNode[] = [];
   const { can } = useAuth();
-  const fix = can("users") ? <Link className="btn" to="/wildberries">Tokenni yangilash</Link> : undefined;
+  const fix = can("wildberries") ? <Link className="btn" to="/wildberries">Tokenni yangilash</Link> : undefined;
   if (s.token_broken) out.push(<Banner key="tb" danger text="Saqlangan WB tokenini ochib bo‘lmadi (serverdagi maxfiy kalit o‘zgargan). Tokenni qayta kiriting." action={fix} />);
   if (s.problem === "token_invalid") out.push(<Banner key="ti" danger text="WB tokeni muddati tugagan yoki bekor qilingan. Yuborish to‘xtatildi — yangi token qo‘shing, navbat davom etadi." action={fix} />);
   if (s.problem === "wb_down") out.push(<Banner key="wd" text={`Wildberries vaqtincha javob bermayapti. Navbatdagi vazifalar keyinroq qayta yuboriladi.${s.last_error ? ` (${s.last_error})` : ""}`} />);
@@ -333,7 +333,7 @@ function WBCardForm({ c }: { c: CardCtx }) {
     }>
       {!on ? <p className="muted small" style={{ margin: 0 }}>O‘chiq: mahsulot faqat saytda. Yoqsangiz, saqlashda kartochka Wildberries do‘koniga yuboriladi.</p> : (
         <div className="stack" style={{ gap: 16 }}>
-          {wb.data && !connected && <div className="stk-note"><I.alert size={16} /><span>Wildberries ulanmagan — kartochka saqlanadi, token qo‘shilgach yuboriladi. {can("users") && <Link to="/wildberries">Ulash →</Link>}</span></div>}
+          {wb.data && !connected && <div className="stk-note"><I.alert size={16} /><span>Wildberries ulanmagan — kartochka saqlanadi, token qo‘shilgach yuboriladi. {can("wildberries") && <Link to="/wildberries">Ulash →</Link>}</span></div>}
           <div className="stk-note"><I.alert size={16} /><span>Kartochka shu yerdan yaratiladi va yangilanadi. WB kabinetida qo‘lda o‘zgartirilgan maydonlar keyingi «Saqlash»da shu sahifadagi qiymat bilan qayta yoziladi.</span></div>
           <SubjectPicker c={c} disabled={!connected} />
           <div className="form-grid">

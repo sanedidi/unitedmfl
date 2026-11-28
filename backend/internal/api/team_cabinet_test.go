@@ -42,8 +42,12 @@ func TestTeamCabinet(t *testing.T) {
 		RegisterURL: "https://ariza.test"})
 	h := s.Routes()
 	adminTok, _, _ := s.Tokens.Sign(uid, "admin", "Admin")
-	editorTok, _, _ := s.Tokens.Sign(uid, "editor", "Editor")
-	operatorTok, _, _ := s.Tokens.Sign(uid, "operator", "Operator")
+	// the role comes from the users row, not from the token
+	var edID, opID int64
+	conn.QueryRow(`INSERT INTO users (name, email, password_hash, role) VALUES ('Editor', 'cab-ed-'||$1||'@x.uz', 'x', 'editor') RETURNING id`, sfx).Scan(&edID)
+	conn.QueryRow(`INSERT INTO users (name, email, password_hash, role) VALUES ('Operator', 'cab-op-'||$1||'@x.uz', 'x', 'operator') RETURNING id`, sfx).Scan(&opID)
+	editorTok, _, _ := s.Tokens.Sign(edID, "editor", "Editor")
+	operatorTok, _, _ := s.Tokens.Sign(opID, "operator", "Operator")
 	call := func(method, path, tok string, body, out any) int {
 		t.Helper()
 		var rd *bytes.Reader

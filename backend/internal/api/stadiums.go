@@ -51,7 +51,7 @@ func (s *Server) canAny(perms ...string) func(http.Handler) http.Handler {
 			c := claimsFrom(r.Context())
 			if c != nil {
 				for _, p := range perms {
-					if auth.Can(c.Role, p) {
+					if s.Roles.Can(r.Context(), c.Role, p) {
 						next.ServeHTTP(w, r)
 						return
 					}

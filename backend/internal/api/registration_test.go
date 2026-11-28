@@ -382,7 +382,9 @@ func TestTeamRegistration(t *testing.T) {
 		info.Team.Kept != 1 || info.Team.Staff != 1 || info.Team.Played != 0 {
 		t.Fatalf("delete-info: %+v %+v", info, info.Team)
 	}
-	edTok, _, _ := s.Tokens.Sign(uid, "editor", "Editor")
+	var edID int64 // the role comes from the users row, not from the token
+	conn.QueryRow(`INSERT INTO users (name, email, password_hash, role) VALUES ('Editor', 'reg-ed-'||$1||'@x.uz', 'x', 'editor') RETURNING id`, sfx).Scan(&edID)
+	edTok, _, _ := s.Tokens.Sign(edID, "editor", "Editor")
 	req = httptest.NewRequest("DELETE", delPath+"?team=1&confirm="+info.Number, nil)
 	req.Header.Set("Authorization", "Bearer "+edTok)
 	rec = httptest.NewRecorder()

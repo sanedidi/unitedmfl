@@ -24,6 +24,7 @@ type Server struct {
 	DB     *sql.DB
 	Cfg    *config.Config
 	Tokens *auth.Issuer
+	Roles  *auth.Roles // editable roles and their pages
 	Hub    *live.Hub
 
 	web            *webNotifier
@@ -53,6 +54,7 @@ func New(db *sql.DB, cfg *config.Config) *Server {
 	return &Server{
 		DB: db, Cfg: cfg,
 		Tokens:         auth.NewIssuer(cfg.JWTSecret, cfg.AccessTTL),
+		Roles:          auth.NewRoles(db),
 		Hub:            live.NewHub(),
 		web:            newWebNotifier(cfg.WebRevalidateURL, cfg.RevalidateSecret),
 		loginLimiter:   httpx.NewRateLimiter(10, 10*time.Minute),
@@ -144,7 +146,7 @@ func (s *Server) Routes() http.Handler {
 			r.With(s.can(auth.PermDashboard)).Get("/visitors", s.visitorStats)
 			r.With(s.can(auth.PermDashboard)).Get("/visitors/online", s.visitorsOnline)
 			r.With(s.can(auth.PermUploads)).Post("/uploads", s.uploadImage)
-			s.mountAI(r) // any signed-in user may generate; connections and settings need PermUsers
+			s.mountAI(r) // any signed-in user may generate; connections and settings need PermAI
 
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermMatchesRead))
@@ -191,10 +193,14 @@ func (s *Server) Routes() http.Handler {
 				r.Post("/protocols/{id}/reject", s.rejectProtocol)
 			})
 			s.mountRegistrationAdmin(r)
-			s.mountCRUD(r, auth.PermTeams, "/teams", teamsRes)
-			s.mountCRUD(r, auth.PermTeams, "/groups", groupsRes)
-			r.With(s.can(auth.PermTeams)).Put("/groups/{id}/teams", s.setGroupTeams)
-			s.mountCRUD(r, auth.PermTeams, "/players", playersRes)
+			// Jamoalar, Guruhlar and O‘yinchilar are separate pages over shared data;
+			// lineups (matches:edit) and the Live-pult read and add squad players too
+			s.mountCRUDAny(r, "/teams", teamsRes, []string{auth.PermTeams, auth.PermGroups, auth.PermPlayers}, []string{auth.PermTeams})
+			s.mountCRUDAny(r, "/groups", groupsRes, []string{auth.PermTeams, auth.PermGroups}, []string{auth.PermTeams, auth.PermGroups})
+			r.With(s.canAny(auth.PermTeams, auth.PermGroups)).Put("/groups/{id}/teams", s.setGroupTeams)
+			s.mountCRUDAny(r, "/players", playersRes,
+				[]string{auth.PermTeams, auth.PermPlayers, auth.PermMatchesEdit, auth.PermLive},
+				[]string{auth.PermTeams, auth.PermPlayers, auth.PermMatchesEdit})
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermTeams))
 				s.mountKits(r)
@@ -216,7 +222,7 @@ func (s *Server) Routes() http.Handler {
 			s.mountCRUD(r, auth.PermVideos, "/videos", videosRes)
 			r.With(s.can(auth.PermVideos)).Post("/video-uploads", s.uploadVideo)
 			r.Group(func(r chi.Router) {
-				r.Use(s.can(auth.PermVideos))
+				r.Use(s.can(auth.PermInstagram))
 				r.Get("/instagram", s.adminInstagram)
 				r.Put("/instagram", s.connectInstagram)
 				r.Delete("/instagram", s.disconnectInstagram)
@@ -242,9 +248,9 @@ func (s *Server) Routes() http.Handler {
 				r.Post("/users", s.createUser)
 				r.Patch("/users/{id}", s.patchUser)
 				r.Delete("/users/{id}", s.deleteUser)
-				r.Get("/roles", s.listRoles)
-				r.Get("/audit", s.listAudit)
 			})
+			s.mountRoles(r) // Rollar va huquqlar
+			r.With(s.can(auth.PermAudit)).Get("/audit", s.listAudit)
 		})
 	})
 	return r

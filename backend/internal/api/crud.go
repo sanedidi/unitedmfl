@@ -67,12 +67,21 @@ func rowMap(raw []byte) map[string]any {
 var reSlug = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 func (s *Server) mountCRUD(r chi.Router, perm, path string, res *resource) {
+	s.mountCRUDAny(r, path, res, []string{perm}, []string{perm})
+}
+
+// mountCRUDAny mounts a resource whose pages share data: reading needs any of
+// read, changing needs any of write.
+func (s *Server) mountCRUDAny(r chi.Router, path string, res *resource, read, write []string) {
 	h := s.crud(res)
 	r.Group(func(r chi.Router) {
-		r.Use(s.can(perm))
+		r.Use(s.canAny(read...))
 		r.Get(path, h.list)
-		r.Post(path, h.create)
 		r.Get(path+"/{id}", h.get)
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(s.canAny(write...))
+		r.Post(path, h.create)
 		r.Patch(path+"/{id}", h.patch)
 		r.Delete(path+"/{id}", h.delete)
 	})
@@ -335,6 +344,9 @@ func dbError(err error) error {
 		case "23505":
 			if pqErr.Constraint == "team_groups_code_key" {
 				return httpx.Validation(map[string]any{"code": "bu kod shu mavsumda boshqa guruhda band"})
+			}
+			if pqErr.Constraint == "roles_name_key" {
+				return httpx.Validation(map[string]any{"name": "bunday nomli rol bor"})
 			}
 			if pqErr.Constraint == "users_phone_key" {
 				return httpx.Validation(map[string]any{"phone": "bu raqam boshqa foydalanuvchiga biriktirilgan"})

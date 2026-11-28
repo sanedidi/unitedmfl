@@ -37,12 +37,13 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			httpx.Fail(w, r, httpx.ErrUnauthorized)
 			return
 		}
-		// blocked users lose access immediately
-		var status string
-		if err := s.DB.QueryRowContext(r.Context(), `SELECT status FROM users WHERE id=$1`, c.UserID).Scan(&status); err != nil || status != "active" {
+		// blocked users lose access immediately; a changed role applies at once too
+		var status, role string
+		if err := s.DB.QueryRowContext(r.Context(), `SELECT status, role FROM users WHERE id=$1`, c.UserID).Scan(&status, &role); err != nil || status != "active" {
 			httpx.Fail(w, r, httpx.ErrUnauthorized)
 			return
 		}
+		c.Role = role
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), claimsKey, c)))
 	})
 }
@@ -51,7 +52,7 @@ func (s *Server) can(perm string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			c := claimsFrom(r.Context())
-			if c == nil || !auth.Can(c.Role, perm) {
+			if c == nil || !s.Roles.Can(r.Context(), c.Role, perm) {
 				httpx.Fail(w, r, httpx.ErrForbidden)
 				return
 			}
@@ -92,6 +93,7 @@ type userDTO struct {
 	Name        string   `json:"name"`
 	Email       string   `json:"email"`
 	Role        string   `json:"role"`
+	RoleName    string   `json:"role_name"`
 	Permissions []string `json:"permissions"`
 }
 
@@ -108,7 +110,14 @@ func (s *Server) issueTokens(ctx context.Context, id int64, name, email, role st
 		return nil, err
 	}
 	return &tokenResponse{AccessToken: access, ExpiresAt: exp, RefreshToken: refresh,
-		User: userDTO{ID: id, Name: name, Email: email, Role: role, Permissions: auth.PermissionsFor(role)}}, nil
+		User: s.userDTO(ctx, id, name, email, role)}, nil
+}
+
+// userDTO describes the signed-in user with the pages their role may open.
+func (s *Server) userDTO(ctx context.Context, id int64, name, email, role string) userDTO {
+	var roleName string
+	_ = s.DB.QueryRowContext(ctx, `SELECT name FROM roles WHERE slug=$1`, role).Scan(&roleName)
+	return userDTO{ID: id, Name: name, Email: email, Role: role, RoleName: roleName, Permissions: s.Roles.Permissions(ctx, role)}
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
@@ -197,7 +206,7 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	c := claimsFrom(r.Context())
 	var email string
 	_ = s.DB.QueryRowContext(r.Context(), `SELECT email FROM users WHERE id=$1`, c.UserID).Scan(&email)
-	httpx.JSON(w, 200, userDTO{ID: c.UserID, Name: c.Name, Email: email, Role: c.Role, Permissions: auth.PermissionsFor(c.Role)})
+	httpx.JSON(w, 200, s.userDTO(r.Context(), c.UserID, c.Name, email, c.Role))
 }
 
 // EnsureAdmin creates the first administrator from env vars when the users table is empty.
@@ -229,9 +238,9 @@ func EnsureAdmin(ctx context.Context, db *sql.DB, name, email, password string) 
 func (s *Server) listUsers(w http.ResponseWriter, r *http.Request) {
 	var raw []byte
 	err := s.DB.QueryRowContext(r.Context(), `SELECT coalesce(json_agg(u ORDER BY u.id), '[]') FROM
-		(SELECT u.id, u.name, u.email, coalesce(u.phone, '') AS phone, u.role, u.status, u.last_login_at, u.created_at,
+		(SELECT u.id, u.name, u.email, coalesce(u.phone, '') AS phone, u.role, coalesce(r.name, u.role) AS role_name, u.status, u.last_login_at, u.created_at,
 		 EXISTS (SELECT 1 FROM telegram_links t WHERE t.user_id = u.id AND t.phone = u.phone) AS telegram_linked
-		 FROM users u) u`).Scan(&raw)
+		 FROM users u LEFT JOIN roles r ON r.slug = u.role) u`).Scan(&raw)
 	if err != nil {
 		httpx.Fail(w, r, err)
 		return
@@ -278,8 +287,8 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
 	} else if _, err := mail.ParseAddress(*in.Email); err != nil {
 		errs["email"] = "email noto‘g‘ri"
 	}
-	if in.Role == nil || !auth.ValidRole(*in.Role) {
-		errs["role"] = "rol noto‘g‘ri (admin, editor, operator, shop)"
+	if in.Role == nil || !s.roleExists(r.Context(), *in.Role) {
+		errs["role"] = "rolni tanlang"
 	}
 	if in.Password == nil {
 		errs["password"] = "majburiy"
@@ -321,7 +330,7 @@ func (s *Server) patchUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	me := claimsFrom(r.Context())
-	if id == me.UserID && ((in.Role != nil && *in.Role != auth.RoleAdmin) || (in.Status != nil && *in.Status != "active")) {
+	if id == me.UserID && ((in.Role != nil && *in.Role != me.Role) || (in.Status != nil && *in.Status != "active")) {
 		httpx.Fail(w, r, httpx.BadRequest("O‘z rolingiz yoki holatingizni o‘zgartira olmaysiz"))
 		return
 	}
@@ -339,7 +348,7 @@ func (s *Server) patchUser(w http.ResponseWriter, r *http.Request) {
 		add("email", strings.ToLower(strings.TrimSpace(*in.Email)))
 	}
 	if in.Role != nil {
-		if !auth.ValidRole(*in.Role) {
+		if !s.roleExists(r.Context(), *in.Role) {
 			httpx.Fail(w, r, httpx.Validation(map[string]any{"role": "rol noto‘g‘ri"}))
 			return
 		}
@@ -411,14 +420,6 @@ func (s *Server) deleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "delete", "user", id, nil)
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (s *Server) listRoles(w http.ResponseWriter, r *http.Request) {
-	out := []map[string]any{}
-	for _, role := range []string{auth.RoleAdmin, auth.RoleEditor, auth.RoleOperator, auth.RoleShop, auth.RoleController} {
-		out = append(out, map[string]any{"role": role, "permissions": auth.PermissionsFor(role)})
-	}
-	httpx.JSON(w, 200, out)
 }
 
 func (s *Server) listAudit(w http.ResponseWriter, r *http.Request) {

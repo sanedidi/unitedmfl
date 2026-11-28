@@ -33,6 +33,7 @@ type Options struct {
 	APIURL string // https://api.telegram.org
 	DB     *sql.DB
 	Tokens *auth.Issuer
+	Roles  *auth.Roles  // who may use the Live-pult (role pages); nil → read from DB
 	API    http.Handler // the API router (server.Routes())
 }
 
@@ -41,6 +42,7 @@ type Bot struct {
 	botID  int64 // the number before ":" in the token
 	db     *sql.DB
 	tokens *auth.Issuer
+	roles  *auth.Roles
 	api    http.Handler
 	now    func() time.Time
 
@@ -72,8 +74,11 @@ type operator struct {
 }
 
 func New(o Options) *Bot {
+	if o.Roles == nil {
+		o.Roles = auth.NewRoles(o.DB)
+	}
 	return &Bot{
-		tg: newClient(o.APIURL, o.Token), botID: botIDFromToken(o.Token), db: o.DB, tokens: o.Tokens, api: o.API,
+		tg: newClient(o.APIURL, o.Token), botID: botIDFromToken(o.Token), db: o.DB, tokens: o.Tokens, roles: o.Roles, api: o.API,
 		now: time.Now, sessions: map[int64]*session{},
 	}
 }
@@ -169,7 +174,7 @@ func (b *Bot) operatorFor(ctx context.Context, tgUserID int64) (*operator, error
 	if err != nil {
 		return nil, err
 	}
-	if !auth.Can(op.Role, auth.PermLive) {
+	if !b.roles.Can(ctx, op.Role, auth.PermLive) {
 		return nil, nil
 	}
 	return &op, nil
@@ -189,7 +194,7 @@ func (b *Bot) link(ctx context.Context, from *tgUser, chatID int64, rawPhone str
 	if err != nil {
 		return nil, err
 	}
-	if !auth.Can(op.Role, auth.PermLive) {
+	if !b.roles.Can(ctx, op.Role, auth.PermLive) {
 		return nil, nil
 	}
 	if _, err := b.db.ExecContext(ctx, `INSERT INTO telegram_links (tg_user_id, user_id, phone, chat_id, username) VALUES ($1, $2, $3, $4, $5)

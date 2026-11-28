@@ -3,7 +3,7 @@
 const BASE = "/api/v1";
 const KEY = "umfl.auth";
 
-export type User = { id: number; name: string; email: string; role: string; permissions: string[] };
+export type User = { id: number; name: string; email: string; role: string; role_name?: string; permissions: string[] };
 type Session = { access_token: string; refresh_token: string; expires_at: string };
 
 export class ApiError extends Error {

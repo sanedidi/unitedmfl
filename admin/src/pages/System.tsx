@@ -2,20 +2,24 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
 import { useAuth } from "@/lib/auth";
-import { ROLE_LABEL, fmtDateTime } from "@/lib/format";
+import { fmtDateTime } from "@/lib/format";
+import { Link } from "react-router";
+import { loadRoles, type Role } from "@/pages/Roles";
 import { PageHead } from "@/components/Layout";
 import { FormFields, useForm, type FieldSpec } from "@/components/Crud";
 import { Badge, Drawer, ErrorBox, Loading, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
 
-type U = { id: number; name: string; email: string; phone: string; telegram_linked: boolean; role: string; status: string; last_login_at: string | null; created_at: string };
+export { RoleEditPage, RolesPage } from "@/pages/Roles";
+
+type U = { id: number; name: string; email: string; phone: string; telegram_linked: boolean; role: string; role_name: string; status: string; last_login_at: string | null; created_at: string };
 
 // 998901234567 → +998 90 123 45 67
 const fmtPhone = (p: string) => (p.length === 12 ? `+${p.slice(0, 3)} ${p.slice(3, 5)} ${p.slice(5, 8)} ${p.slice(8, 10)} ${p.slice(10)}` : `+${p}`);
-const ROLES = Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }));
 
 export function UsersPage() {
   const { data, error, loading, reload } = useLoad(() => api.get<U[]>("/admin/users"), []);
+  const roles = useLoad(loadRoles, []);
   const [edit, setEdit] = useState<U | null | undefined>(undefined);
   const { user } = useAuth();
   const toast = useToast();
@@ -34,7 +38,7 @@ export function UsersPage() {
             <tbody>{data.map((u) => (
               <tr key={u.id} className="clickable" onClick={() => setEdit(u)}>
                 <td><span className="row"><span className="avatar">{u.name.slice(0, 2).toUpperCase()}</span><span><b>{u.name}</b>{u.id === user?.id && <span className="muted small"> (siz)</span>}<div className="muted small">{u.email}</div>{u.phone && <div className="muted small row" style={{ gap: 6 }}>{fmtPhone(u.phone)}{u.telegram_linked && <Badge tone="ok">Telegram</Badge>}</div>}</span></span></td>
-                <td>{ROLE_LABEL[u.role] || u.role}</td>
+                <td>{u.role_name || u.role}</td>
                 <td>{u.status === "active" ? <Badge tone="ok">Faol</Badge> : <Badge tone="danger">Bloklangan</Badge>}</td>
                 <td className="hide-mobile nowrap">{u.last_login_at ? fmtDateTime(u.last_login_at) : "—"}</td>
                 <td className="actions" onClick={(e) => e.stopPropagation()}>{u.id !== user?.id && <button className="btn btn-ghost btn-sm btn-icon" onClick={() => remove(u)} aria-label="O‘chirish"><I.trash size={16} /></button>}</td>
@@ -43,21 +47,23 @@ export function UsersPage() {
           </table></div>
         )}
       </div>
-      {edit !== undefined && <UserDrawer item={edit} onClose={() => setEdit(undefined)} onSaved={() => { setEdit(undefined); reload(); }} />}
+      {edit !== undefined && roles.data && <UserDrawer item={edit} roles={roles.data} onClose={() => setEdit(undefined)} onSaved={() => { setEdit(undefined); reload(); }} />}
     </>
   );
 }
 
-function UserDrawer({ item, onClose, onSaved }: { item: U | null; onClose: () => void; onSaved: () => void }) {
+function UserDrawer({ item, roles, onClose, onSaved }: { item: U | null; roles: Role[]; onClose: () => void; onSaved: () => void }) {
+  const { can } = useAuth();
+  const options = roles.map((r) => ({ value: r.slug, label: `${r.name} — ${r.is_system ? "barcha sahifalar" : `${r.pages} sahifa`}` }));
   const fields: FieldSpec[] = [
     { name: "name", label: "Ism", required: true, full: true },
     { name: "email", label: "Email", required: true, full: true },
-    { name: "role", label: "Rol", type: "select", options: ROLES },
+    { name: "role", label: "Rol", type: "select", options, hint: "Foydalanuvchi faqat shu roldagi sahifalarni ko‘radi" },
     { name: "status", label: "Holat", type: "select", options: [{ value: "active", label: "Faol" }, { value: "blocked", label: "Bloklangan" }] },
-    { name: "phone", label: "Telefon (Telegram Live-pult)", full: true, placeholder: "+998 90 123 45 67", hint: "Shu raqamli Telegram akkaunti Live-pult botiga kira oladi (operator va administrator). Bo‘sh qoldirilsa — botga kirish yo‘q." },
+    { name: "phone", label: "Telefon (Telegram Live-pult)", full: true, placeholder: "+998 90 123 45 67", hint: "Shu raqamli Telegram akkaunti Live-pult botiga kira oladi (roli «Live-pult» sahifasini ochsa). Bo‘sh qoldirilsa — botga kirish yo‘q." },
     { name: "password", label: item ? "Yangi parol (ixtiyoriy)" : "Parol", required: !item, full: true, hint: "Kamida 8 belgi" },
   ];
-  const form = useForm(fields, item ? { ...item, phone: item.phone ? fmtPhone(item.phone) : "", password: "" } : null, { role: "editor", status: "active", phone: "" });
+  const form = useForm(fields, item ? { ...item, phone: item.phone ? fmtPhone(item.phone) : "", password: "" } : null, { role: roles.find((r) => !r.is_system)?.slug ?? "admin", status: "active", phone: "" });
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   async function save() {
@@ -79,31 +85,9 @@ function UserDrawer({ item, onClose, onSaved }: { item: U | null; onClose: () =>
   return (
     <Drawer title={item ? item.name : "Yangi foydalanuvchi"} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Bekor qilish</button><button className="btn btn-primary" onClick={save} disabled={busy}>Saqlash</button></>}>
       <FormFields fields={fields} values={form.values} set={form.set} errors={form.errors} />
+      {can("roles") && <div className="small" style={{ marginTop: 12 }}><Link to="/roles/new" className="accent-text row" style={{ gap: 6, display: "inline-flex" }}><I.plus size={14} /> Yangi rol yaratish</Link></div>}
       <div className="alert info" style={{ marginTop: 20 }}><I.alert size={16} /> Parolni xodimga xavfsiz kanal orqali yuboring va birinchi kirishdan so‘ng almashtirishni so‘rang.</div>
     </Drawer>
-  );
-}
-
-const PERM: Record<string, string> = {
-  dashboard: "Dashboard", "matches:read": "Matchlarni ko‘rish", "matches:edit": "Matchlarni tahrirlash", live: "Live-pult", protocols: "Protokollar",
-  teams: "Jamoalar va o‘yinchilar", applications: "Jamoa arizalari", standings: "Turnir jadvali", seasons: "Mavsumlar", news: "Yangiliklar", banners: "Bannerlar", homepage: "Bosh sahifa konstruktori", partners: "Hamkorlar", videos: "Videolar",
-  merch: "Merch", requests: "Murojaatlar", users: "Foydalanuvchilar", uploads: "Fayl yuklash",
-};
-export function RolesPage() {
-  const { data, error, loading, reload } = useLoad(() => api.get<{ role: string; permissions: string[] }[]>("/admin/roles"), []);
-  if (error) return <ErrorBox error={error} retry={reload} />;
-  if (loading || !data) return <Loading />;
-  const perms = Object.keys(PERM);
-  return (
-    <>
-      <PageHead title="Rollar va huquqlar" sub="Huquqlar matritsasi serverda belgilangan (o‘zgartirish dasturchi orqali)" />
-      <div className="card"><div className="table-wrap"><table className="table">
-        <thead><tr><th>Huquq</th>{data.map((r) => <th key={r.role} className="center">{ROLE_LABEL[r.role] || r.role}</th>)}</tr></thead>
-        <tbody>{perms.map((p) => (
-          <tr key={p}><td>{PERM[p]}</td>{data.map((r) => <td key={r.role} className="center">{r.permissions.includes(p) ? <span style={{ color: "var(--text-accent)" }}><I.check size={18} /></span> : <span className="muted">—</span>}</td>)}</tr>
-        ))}</tbody>
-      </table></div></div>
-    </>
   );
 }
 

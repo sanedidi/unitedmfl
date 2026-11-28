@@ -68,7 +68,7 @@ func run() error {
 	handler := server.Routes()
 	// Telegram Live-pult: runs inside the API and calls the same handlers in-process
 	if cfg.TelegramToken != "" {
-		bot := tgbot.New(tgbot.Options{Token: cfg.TelegramToken, APIURL: cfg.TelegramAPIURL, DB: conn, Tokens: server.Tokens, API: handler})
+		bot := tgbot.New(tgbot.Options{Token: cfg.TelegramToken, APIURL: cfg.TelegramAPIURL, DB: conn, Tokens: server.Tokens, Roles: server.Roles, API: handler})
 		go bot.Run(ctx)
 	} else {
 		slog.Info("telegram bot disabled: TELEGRAM_BOT_TOKEN is empty")

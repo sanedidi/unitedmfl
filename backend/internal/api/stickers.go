@@ -746,7 +746,7 @@ func RecordBotStart(ctx context.Context, db *sql.DB, botID, userID int64, userna
 
 func (s *Server) mountStickers(r chi.Router) {
 	r.Group(func(r chi.Router) {
-		r.Use(s.can(auth.PermUsers))
+		r.Use(s.can(auth.PermStickers))
 		r.Get("/tg-stickers", s.stkState)
 		r.Patch("/tg-stickers", s.stkPatch)
 		r.Delete("/tg-stickers", s.stkDisconnect)
@@ -758,7 +758,7 @@ func (s *Server) mountStickers(r chi.Router) {
 		r.Post("/tg-stickers/preview", s.stkPreview)
 		r.Post("/tg-stickers/teams/{id}/retry", s.stkRetry)
 	})
-	r.With(s.can(auth.PermTeams)).Get("/teams/{id}/sticker", s.stkTeam)
+	r.With(s.canAny(auth.PermTeams, auth.PermStickers)).Get("/teams/{id}/sticker", s.stkTeam)
 }
 
 // stkItem is one team's sticker or emoji as the admin sees it.

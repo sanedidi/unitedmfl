@@ -7,8 +7,8 @@ import { ROLE_LABEL, initials } from "@/lib/format";
 import { Logo } from "./Logo";
 import { OnlinePill } from "./SiteVisits";
 
-type Item = { to: string; label: string; icon: ReactNode; perm: string; count?: "protocols" | "requests" | "applications" };
-const NAV: { group?: string; items: Item[] }[] = [
+export type Item = { to: string; label: string; icon: ReactNode; perm: string; count?: "protocols" | "requests" | "applications" };
+export const NAV: { group?: string; items: Item[] }[] = [
   { items: [{ to: "/", label: "Dashboard", icon: <I.grid />, perm: "dashboard" }] },
   { group: "Turnir", items: [
     { to: "/matches", label: "Matchlar", icon: <I.calendar />, perm: "matches:read" },
@@ -16,8 +16,8 @@ const NAV: { group?: string; items: Item[] }[] = [
     { to: "/live", label: "Live-pult", icon: <I.radio />, perm: "live" },
     { to: "/teams", label: "Jamoalar", icon: <I.shirt />, perm: "teams" },
     { to: "/applications", label: "Arizalar", icon: <I.link />, perm: "applications", count: "applications" },
-    { to: "/groups", label: "Guruhlar", icon: <I.grid />, perm: "teams" },
-    { to: "/players", label: "O‘yinchilar", icon: <I.user />, perm: "teams" },
+    { to: "/groups", label: "Guruhlar", icon: <I.grid />, perm: "groups" },
+    { to: "/players", label: "O‘yinchilar", icon: <I.user />, perm: "players" },
     { to: "/standings", label: "Turnir jadvali", icon: <I.table />, perm: "standings" },
     { to: "/seasons", label: "Mavsumlar", icon: <I.trophy />, perm: "seasons" },
   ] },
@@ -27,7 +27,7 @@ const NAV: { group?: string; items: Item[] }[] = [
     { to: "/banners", label: "Hero-bannerlar", icon: <I.image />, perm: "banners" },
     { to: "/videos", label: "Videolar", icon: <I.play />, perm: "videos" },
     { to: "/partners", label: "Hamkorlar", icon: <I.link />, perm: "partners" },
-    { to: "/instagram", label: "Instagram", icon: <I.camera />, perm: "videos" },
+    { to: "/instagram", label: "Instagram", icon: <I.camera />, perm: "instagram" },
   ] },
   { group: "Do‘kon va aloqa", items: [
     { to: "/tickets", label: "Chiptalar", icon: <I.ticket />, perm: "tickets" },
@@ -37,14 +37,20 @@ const NAV: { group?: string; items: Item[] }[] = [
     { to: "/requests", label: "Murojaatlar", icon: <I.inbox />, perm: "requests", count: "requests" },
   ] },
   { group: "Tizim", items: [
-    { to: "/ai", label: "AI-servis", icon: <I.sparkles />, perm: "users" },
-    { to: "/telegram-stickers", label: "Telegram stikerlar", icon: <I.telegram />, perm: "users" },
-    { to: "/wildberries", label: "Wildberries", icon: <I.swap />, perm: "users" },
+    { to: "/ai", label: "AI-servis", icon: <I.sparkles />, perm: "ai" },
+    { to: "/telegram-stickers", label: "Telegram stikerlar", icon: <I.telegram />, perm: "stickers" },
+    { to: "/wildberries", label: "Wildberries", icon: <I.swap />, perm: "wildberries" },
     { to: "/users", label: "Foydalanuvchilar", icon: <I.users />, perm: "users" },
-    { to: "/roles", label: "Rollar va huquqlar", icon: <I.lock />, perm: "users" },
-    { to: "/audit", label: "Audit jurnali", icon: <I.log />, perm: "users" },
+    { to: "/roles", label: "Rollar va huquqlar", icon: <I.lock />, perm: "roles" },
+    { to: "/audit", label: "Audit jurnali", icon: <I.log />, perm: "audit" },
   ] },
 ];
+
+/** The first menu page the user may open: where they land after signing in. */
+export function firstPage(can: (perm: string) => boolean): Item | undefined {
+  for (const g of NAV) for (const it of g.items) if (can(it.perm)) return it;
+  return undefined;
+}
 
 export const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined) || "https://unitedmfl.com";
 
@@ -89,7 +95,7 @@ export function Layout() {
         })}
         <div className="sb-user">
           <span className="avatar">{initials(user?.name || "?")}</span>
-          <div className="grow"><b>{user?.name}</b><small>{ROLE_LABEL[user?.role || ""] || user?.role}</small></div>
+          <div className="grow"><b>{user?.name}</b><small>{user?.role_name || ROLE_LABEL[user?.role || ""] || user?.role}</small></div>
           <button className="btn btn-ghost btn-icon" title="Chiqish" aria-label="Chiqish" onClick={logout}><I.logout /></button>
         </div>
       </aside>
