@@ -24,7 +24,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await apiLogout();
     setUser(null);
   }, []);
-  const can = useCallback((perm: string) => !!user && (user.role === "admin" || user.permissions.includes(perm)), [user]);
+  // "news" means viewing the page; "news:create", "news:edit", "news:delete" are its actions
+  const can = useCallback((perm: string) => !!user && (user.role === "admin" || user.permissions.includes(perm.includes(":") ? perm : `${perm}:view`)), [user]);
 
   return <AuthCtx.Provider value={{ user, ready, can, login, logout }}>{children}</AuthCtx.Provider>;
+}
+
+/** The admin page being shown (set by the route guard), so its parts know what the role may do there. */
+const PageCtx = createContext("");
+export const PageScope = ({ page, children }: { page: string; children: ReactNode }) => <PageCtx.Provider value={page}>{children}</PageCtx.Provider>;
+
+/** What the signed-in user may do on the current page. Outside a page scope everything is allowed (the server still checks). */
+export function usePage() {
+  const { can } = useAuth();
+  const page = useContext(PageCtx);
+  if (!page) return { page, create: true, edit: true, del: true, readOnly: false };
+  const create = can(`${page}:create`), edit = can(`${page}:edit`), del = can(`${page}:delete`);
+  return { page, create, edit, del, readOnly: !create && !edit && !del };
+}
+
+/** Renders its children only when the role may do this action on the current page. */
+export function Allowed({ to, children, otherwise = null }: { to: "create" | "edit" | "delete"; children: ReactNode; otherwise?: ReactNode }) {
+  const pg = usePage();
+  const ok = to === "create" ? pg.create : to === "edit" ? pg.edit : pg.del;
+  return <>{ok ? children : otherwise}</>;
 }

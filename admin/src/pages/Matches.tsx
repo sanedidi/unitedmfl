@@ -9,7 +9,7 @@ import { FormFields, useForm, type FieldSpec } from "@/components/Crud";
 import { PageHead, SITE_URL } from "@/components/Layout";
 import { Badge, Crest, Empty, ErrorBox, Loading, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
-import { useAuth } from "@/lib/auth";
+import { useAuth, Allowed } from "@/lib/auth";
 import { LineupEditor } from "./Lineups";
 import { MatchPhotos } from "@/components/MatchPhotos";
 
@@ -53,7 +53,7 @@ export function MatchesPage() {
 
   return (
     <>
-      <PageHead title="Matchlar" sub="Taqvim, natijalar va match sahifalari" actions={can("matches:edit") && <Link className="btn btn-primary" to="/matches/new"><I.plus size={16} /> Yangi match</Link>} />
+      <PageHead title="Matchlar" sub="Taqvim, natijalar va match sahifalari" actions={can("matches:create") && <Link className="btn btn-primary" to="/matches/new"><I.plus size={16} /> Yangi match</Link>} />
       <div className="card">
         <div className="toolbar">
           <div className="search grow" style={{ maxWidth: 320 }}><I.search size={16} /><input className="input" placeholder="Jamoa nomi…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Qidirish" /></div>
@@ -217,8 +217,8 @@ function MatchForm({ detail, mode, onSaved }: { detail?: MatchDetail; mode: "mai
       )}
       <FormFields fields={fields} values={form.values} set={form.set} errors={form.errors} />
       <div className="row" style={{ marginTop: 24, justifyContent: "space-between" }}>
-        {m ? <button type="button" className="btn btn-danger" onClick={remove}><I.trash size={16} /> O‘chirish</button> : <span />}
-        <button className="btn btn-primary" disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
+        {m ? <Allowed to="delete" otherwise={<span />}><button type="button" className="btn btn-danger" onClick={remove}><I.trash size={16} /> O‘chirish</button></Allowed> : <span />}
+        <Allowed to={m ? "edit" : "create"}><button className="btn btn-primary" disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button></Allowed>
       </div>
     </form>
   );

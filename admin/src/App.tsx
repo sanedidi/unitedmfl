@@ -1,5 +1,5 @@
 import { Link, Navigate, Route, Routes, useLocation } from "react-router";
-import { useAuth } from "@/lib/auth";
+import { PageScope, useAuth, usePage } from "@/lib/auth";
 import { Layout, NAV, firstPage } from "@/components/Layout";
 import { I } from "@/components/Icons";
 import { Empty, Loading } from "@/components/ui";
@@ -27,7 +27,25 @@ import { ScanPage } from "@/pages/Scan";
 
 function Guard({ perm, children }: { perm: string; children: React.ReactNode }) {
   const { can } = useAuth();
-  return can(perm) ? <>{children}</> : <NoAccess />;
+  if (!can(perm)) return <NoAccess />;
+  return <PageScope page={perm}><ReadOnlyNote />{children}</PageScope>;
+}
+
+/** Pages that only have viewing: no note there. */
+const VIEW_ONLY_PAGES = new Set(["dashboard", "scan", "audit"]);
+
+/** Shown above a page the role may only look at. */
+function ReadOnlyNote() {
+  const { page, readOnly } = usePage();
+  if (!readOnly || VIEW_ONLY_PAGES.has(page)) return null;
+  const label = NAV.flatMap((g) => g.items).find((it) => it.perm === page)?.label;
+  return (
+    <div className="ro-note">
+      <I.lock size={16} />
+      <div><b>Sizda {label ? `«${label}» sahifasida` : "bu sahifada"} faqat ko‘rish huquqi bor</b>
+        <span>Yaratish, tahrirlash va o‘chirish yopiq. Kerak bo‘lsa, administratorga murojaat qiling.</span></div>
+    </div>
+  );
 }
 
 /** A page outside the user's role, opened by a direct link. */
@@ -64,8 +82,8 @@ export default function App() {
       <Route path="scan" element={<Guard perm="scan"><ScanPage /></Guard>} />
       <Route element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="matches" element={<Guard perm="matches:read"><MatchesPage /></Guard>} />
-        <Route path="matches/:id" element={<Guard perm="matches:read"><MatchEditPage /></Guard>} />
+        <Route path="matches" element={<Guard perm="matches"><MatchesPage /></Guard>} />
+        <Route path="matches/:id" element={<Guard perm="matches"><MatchEditPage /></Guard>} />
         <Route path="live" element={<Guard perm="live"><LivePickPage /></Guard>} />
         <Route path="live/:id" element={<Guard perm="live"><LiveConsolePage /></Guard>} />
         <Route path="protocols" element={<Guard perm="protocols"><ProtocolsPage /></Guard>} />

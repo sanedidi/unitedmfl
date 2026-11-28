@@ -174,7 +174,7 @@ func (b *Bot) operatorFor(ctx context.Context, tgUserID int64) (*operator, error
 	if err != nil {
 		return nil, err
 	}
-	if !b.roles.Can(ctx, op.Role, auth.PermLive) {
+	if !b.roles.Can(ctx, op.Role, auth.Key(auth.PermLive, auth.ActEdit)) {
 		return nil, nil
 	}
 	return &op, nil
@@ -194,7 +194,7 @@ func (b *Bot) link(ctx context.Context, from *tgUser, chatID int64, rawPhone str
 	if err != nil {
 		return nil, err
 	}
-	if !b.roles.Can(ctx, op.Role, auth.PermLive) {
+	if !b.roles.Can(ctx, op.Role, auth.Key(auth.PermLive, auth.ActEdit)) {
 		return nil, nil
 	}
 	if _, err := b.db.ExecContext(ctx, `INSERT INTO telegram_links (tg_user_id, user_id, phone, chat_id, username) VALUES ($1, $2, $3, $4, $5)

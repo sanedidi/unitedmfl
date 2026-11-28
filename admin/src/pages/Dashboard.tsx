@@ -32,7 +32,7 @@ export function DashboardPage() {
       <PageHead title={`Xush kelibsiz, ${user?.name || ""}`} sub="United MFL boshqaruv paneli"
         actions={<>
           {can("protocols") && <Link className="btn" to="/protocols"><I.doc size={16} /> Natija kiritish</Link>}
-          {can("matches:edit") && <Link className="btn btn-primary" to="/matches/new"><I.plus size={16} /> Yangi match</Link>}
+          {can("matches:create") && <Link className="btn btn-primary" to="/matches/new"><I.plus size={16} /> Yangi match</Link>}
         </>} />
       <div className="grid g4" style={{ marginBottom: 16 }}>
         <Kpi icon={<I.calendar />} label="Matchlar" value={k.matches_planned ?? k.matches_total} sub={`${k.results_entered} ta natija kiritilgan`} to="/matches" />
@@ -78,7 +78,7 @@ export function DashboardPage() {
         <div className="stack">
           <div className="card card-pad stack" style={{ gap: 10 }}>
             <h2 style={{ fontSize: 16 }}>Tezkor amallar</h2>
-            {can("matches:edit") && <Quick to="/matches/new" icon={<I.calendar size={16} />} label="Match qo‘shish" />}
+            {can("matches:create") && <Quick to="/matches/new" icon={<I.calendar size={16} />} label="Match qo‘shish" />}
             {can("news") && <Quick to="/news" icon={<I.news size={16} />} label="Yangilik yozish" />}
             {can("banners") && <Quick to="/banners" icon={<I.image size={16} />} label="Hero-banner" />}
             {can("videos") && <Quick to="/videos" icon={<I.play size={16} />} label="Video qo‘shish" />}

@@ -27,13 +27,16 @@ func (s *Server) mountStadiums(r chi.Router) {
 		r.Post("/venues", s.createVenue)
 		r.Patch("/venues/{id}", s.patchVenue)
 		r.Put("/venues/{id}/draft", s.saveDraft)
-		r.Delete("/venues/{id}/draft", s.discardDraft)
-		r.Post("/venues/{id}/draft/restore/{layoutID}", s.restoreDraft)
-		r.Post("/venues/{id}/publish", s.publishDraft)
 		r.Get("/layout-library", s.layoutLibrary)
 		r.Post("/layout-templates", s.createTemplate)
 		r.Patch("/layout-templates/{id}", s.patchTemplate)
 		r.Delete("/layout-templates/{id}", s.deleteTemplate)
+	})
+	r.Group(func(r chi.Router) { // drafts: discarding, restoring and publishing are editing
+		r.Use(s.can(edit(auth.PermStadiums)))
+		r.Delete("/venues/{id}/draft", s.discardDraft)
+		r.Post("/venues/{id}/draft/restore/{layoutID}", s.restoreDraft)
+		r.Post("/venues/{id}/publish", s.publishDraft)
 	})
 	r.Group(func(r chi.Router) { // read: also for ticket managers choosing a schema
 		r.Use(s.canAny(auth.PermStadiums, auth.PermTickets))
@@ -42,24 +45,6 @@ func (s *Server) mountStadiums(r chi.Router) {
 		r.Get("/layouts/{id}", s.getLayout)
 		r.Get("/layouts/{id}/diff", s.diffLayout)
 	})
-}
-
-// canAny passes users holding at least one of perms.
-func (s *Server) canAny(perms ...string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			c := claimsFrom(r.Context())
-			if c != nil {
-				for _, p := range perms {
-					if s.Roles.Can(r.Context(), c.Role, p) {
-						next.ServeHTTP(w, r)
-						return
-					}
-				}
-			}
-			httpx.Fail(w, r, httpx.ErrForbidden)
-		})
-	}
 }
 
 func urlID(r *http.Request, name string) (int64, error) {

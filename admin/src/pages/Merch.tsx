@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, Route, Routes, useNavigate } from "react-router";
 import { api, uploadImage, type Page } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { useAuth, Allowed } from "@/lib/auth";
 import { useDebounced, useLoad } from "@/lib/hooks";
 import { fmtShort, fmtUZS } from "@/lib/format";
 import { errText, wbLink, wbStatus, type WBChar, type WBCharc, type WBImportItem, type WBProduct, type WBState, type WBSubject, type WBVariant } from "@/lib/wb";
@@ -107,8 +107,8 @@ function MerchList() {
   return (
     <>
       <PageHead title="Merch" sub="Mahsulotlar saytda va Wildberries do‘konida — bitta joydan boshqariladi" actions={<>
-        {s?.connected && <button className="btn" onClick={() => setImportOpen(true)}><I.download size={16} /> WB’dan import</button>}
-        <button className="btn btn-primary" onClick={() => navigate("/products/new")}><I.plus size={16} /> Mahsulot qo‘shish</button>
+        {s?.connected && <Allowed to="edit"><button className="btn" onClick={() => setImportOpen(true)}><I.download size={16} /> WB’dan import</button></Allowed>}
+        <Allowed to="create"><button className="btn btn-primary" onClick={() => navigate("/products/new")}><I.plus size={16} /> Mahsulot qo‘shish</button></Allowed>
       </>} />
       {s && <WBBanners s={s} />}
       <div className="stk-cols">
@@ -125,7 +125,7 @@ function MerchList() {
           </div>
           <div className="card">
             {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading && !data ? <Loading /> : !items.length ? (
-              <Empty title="Mahsulotlar yo‘q" text="Birinchi mahsulotni qo‘shing yoki WB kabinetidan import qiling." action={<button className="btn btn-primary" onClick={() => navigate("/products/new")}><I.plus size={16} /> Qo‘shish</button>} />
+              <Empty title="Mahsulotlar yo‘q" text="Birinchi mahsulotni qo‘shing yoki WB kabinetidan import qiling." action={<Allowed to="create"><button className="btn btn-primary" onClick={() => navigate("/products/new")}><I.plus size={16} /> Qo‘shish</button></Allowed>} />
             ) : (
               <div className="table-wrap"><table className="table">
                 <thead><tr><th>Mahsulot</th><th>Narx</th><th className="hide-mobile">Qoldiq</th><th>WB holati</th><th /></tr></thead>
@@ -139,7 +139,7 @@ function MerchList() {
                       <td className="actions nowrap" onClick={(e) => e.stopPropagation()}>
                         {p.wb_nm_id && s && <a className="btn btn-ghost btn-sm btn-icon" title="WB’da ochish" aria-label="WB’da ochish" href={wbLink(p.wb_nm_id, s.link_domain)} target="_blank" rel="noreferrer"><I.link size={16} /></a>}
                         <button className="btn btn-ghost btn-sm btn-icon" aria-label="Tahrirlash" onClick={() => navigate(`/products/${p.id}`)}><I.edit size={16} /></button>
-                        <button className="btn btn-ghost btn-sm btn-icon" aria-label="O‘chirish" onClick={() => remove(p)}><I.trash size={16} /></button>
+                        <Allowed to="delete"><button className="btn btn-ghost btn-sm btn-icon" aria-label="O‘chirish" onClick={() => remove(p)}><I.trash size={16} /></button></Allowed>
                       </td>
                     </tr>
                   ))}

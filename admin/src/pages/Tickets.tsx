@@ -7,7 +7,7 @@ import { StadiumCanvas } from "@/components/StadiumCanvas";
 import { api, ApiError } from "@/lib/api";
 import { useDebounced, useLoad } from "@/lib/hooks";
 import { fmtDateTime, fmtShort, fmtUZS, fromLocalInput, toLocalInput } from "@/lib/format";
-import { useAuth } from "@/lib/auth";
+import { useAuth, Allowed } from "@/lib/auth";
 import {
   ORDER_STATUS, PROVIDER, SALE_STATUS, SCAN_RESULT, TICKET_STATUS,
   type MatchInfo, type OrderRow, type Sale, type SaleRow, type SaleView, type TicketV, type Venue, type ZonePrice,
@@ -176,7 +176,7 @@ function SalePage() {
     <>
       <PageHead pre={<Link to="/tickets" className="muted"><I.back size={14} /> Chiptalar</Link>} title={`${data.match.title} · chipta sotuvi`}
         sub={`${data.match.stage ? data.match.stage + " · " : ""}${data.match.kickoff_at ? fmtDateTime(data.match.kickoff_at) : "vaqt belgilanmagan"}${data.match.venue ? " · " + data.match.venue : ""}`}
-        actions={s && <>{s.box_office && <button className="btn" onClick={() => setBoxOffice(true)}>Kassada sotish</button>}<a className="btn" href={`${SITE_URL}/matchlar/${mid}/chipta`} target="_blank" rel="noreferrer">Saytda ko‘rish</a></>} />
+        actions={s && <>{s.box_office && <Allowed to="create"><button className="btn" onClick={() => setBoxOffice(true)}>Kassada sotish</button></Allowed>}<a className="btn" href={`${SITE_URL}/matchlar/${mid}/chipta`} target="_blank" rel="noreferrer">Saytda ko‘rish</a></>} />
       {!s ? <SaleStart mid={mid} onDone={setData} /> : (
         <>
           <div className={`tk-status ${s.status}`}>

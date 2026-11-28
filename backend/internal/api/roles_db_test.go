@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -74,9 +75,24 @@ func TestRolesAndPageAccess(t *testing.T) {
 	if c := call(admin, "GET", "/roles", nil, &roles); c != 200 || len(roles) < 5 || roles[0].Slug != "admin" || !roles[0].IsSystem || roles[0].Pages != 27 {
 		t.Fatalf("roles: %d %+v", c, roles)
 	}
+	// v1 pages became every action of the page; Matchlar and deleting applications keep their old split
 	for _, r := range roles {
-		if r.Slug == "editor" && (!contains(r.Permissions, "groups") || !contains(r.Permissions, "instagram") || contains(r.Permissions, "users")) {
-			t.Fatalf("editor permissions: %v", r.Permissions)
+		switch r.Slug {
+		case "editor":
+			for _, p := range []string{"groups:create", "groups:delete", "instagram:edit", "news:delete", "matches:view", "applications:edit"} {
+				if !contains(r.Permissions, p) {
+					t.Fatalf("editor lacks %s: %v", p, r.Permissions)
+				}
+			}
+			for _, p := range []string{"matches:edit", "applications:delete", "users:view", "news"} {
+				if contains(r.Permissions, p) {
+					t.Fatalf("editor has %s: %v", p, r.Permissions)
+				}
+			}
+		case "operator":
+			if !contains(r.Permissions, "matches:delete") || !contains(r.Permissions, "live:edit") {
+				t.Fatalf("operator permissions: %v", r.Permissions)
+			}
 		}
 	}
 
@@ -84,20 +100,23 @@ func TestRolesAndPageAccess(t *testing.T) {
 	var e struct {
 		Error struct{ Fields map[string]string }
 	}
-	if c := call(admin, "POST", "/roles", map[string]any{"name": "X", "permissions": []string{"nope"}}, &e); c != 422 || e.Error.Fields["permissions"] == "" {
-		t.Fatalf("unknown perm: %d %+v", c, e)
+	for _, bad := range []string{"nope", "news:publish", "dashboard:create"} {
+		if c := call(admin, "POST", "/roles", map[string]any{"name": "X", "permissions": []string{bad}}, &e); c != 422 || e.Error.Fields["permissions"] == "" {
+			t.Fatalf("unknown perm %s: %d %+v", bad, c, e)
+		}
 	}
 	if c := call(admin, "POST", "/roles", map[string]any{"name": "X", "permissions": []string{}}, nil); c != 422 {
 		t.Fatalf("empty perms: %d", c)
 	}
 	name := "SMM menejer " + sfx
 	var smm roleDTO
-	// an extra without its page is dropped (applications:delete without applications)
+	// any action turns on viewing its page (banners:create → banners:view)
 	if c := call(admin, "POST", "/roles", map[string]any{"name": "  " + name + " ", "description": "Kontent",
-		"permissions": []string{"news", "banners", "videos", "instagram", "applications:delete"}}, &smm); c != 201 || smm.Pages != 4 || len(smm.Permissions) != 4 || smm.Name != name {
+		"permissions": []string{"news:view", "news:create", "news:edit", "banners:create", "videos:view", "instagram:view"}}, &smm); c != 201 || smm.Pages != 4 || len(smm.Permissions) != 7 ||
+		!contains(smm.Permissions, "banners:view") || smm.Name != name {
 		t.Fatalf("create: %d %+v", c, smm)
 	}
-	if c := call(admin, "POST", "/roles", map[string]any{"name": name, "permissions": []string{"news"}}, &e); c != 422 || e.Error.Fields["name"] == "" {
+	if c := call(admin, "POST", "/roles", map[string]any{"name": name, "permissions": []string{"news:view"}}, &e); c != 422 || e.Error.Fields["name"] == "" {
 		t.Fatalf("duplicate name: %d %+v", c, e)
 	}
 
@@ -110,11 +129,30 @@ func TestRolesAndPageAccess(t *testing.T) {
 	uid = created.ID
 	smmTok := tok(uid)
 	var me userDTO
-	if c := call(smmTok, "GET", "/me", nil, &me); c != 200 || me.Role != smm.Slug || me.RoleName != name || !contains(me.Permissions, "news") || contains(me.Permissions, "tickets") || !contains(me.Permissions, "uploads") {
+	if c := call(smmTok, "GET", "/me", nil, &me); c != 200 || me.Role != smm.Slug || me.RoleName != name || !contains(me.Permissions, "news:create") ||
+		contains(me.Permissions, "news:delete") || contains(me.Permissions, "tickets:view") || !contains(me.Permissions, "uploads") {
 		t.Fatalf("me: %d %+v", c, me)
 	}
 	if c := call(smmTok, "GET", "/news", nil, nil); c != 200 {
 		t.Fatalf("news: %d", c)
+	}
+	// each action is checked on its own: the guard runs before the handler, so a
+	// missing article gives 404 when allowed and 403 when not
+	if c := call(smmTok, "PATCH", "/news/987654321", map[string]any{"title": "x"}, nil); c != 404 {
+		t.Fatalf("edit news: %d, want 404", c)
+	}
+	var fe struct{ Error struct{ Message string } }
+	if c := call(smmTok, "DELETE", "/news/987654321", nil, &fe); c != 403 || !strings.Contains(fe.Error.Message, "Yangiliklar — o‘chirish") {
+		t.Fatalf("delete news: %d %+v", c, fe)
+	}
+	if c := call(smmTok, "POST", "/videos", map[string]any{}, nil); c != 403 {
+		t.Fatalf("create video: %d", c)
+	}
+	if c := call(smmTok, "PATCH", "/banners/987654321", map[string]any{}, nil); c != 403 {
+		t.Fatalf("edit banner: %d", c)
+	}
+	if c := call(smmTok, "POST", "/banners", map[string]any{}, nil); c == 403 {
+		t.Fatalf("create banner: 403")
 	}
 	for _, p := range []string{"/ticket-sales", "/users", "/dashboard", "/roles", "/audit"} {
 		if c := call(smmTok, "GET", p, nil, nil); c != 403 {
@@ -123,7 +161,7 @@ func TestRolesAndPageAccess(t *testing.T) {
 	}
 
 	// a change to the role applies at once
-	if c := call(admin, "PATCH", fmt.Sprintf("/roles/%d", smm.ID), map[string]any{"permissions": []string{"news", "dashboard"}}, nil); c != 200 {
+	if c := call(admin, "PATCH", fmt.Sprintf("/roles/%d", smm.ID), map[string]any{"permissions": []string{"news:view", "dashboard:view"}}, nil); c != 200 {
 		t.Fatalf("patch: %d", c)
 	}
 	if c := call(smmTok, "GET", "/dashboard", nil, nil); c != 200 {
@@ -156,11 +194,11 @@ func TestRolesAndPageAccess(t *testing.T) {
 
 	// a role manager cannot take Rollar va huquqlar away from their own role or delete it
 	mgrRole := roleDTO{}
-	if c := call(admin, "POST", "/roles", map[string]any{"name": "Kadrlar " + sfx, "permissions": []string{"users", "roles"}}, &mgrRole); c != 201 {
+	if c := call(admin, "POST", "/roles", map[string]any{"name": "Kadrlar " + sfx, "permissions": []string{"users:view", "roles:view", "roles:edit", "roles:delete"}}, &mgrRole); c != 201 {
 		t.Fatalf("create manager role: %d", c)
 	}
 	mgr := tok(user("mgr", mgrRole.Slug))
-	if c := call(mgr, "PATCH", fmt.Sprintf("/roles/%d", mgrRole.ID), map[string]any{"permissions": []string{"users"}}, nil); c != 400 {
+	if c := call(mgr, "PATCH", fmt.Sprintf("/roles/%d", mgrRole.ID), map[string]any{"permissions": []string{"users:view", "roles:view"}}, nil); c != 400 {
 		t.Fatalf("drop own roles page: %d", c)
 	}
 	if c := call(mgr, "DELETE", fmt.Sprintf("/roles/%d", mgrRole.ID), nil, nil); c != 400 {

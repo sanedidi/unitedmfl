@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api, ApiError } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
-import { useAuth } from "@/lib/auth";
-import { fmtDateTime, initials } from "@/lib/format";
+import { Allowed, useAuth, usePage } from "@/lib/auth";
+import { initials } from "@/lib/format";
 import { NAV, PageHead } from "@/components/Layout";
 import { Badge, ErrorBox, Field, Loading, Modal, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
@@ -16,9 +16,8 @@ export type Role = {
   permissions: string[]; pages: number; users: number; updated_at: string;
   user_list?: { id: number; name: string; email: string; status: string }[];
 };
-type Extra = { key: string; label: string };
-type CatalogPage = { key: string; label: string; hint: string; extras?: Extra[] };
-type Catalog = { groups: { label: string; pages: CatalogPage[] }[]; total: number };
+type CatalogPage = { key: string; label: string; hint: string; actions: string[] };
+type Catalog = { groups: { label: string; pages: CatalogPage[] }[]; actions: { key: string; label: string }[]; total: number };
 
 const loadCatalog = () => api.get<Catalog>("/admin/permissions");
 export const loadRoles = () => api.get<Role[]>("/admin/roles");
@@ -46,13 +45,13 @@ export function RolesPage() {
   return (
     <>
       <PageHead title="Rollar va huquqlar" sub="Rol yarating va unga qaysi sahifalar ochiq bo‘lishini belgilang"
-        actions={<Link className="btn btn-primary" to="/roles/new"><I.plus size={16} /> Yangi rol</Link>} />
+        actions={<Allowed to="create"><Link className="btn btn-primary" to="/roles/new"><I.plus size={16} /> Yangi rol</Link></Allowed>} />
       <div className="card">
         {error ? <div className="card-pad"><ErrorBox error={error} retry={() => { roles.reload(); cat.reload(); }} /></div> : !roles.data || !cat.data ? <Loading /> : (
           <div className="table-wrap"><table className="table">
             <thead><tr><th>Rol</th><th>Ochiq sahifalar</th><th className="hide-mobile">Foydalanuvchilar</th><th className="hide-mobile">Turi</th><th /></tr></thead>
             <tbody>{roles.data.map((r) => {
-              const pages = r.permissions.filter((p) => labels[p]);
+              const pages = r.permissions.filter((p) => p.endsWith(":view")).map((p) => p.slice(0, -5)).filter((p) => labels[p]);
               return (
                 <tr key={r.id} className="clickable" onClick={() => navigate(`/roles/${r.id}`)}>
                   <td>
@@ -61,7 +60,7 @@ export function RolesPage() {
                   </td>
                   <td>
                     <div className="role-pages">
-                      <b className="nowrap">{r.pages} / {total}</b>
+                      <b className="nowrap" title={`${r.permissions.length} amal`}>{r.pages} / {total}</b>
                       {r.is_system ? <span className="chip-static">Hammasi</span> : <>
                         {pages.slice(0, 3).map((p) => <span key={p} className="role-chip">{labels[p]}</span>)}
                         {pages.length > 3 && <span className="muted small">+{pages.length - 3}</span>}
@@ -72,8 +71,10 @@ export function RolesPage() {
                   <td className="hide-mobile">{r.is_system ? <Badge plain tone="dark">Tizim</Badge> : <Badge plain>Maxsus</Badge>}</td>
                   <td className="actions" onClick={(e) => e.stopPropagation()}>
                     {r.is_system ? <span className="muted small nowrap">Faqat ko‘rish</span> : <>
-                      <Link className="btn btn-sm btn-icon" to={`/roles/${r.id}`} aria-label="Tahrirlash" title="Tahrirlash"><I.edit size={16} /></Link>
-                      <button className="btn btn-sm btn-icon" onClick={() => setDel(r)} aria-label="O‘chirish" title="O‘chirish"><I.trash size={16} /></button>
+                      <Allowed to="edit" otherwise={<Link className="btn btn-sm btn-icon" to={`/roles/${r.id}`} aria-label="Ko‘rish" title="Ko‘rish"><I.eye size={16} /></Link>}>
+                        <Link className="btn btn-sm btn-icon" to={`/roles/${r.id}`} aria-label="Tahrirlash" title="Tahrirlash"><I.edit size={16} /></Link>
+                      </Allowed>
+                      <Allowed to="delete"><button className="btn btn-sm btn-icon" onClick={() => setDel(r)} aria-label="O‘chirish" title="O‘chirish"><I.trash size={16} /></button></Allowed>
                     </>}
                   </td>
                 </tr>
@@ -126,7 +127,7 @@ function DeleteRoleModal({ role, roles, onClose, onDone }: { role: Role; roles: 
   );
 }
 
-// ---------- R2 · create / edit (separate page) ----------
+// ---------- R2.1 · create / edit: page × action matrix (separate page) ----------
 
 export function RoleEditPage() {
   const { id } = useParams();
@@ -139,16 +140,22 @@ export function RoleEditPage() {
   return <RoleForm key={role.data?.id ?? "new"} catalog={cat.data} role={role.data ?? null} reload={role.reload} />;
 }
 
+const viewKey = (page: string) => `${page}:view`;
+
 function RoleForm({ catalog, role, reload }: { catalog: Catalog; role: Role | null; reload: () => void }) {
   const { user, can } = useAuth();
+  const pg = usePage();
   const navigate = useNavigate();
   const toast = useToast();
   const confirm = useConfirm();
-  const fixed = !!role?.is_system;
+  const system = !!role?.is_system;
+  // the administrator role is fixed; without the right to edit roles the page only shows
+  const fixed = system || (role ? !pg.edit : !pg.create);
+  const all = useMemo(() => catalog.groups.flatMap((g) => g.pages.flatMap((p) => p.actions.map((a) => `${p.key}:${a}`))), [catalog]);
   const initial = useMemo(() => ({ name: role?.name ?? "", description: role?.description ?? "", perms: [...(role?.permissions ?? [])].sort() }), [role]);
   const [name, setName] = useState(initial.name);
   const [description, setDescription] = useState(initial.description);
-  const [perms, setPerms] = useState<Set<string>>(() => new Set(initial.perms));
+  const [perms, setPerms] = useState<Set<string>>(() => new Set(system ? all : initial.perms));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [del, setDel] = useState(false);
@@ -165,23 +172,24 @@ function RoleForm({ catalog, role, reload }: { catalog: Catalog; role: Role | nu
     return () => window.removeEventListener("beforeunload", h);
   }, [dirty]);
 
-  const pageKeys = catalog.groups.flatMap((g) => g.pages.map((p) => p.key));
-  const count = pageKeys.filter((k) => perms.has(k)).length;
+  const pageCount = catalog.groups.reduce((n, g) => n + g.pages.filter((p) => perms.has(viewKey(p.key))).length, 0);
 
-  function toggle(keys: string[], on: boolean) {
+  /** Turns actions on or off: any action needs viewing its page; without viewing nothing else stays. */
+  function change(keys: string[], on: boolean) {
     if (fixed) return;
     setPerms((cur) => {
       const next = new Set(cur);
       for (const k of keys) {
-        if (on) next.add(k);
+        const page = k.slice(0, k.lastIndexOf(":"));
+        if (on) { next.add(k); next.add(viewKey(page)); }
+        else if (k === viewKey(page)) { for (const x of [...next]) if (x.startsWith(page + ":")) next.delete(x); }
         else next.delete(k);
-        // an extra goes away with its page
-        if (!on) catalog.groups.forEach((g) => g.pages.forEach((p) => p.key === k && p.extras?.forEach((x) => next.delete(x.key))));
       }
       return next;
     });
     setErrors((e) => ({ ...e, permissions: "" }));
   }
+  const preset = (keys: string[]) => { if (!fixed) { setPerms(new Set(keys)); setErrors((e) => ({ ...e, permissions: "" })); } };
 
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
@@ -207,12 +215,12 @@ function RoleForm({ catalog, role, reload }: { catalog: Catalog; role: Role | nu
     navigate("/roles");
   }
 
-  const menu = NAV.map((g) => ({ group: g.group, items: g.items.filter((it) => fixed || perms.has(it.perm)) })).filter((g) => g.items.length);
-  const landing = fixed || perms.has("dashboard") ? "Dashboard" : menu[0]?.items[0]?.label;
+  const menu = NAV.map((g) => ({ group: g.group, items: g.items.filter((it) => perms.has(viewKey(it.perm))) })).filter((g) => g.items.length);
+  const landing = perms.has("dashboard:view") ? "Dashboard" : menu[0]?.items[0]?.label;
   const title = role ? name || role.name : "Yangi rol";
   const sub = role
-    ? `${fixed ? "Tizim roli" : "Maxsus rol"} · ${role.users} foydalanuvchi · oxirgi o‘zgarish ${fmtDateTime(role.updated_at)}${dirty ? " · saqlanmagan o‘zgarishlar" : ""}`
-    : "Nom bering va rol ochadigan sahifalarni belgilang";
+    ? `${system ? "Tizim roli" : "Maxsus rol"} · ${role.users} foydalanuvchi · ${pageCount} sahifa, ${perms.size} amal${dirty ? " · saqlanmagan o‘zgarishlar" : ""}`
+    : "Nom bering va har bir sahifada nimalar mumkinligini belgilang";
 
   return (
     <form onSubmit={save}>
@@ -222,7 +230,7 @@ function RoleForm({ catalog, role, reload }: { catalog: Catalog; role: Role | nu
           <button type="button" className="btn" onClick={cancel}>Bekor qilish</button>
           <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
         </>} />
-      {fixed && <div className="alert info" style={{ marginBottom: 24 }}><I.lock size={16} /> Administrator — tizim roli: u doim barcha sahifalarni ko‘radi, uni o‘zgartirib yoki o‘chirib bo‘lmaydi.</div>}
+      {system && <div className="alert info" style={{ marginBottom: 24 }}><I.lock size={16} /> Administrator — tizim roli: u doim barcha sahifalarda barcha amallarni bajaradi, uni o‘zgartirib yoki o‘chirib bo‘lmaydi.</div>}
       <div className="edit-layout">
         <div className="stack" style={{ gap: 24 }}>
           <div className="card">
@@ -240,55 +248,58 @@ function RoleForm({ catalog, role, reload }: { catalog: Catalog; role: Role | nu
           <div className="card">
             <div className="card-head perm-head">
               <div>
-                <h3>Sahifalarga kirish</h3>
-                <p className="muted small">Belgilangan sahifalar menyuda ko‘rinadi va ochiladi. Qolganlari bu roldagi foydalanuvchi uchun yopiq.</p>
+                <h3>Sahifalar va amallar</h3>
+                <p className="muted small">Har bir sahifa uchun nimalar mumkinligini belgilang. Ko‘rish yopiq bo‘lsa, sahifa menyuda ham ko‘rinmaydi.</p>
               </div>
-              <div className="row">
-                <span className="chip-static nowrap">{fixed ? catalog.total : count} / {catalog.total} tanlandi</span>
-                {!fixed && <>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => toggle(pageKeys, true)}>Hammasi</button>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPerms(new Set())}>Tozalash</button>
-                </>}
-              </div>
+              <span className="chip-static nowrap">{pageCount} sahifa · {perms.size} amal</span>
             </div>
-            <div className="card-pad stack" style={{ gap: 20 }}>
+            <div className="card-pad stack" style={{ gap: 16 }}>
+              {!fixed && (
+                <div className="row wrap" style={{ gap: 8 }}>
+                  <span className="muted small">Hammasiga:</span>
+                  <button type="button" className="btn btn-sm" onClick={() => preset(all.filter((k) => k.endsWith(":view")))}>Faqat ko‘rish</button>
+                  <button type="button" className="btn btn-sm" onClick={() => preset(all)}>To‘liq huquq</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => preset([])}>Tozalash</button>
+                </div>
+              )}
               {errors.permissions && <div className="alert danger"><I.alert size={16} /> {errors.permissions}</div>}
-              {own && !fixed && <div className="alert warn"><I.alert size={16} /> Bu sizning rolingiz. «Rollar va huquqlar» sahifasini olib tashlab bo‘lmaydi.</div>}
-              {catalog.groups.map((g) => {
-                const keys = g.pages.map((p) => p.key);
-                const on = keys.filter((k) => fixed || perms.has(k)).length;
-                return (
-                  <div key={g.label} className="perm-group">
-                    <label className="perm-group-head">
-                      <GroupBox all={on === keys.length} some={on > 0} disabled={fixed} onChange={(v) => toggle(keys, v)} />
-                      <span className="overline">{g.label}</span>
-                      <span className={`small ${on ? "accent-text" : "muted"}`}>{on} / {keys.length}</span>
-                    </label>
-                    <div className="perm-tiles">
-                      {g.pages.map((p) => {
-                        const checked = fixed || perms.has(p.key);
-                        return (
-                          <div key={p.key} className={`perm-tile${checked ? " on" : ""}${fixed ? " fixed" : ""}`}>
-                            <label className="perm-main">
-                              <input type="checkbox" checked={checked} disabled={fixed} onChange={(e) => toggle([p.key], e.target.checked)} />
-                              <span className="grow">
-                                <span className="perm-name">{iconOf(p.key)}{p.label}</span>
-                                <span className="muted small">{p.hint}</span>
-                              </span>
-                            </label>
-                            {p.extras?.map((x) => (
-                              <label key={x.key} className={`perm-extra${checked ? "" : " off"}`}>
-                                <input type="checkbox" disabled={fixed || !checked} checked={fixed || perms.has(x.key)} onChange={(e) => toggle([x.key], e.target.checked)} />
-                                <span className="small">{x.label}</span>
-                              </label>
-                            ))}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
+              {own && !fixed && <div className="alert warn"><I.alert size={16} /> Bu sizning rolingiz. «Rollar va huquqlar» sahifasini tahrirlash huquqini olib tashlab bo‘lmaydi.</div>}
+              <div className="table-wrap perm-matrix-wrap">
+                <table className="perm-matrix">
+                  <thead><tr><th>Sahifa</th>{catalog.actions.map((a) => <th key={a.key}>{a.label}</th>)}</tr></thead>
+                  {catalog.groups.map((g) => {
+                    const opened = g.pages.filter((p) => perms.has(viewKey(p.key))).length;
+                    return (
+                      <tbody key={g.label}>
+                        <tr className="perm-group-row">
+                          <th scope="rowgroup"><span className="overline">{g.label}</span> <span className={`small ${opened ? "accent-text" : "muted"}`}>{opened} / {g.pages.length}</span></th>
+                          {catalog.actions.map((a) => {
+                            const keys = g.pages.filter((p) => p.actions.includes(a.key)).map((p) => `${p.key}:${a.key}`);
+                            if (!keys.length) return <td key={a.key} className="na">—</td>;
+                            const on = keys.filter((k) => perms.has(k)).length;
+                            return <td key={a.key}><Box checked={on === keys.length} some={on > 0} disabled={fixed} label={`${g.label}: ${a.label}`} onChange={(v) => change(keys, v)} /></td>;
+                          })}
+                        </tr>
+                        {g.pages.map((p) => (
+                          <tr key={p.key} className={perms.has(viewKey(p.key)) ? "on" : ""}>
+                            <th scope="row"><span className="perm-name">{iconOf(p.key)}<span>{p.label}<small className="muted">{p.hint}</small></span></span></th>
+                            {catalog.actions.map((a) => {
+                              const k = `${p.key}:${a.key}`;
+                              if (!p.actions.includes(a.key)) return <td key={a.key} className="na">—</td>;
+                              return <td key={a.key}><Box checked={perms.has(k)} disabled={fixed} label={`${p.label}: ${a.label}`} onChange={(v) => change([k], v)} /></td>;
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    );
+                  })}
+                </table>
+              </div>
+              <div className="check-list perm-legend">
+                <div><I.check size={14} /><span>Yaratish, tahrirlash yoki o‘chirish belgilansa, Ko‘rish o‘zi yoqiladi. Ko‘rish olib tashlansa, sahifaning barcha amallari ham o‘chadi.</span></div>
+                <div><I.check size={14} /><span>«—» — bu sahifada bunday amal yo‘q (masalan, Audit jurnalini faqat ko‘rish mumkin).</span></div>
+                <div><I.check size={14} /><span>Guruh qatoridagi belgi butun ustunni yoqadi yoki o‘chiradi.</span></div>
+              </div>
             </div>
           </div>
         </div>
@@ -321,12 +332,12 @@ function RoleForm({ catalog, role, reload }: { catalog: Catalog; role: Role | nu
                     {u.status !== "active" && <Badge tone="danger">Bloklangan</Badge>}
                   </div>
                 )) : <span className="muted small">Bu rolda hali foydalanuvchi yo‘q.</span>}
-                {can("users") && <Link className="btn" to="/users">Foydalanuvchiga rol berish</Link>}
+                {can("users:edit") && <Link className="btn" to="/users">Foydalanuvchiga rol berish</Link>}
               </div>
             </div>
           )}
 
-          {role && !fixed && (
+          {role && !system && pg.del && (
             <div className="card danger-card">
               <div className="card-pad stack" style={{ gap: 12 }}>
                 <h3 className="h4">Rolni o‘chirish</h3>
@@ -342,9 +353,9 @@ function RoleForm({ catalog, role, reload }: { catalog: Catalog; role: Role | nu
   );
 }
 
-/** Group checkbox: checked when every page is on, dashed when some are. */
-function GroupBox({ all, some, disabled, onChange }: { all: boolean; some: boolean; disabled: boolean; onChange: (v: boolean) => void }) {
+/** A matrix checkbox; dashed (indeterminate) when only some of a column is on. */
+function Box({ checked, some = false, disabled, label, onChange }: { checked: boolean; some?: boolean; disabled: boolean; label: string; onChange: (v: boolean) => void }) {
   const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => { if (ref.current) ref.current.indeterminate = some && !all; }, [all, some]);
-  return <input ref={ref} type="checkbox" checked={all} disabled={disabled} onChange={() => onChange(!all)} />;
+  useEffect(() => { if (ref.current) ref.current.indeterminate = some && !checked; }, [checked, some]);
+  return <input ref={ref} type="checkbox" checked={checked} disabled={disabled} aria-label={label} onChange={() => onChange(!checked)} />;
 }

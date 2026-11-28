@@ -40,14 +40,15 @@ var partnersRes = &resource{table: "partners", entity: "partner", touch: true, o
 
 func (s *Server) mountPartners(r chi.Router) {
 	s.mountCRUD(r, auth.PermPartners, "/partners", partnersRes)
+	// logo and video uploads serve both adding and editing a partner
+	r.With(s.canAny(auth.Key(auth.PermPartners, auth.ActCreate), edit(auth.PermPartners))).Post("/partner-logos", s.uploadPartnerLogo)
+	// under /video-uploads so the proxy streams it like other video uploads (nginx location prefix)
+	r.With(s.canAny(auth.Key(auth.PermPartners, auth.ActCreate), edit(auth.PermPartners))).Post("/video-uploads/partner", s.uploadPartnerVideo)
 	r.Group(func(r chi.Router) {
-		r.Use(s.can(auth.PermPartners))
+		r.Use(s.canEdit(auth.PermPartners))
 		r.Put("/partners/order", s.reorderPartners)
 		r.Get("/partner-settings", s.partnerSettings)
 		r.Put("/partner-settings", s.savePartnerSettings)
-		r.Post("/partner-logos", s.uploadPartnerLogo)
-		// under /video-uploads so the proxy streams it like other video uploads (nginx location prefix)
-		r.Post("/video-uploads/partner", s.uploadPartnerVideo)
 	})
 }
 

@@ -3,7 +3,7 @@ import { Link, Route, Routes, useNavigate, useParams } from "react-router";
 import { api, ApiError, uploadImage, type Page } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
 import { fmtDate } from "@/lib/format";
-import { useAuth } from "@/lib/auth";
+import { useAuth, Allowed } from "@/lib/auth";
 import { useRefs } from "@/lib/refs";
 import { aiApi, PROVIDER_LABEL, QUALITY_LABEL, type AiGeneration, type AiSettings, type BannerText, type Improved, type ProviderView } from "@/lib/ai";
 import { FormFields, useForm, type FieldSpec, type Rec } from "@/components/Crud";
@@ -86,7 +86,7 @@ function BannerList() {
 
   return (
     <>
-      <PageHead title="Hero-bannerlar" sub="Bosh sahifadagi karusel. Tartib — saytdagi ketma-ketlik; avtoaylanish 5 soniya." actions={<button className="btn btn-primary" onClick={() => navigate("/banners/new")}><I.plus size={16} /> Banner qo‘shish</button>} />
+      <PageHead title="Hero-bannerlar" sub="Bosh sahifadagi karusel. Tartib — saytdagi ketma-ketlik; avtoaylanish 5 soniya." actions={<Allowed to="create"><button className="btn btn-primary" onClick={() => navigate("/banners/new")}><I.plus size={16} /> Banner qo‘shish</button></Allowed>} />
       <div className="card">
         {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading && !data ? <Loading /> : !items.length ? <Empty title="Bannerlar yo‘q" /> : (
           <div className="table-wrap"><table className="table">
@@ -108,7 +108,7 @@ function BannerList() {
                   </td>
                   <td className="hide-mobile nowrap">{b.event_date ? fmtDate(b.event_date) : "—"} {b.event_time}</td>
                   <td>{b.status === "draft" ? <Badge>Qoralama</Badge> : b.is_active ? <Badge tone="ok">Faol</Badge> : <Badge tone="warn">O‘chirilgan</Badge>}</td>
-                  <td className="actions" onClick={(e) => e.stopPropagation()}><button className="btn btn-ghost btn-sm btn-icon" onClick={() => remove(b)} aria-label="O‘chirish"><I.trash size={16} /></button></td>
+                  <td className="actions" onClick={(e) => e.stopPropagation()}><Allowed to="delete"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => remove(b)} aria-label="O‘chirish"><I.trash size={16} /></button></Allowed></td>
                 </tr>
               ))}
             </tbody>
@@ -193,7 +193,7 @@ function BannerForm({ item }: { item: Rec | null }) {
         sub={<span className="crumbs"><Link to="/banners" onClick={(e) => { e.preventDefault(); cancel(); }}>Hero-bannerlar</Link> / <b>{item ? "Tahrirlash" : "Yangi"}</b>{dirty && <span className="muted small"> · saqlanmagan o‘zgarishlar</span>}</span>}
         actions={<>
           <button type="button" className="btn btn-ghost" onClick={cancel}>Bekor qilish</button>
-          <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
+          <Allowed to={item ? "edit" : "create"}><button type="submit" className="btn btn-primary" disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button></Allowed>
         </>} />
       <div className="edit-layout">
         <div className="stack" style={{ gap: 24 }}>
@@ -229,7 +229,7 @@ function BannerForm({ item }: { item: Rec | null }) {
             <div className="card-head"><h3>Nashr</h3></div>
             <div className="card-pad side-fields"><FormFields fields={PUBLISH} values={form.values} set={form.set} errors={form.errors} /></div>
           </div>
-          {item && <button type="button" className="btn btn-ghost danger-text" style={{ alignSelf: "flex-start" }} onClick={remove}><I.trash size={16} /> Bannerni o‘chirish</button>}
+          {item && <Allowed to="delete"><button type="button" className="btn btn-ghost danger-text" style={{ alignSelf: "flex-start" }} onClick={remove}><I.trash size={16} /> Bannerni o‘chirish</button></Allowed>}
         </aside>
       </div>
     </form>
@@ -413,7 +413,7 @@ function AiGenerator({ bannerId, title, layout, banner, onApply }: { bannerId: n
             onLogo={() => addAsset(logoAsset())} teams={teams} onCrest={(n, u) => addAsset(crestAsset(n, u))} onUpload={() => fileRef.current?.click()} />
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" hidden onChange={(e) => uploadAsset(e.target.files?.[0])} />
           <FormatsBlock settings={settings} enabled={enabledFormats} formats={formats} setFormats={setFormats} />
-          <SettingsSummary settings={settings} provider={active?.provider} model={model} canEdit={can("ai")} />
+          <SettingsSummary settings={settings} provider={active?.provider} model={model} canEdit={can("ai:edit")} />
           {err && <div className="alert danger"><I.alert size={16} /><div>{err}</div></div>}
           <div className="row wrap">
             <button type="button" className="btn btn-primary" onClick={improve} disabled={!ready || improving || text.trim().length < 5 || !formats.length}>

@@ -48,18 +48,77 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 	})
 }
 
+// can guards a route with one permission. A full key ("matches:edit") is used as
+// it is; a bare page key ("news") takes its action from the request method:
+// GET — view, POST — create, PUT/PATCH — edit, DELETE — delete (see needed).
 func (s *Server) can(perm string) func(http.Handler) http.Handler {
+	return s.canAny(perm)
+}
+
+// canAny passes users holding at least one of perms (resolved like can).
+func (s *Server) canAny(perms ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			c := claimsFrom(r.Context())
-			if c == nil || !s.Roles.Can(r.Context(), c.Role, perm) {
-				httpx.Fail(w, r, httpx.ErrForbidden)
-				return
+			if c != nil {
+				for _, p := range perms {
+					if s.Roles.Can(r.Context(), c.Role, needed(p, r.Method)) {
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
 			}
-			next.ServeHTTP(w, r)
+			httpx.Fail(w, r, forbidden(needed(perms[0], r.Method)))
 		})
 	}
 }
+
+// needed is the permission a request needs for perm.
+func needed(perm, method string) string {
+	if perm == auth.PermUploads || strings.Contains(perm, ":") {
+		return perm
+	}
+	action := auth.ActView
+	switch method {
+	case http.MethodPost:
+		action = auth.ActCreate
+	case http.MethodPut, http.MethodPatch:
+		action = auth.ActEdit
+	case http.MethodDelete:
+		action = auth.ActDelete
+	}
+	return auth.PageAction(perm, action)
+}
+
+func forbidden(perm string) error {
+	if perm == auth.PermUploads {
+		return httpx.ErrForbidden
+	}
+	return httpx.NewError(http.StatusForbidden, "forbidden", "Rolingizda bu amal uchun huquq yo‘q: "+auth.Describe(perm))
+}
+
+// canEdit guards routes whose every change edits the page (kits, cabinets,
+// sync…): reading needs view, anything else needs edit on any of pages.
+func (s *Server) canEdit(pages ...string) func(http.Handler) http.Handler {
+	view, change := make([]string, len(pages)), make([]string, len(pages))
+	for i, p := range pages {
+		view[i], change[i] = auth.Key(p, auth.ActView), edit(p)
+	}
+	return func(next http.Handler) http.Handler {
+		v, c := s.canAny(view...)(next), s.canAny(change...)(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet || r.Method == http.MethodHead {
+				v.ServeHTTP(w, r)
+				return
+			}
+			c.ServeHTTP(w, r)
+		})
+	}
+}
+
+// edit guards actions that change a page without creating or deleting
+// anything (approve, publish, sync…): they need the page's edit right.
+func edit(page string) string { return auth.Key(page, auth.ActEdit) }
 
 // audit records an admin action; failures are logged, never returned.
 func (s *Server) audit(r *http.Request, action, entity string, id int64, data any) {

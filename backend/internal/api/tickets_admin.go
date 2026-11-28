@@ -21,8 +21,10 @@ import (
 // office and entry security settings.
 
 func (s *Server) mountTicketsAdmin(r chi.Router) {
+	// selling at the box office creates an order; everything else views or edits
+	r.With(s.can(auth.Key(auth.PermTickets, auth.ActCreate))).Post("/ticket-orders/box-office", s.boxOfficeOrder)
 	r.Group(func(r chi.Router) {
-		r.Use(s.can(auth.PermTickets))
+		r.Use(s.canEdit(auth.PermTickets))
 		r.Get("/ticket-sales", s.listTicketSales)
 		r.Get("/matches/{id}/ticket-sale", s.getTicketSale)
 		r.Put("/matches/{id}/ticket-sale", s.putTicketSale)
@@ -33,7 +35,6 @@ func (s *Server) mountTicketsAdmin(r chi.Router) {
 		r.Get("/ticket-orders/{id}", s.getTicketOrder)
 		r.Post("/ticket-orders/{id}/refund", s.refundTicketOrder)
 		r.Post("/ticket-orders/{id}/resend", s.resendTicketOrder)
-		r.Post("/ticket-orders/box-office", s.boxOfficeOrder)
 		r.Get("/ticket-scans", s.listTicketScans)
 	})
 }

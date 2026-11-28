@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEven
 import { Link, Route, Routes, useNavigate, useParams } from "react-router";
 import QRCode from "qrcode";
 import { api, blobUrl } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { useAuth, Allowed } from "@/lib/auth";
 import { useDebounced, useLoad } from "@/lib/hooks";
 import { fmtDateTime, fmtShort, fromLocalInput, initials, toLocalInput } from "@/lib/format";
 import { invalidateRefs, useRefs } from "@/lib/refs";
@@ -128,8 +128,8 @@ type DeleteInfo = {
 };
 type ToastFn = (t: string, k?: "ok" | "error") => void;
 
-// drafts and rejected applications: anyone with «Jamoa arizalari»; the rest — administrators
-const mayDelete = (can: (perm: string) => boolean, status: string) => can("applications:delete") || status === "draft" || status === "rejected";
+// with «Arizalar — o‘chirish» any application; drafts and rejected ones also with «tahrirlash»
+const mayDelete = (can: (perm: string) => boolean, status: string) => can("applications:delete") || ((status === "draft" || status === "rejected") && can("applications:edit"));
 
 async function downloadXlsx(id: number, name: string, toast: ToastFn) {
   try {
@@ -297,7 +297,7 @@ function ApplicationsList() {
       <PageHead title="Jamoa arizalari" sub={active ? `${active.title} · ${sent} ta ariza${active.max_teams ? ` · ${active.max_teams} joydan ${active.slots_left} tasi bo‘sh` : ""}` : "Jamoalar alohida ro‘yxatdan o‘tish sayti orqali ariza yuboradi"}
         actions={<>
           <Link className="btn" to="/applications/links"><I.link size={16} /> Havolalar</Link>
-          <Link className="btn btn-primary" to="/applications/links/new"><I.plus size={16} /> Yangi havola</Link>
+          <Allowed to="create"><Link className="btn btn-primary" to="/applications/links/new"><I.plus size={16} /> Yangi havola</Link></Allowed>
         </>} />
       <ArizalarTabs current="apps" />
       {links.data && (active ? (
@@ -770,10 +770,10 @@ function LinksList() {
     <>
       <div className="crumbs small" style={{ marginBottom: 8 }}><Link to="/applications">Arizalar</Link> / <b>Havolalar</b></div>
       <PageHead title="Ro‘yxatga olish havolalari" sub="Har bir havola — alohida qabul: o‘z mavsumi, muddati, joylar soni va talablari bilan. Faol havola bo‘lmasa, ariza sayti «ro‘yxatdan o‘tish yopiq» deb ko‘rsatadi."
-        actions={<Link className="btn btn-primary" to="/applications/links/new"><I.plus size={16} /> Yangi havola</Link>} />
+        actions={<Allowed to="create"><Link className="btn btn-primary" to="/applications/links/new"><I.plus size={16} /> Yangi havola</Link></Allowed>} />
       <div className="card">
         {links.error ? <div className="card-pad"><ErrorBox error={links.error} retry={links.reload} /></div> : !links.data ? <Loading /> : !links.data.items.length ? (
-          <Empty title="Hali havola yo‘q" text="Havola yarating — jamoalar u orqali ariza yuboradi." action={<Link className="btn btn-primary" to="/applications/links/new"><I.plus size={16} /> Yangi havola</Link>} />
+          <Empty title="Hali havola yo‘q" text="Havola yarating — jamoalar u orqali ariza yuboradi." action={<Allowed to="create"><Link className="btn btn-primary" to="/applications/links/new"><I.plus size={16} /> Yangi havola</Link></Allowed>} />
         ) : (
           <div className="table-wrap"><table className="table">
             <thead><tr><th>Havola</th><th className="hide-mobile">Mavsum / bosqich</th><th className="hide-mobile">Qabul muddati</th><th>Joylar</th><th>Arizalar</th><th>Holat</th><th /></tr></thead>
@@ -940,8 +940,8 @@ function LinkEdit() {
               </div>
             </div>
           )}
-          {saved && saved.sent === 0 && <button className="btn btn-ghost danger-text" onClick={remove}><I.trash size={16} /> Havolani o‘chirish</button>}
-          <div className="note-box">Arizalar «Administrator» va «Muharrir» rollariga ko‘rinadi — «Rollar va huquqlar»da «Jamoa arizalari».</div>
+          {saved && saved.sent === 0 && <Allowed to="delete"><button className="btn btn-ghost danger-text" onClick={remove}><I.trash size={16} /> Havolani o‘chirish</button></Allowed>}
+          <div className="note-box">Arizalarni kim ko‘rishi va boshqarishi «Rollar va huquqlar»da — «Arizalar» qatorida belgilanadi.</div>
         </aside>
       </div>
       {qr && saved?.url && <QrModal url={saved.url} title={saved.title} onClose={() => setQr(false)} />}

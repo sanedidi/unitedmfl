@@ -157,11 +157,11 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/team-staff", s.crud(staffRes).list)
 				r.Get("/matches/{id}/photos", s.listMatchPhotos)
 			})
-			r.Group(func(r chi.Router) {
+			r.With(s.can(auth.Key(auth.PermMatchesRead, auth.ActCreate))).Post("/matches", s.crud(matchesRes).create)
+			r.With(s.can(auth.Key(auth.PermMatchesRead, auth.ActDelete))).Delete("/matches/{id}", s.crud(matchesRes).delete)
+			r.Group(func(r chi.Router) { // lineups, photos and the match card are editing
 				r.Use(s.can(auth.PermMatchesEdit))
-				r.Post("/matches", s.crud(matchesRes).create)
 				r.Patch("/matches/{id}", s.patchMatch)
-				r.Delete("/matches/{id}", s.crud(matchesRes).delete)
 				r.Put("/matches/{id}/lineups", s.putLineups)
 				r.Put("/matches/{id}/lineups/{side}", s.putLineupSide)
 				r.Post("/matches/{id}/lineups/publish", s.publishLineups)
@@ -187,6 +187,9 @@ func (s *Server) Routes() http.Handler {
 				r.Get("/protocols/{id}", s.getProtocol)
 				r.Get("/protocols/{id}/file", s.protocolFile)
 				r.Put("/protocols/{id}/extracted", s.updateProtocolExtracted)
+			})
+			r.Group(func(r chi.Router) { // checking and applying a protocol is editing
+				r.Use(s.can(edit(auth.PermProtocols)))
 				r.Post("/protocols/{id}/rederive", s.rederiveProtocol)
 				r.Post("/protocols/{id}/reprocess", s.reprocessProtocol)
 				r.Post("/protocols/{id}/apply", s.applyProtocol)
@@ -201,8 +204,8 @@ func (s *Server) Routes() http.Handler {
 			s.mountCRUDAny(r, "/players", playersRes,
 				[]string{auth.PermTeams, auth.PermPlayers, auth.PermMatchesEdit, auth.PermLive},
 				[]string{auth.PermTeams, auth.PermPlayers, auth.PermMatchesEdit})
-			r.Group(func(r chi.Router) {
-				r.Use(s.can(auth.PermTeams))
+			r.Group(func(r chi.Router) { // kits and staff are part of editing a team
+				r.Use(s.canEdit(auth.PermTeams))
 				s.mountKits(r)
 				r.Post("/team-staff", s.crud(staffRes).create)
 				r.Get("/team-staff/{id}", s.crud(staffRes).get)
@@ -220,7 +223,7 @@ func (s *Server) Routes() http.Handler {
 			s.mountPartners(r)
 			s.mountStickers(r) // Telegram stickers from team logos
 			s.mountCRUD(r, auth.PermVideos, "/videos", videosRes)
-			r.With(s.can(auth.PermVideos)).Post("/video-uploads", s.uploadVideo)
+			r.With(s.canAny(auth.Key(auth.PermVideos, auth.ActCreate), edit(auth.PermVideos))).Post("/video-uploads", s.uploadVideo)
 			r.Group(func(r chi.Router) {
 				r.Use(s.can(auth.PermInstagram))
 				r.Get("/instagram", s.adminInstagram)
@@ -230,7 +233,8 @@ func (s *Server) Routes() http.Handler {
 				r.Patch("/instagram/posts/{id}", s.patchInstagramPost)
 			})
 			s.mountCRUD(r, auth.PermMerch, "/products", productsRes)
-			s.mountCRUD(r, auth.PermMerch, "/product-variants", variantsRes)
+			// sizes are part of editing a product
+			s.mountCRUDAny(r, "/product-variants", variantsRes, []string{auth.PermMerch}, []string{edit(auth.PermMerch)})
 			s.mountWB(r)           // Wildberries store
 			s.mountStadiums(r)     // stadium constructor (Stadionlar)
 			s.mountTicketsAdmin(r) // Chiptalar: sales, orders, refunds, security

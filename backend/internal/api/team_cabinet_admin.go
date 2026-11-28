@@ -28,7 +28,7 @@ import (
 
 func (s *Server) mountTeamCabinetAdmin(r chi.Router) {
 	r.Group(func(r chi.Router) {
-		r.Use(s.can(auth.PermTeams))
+		r.Use(s.canEdit(auth.PermTeams)) // a cabinet is part of editing a team
 		r.Get("/team-cabinets", s.adminCabinets)
 		r.Get("/teams/{id}/cabinet", s.adminCabinet)
 		r.Post("/teams/{id}/cabinet", s.createCabinet)
@@ -36,7 +36,7 @@ func (s *Server) mountTeamCabinetAdmin(r chi.Router) {
 		r.Patch("/teams/{id}/cabinet", s.patchCabinet)
 	})
 	r.Group(func(r chi.Router) {
-		r.Use(s.can(auth.PermApplications))
+		r.Use(s.canEdit(auth.PermApplications)) // reviewing changes is editing
 		r.Get("/team-changes", s.adminChanges)
 		r.Get("/team-changes/{id}", s.adminChange)
 		r.Patch("/team-changes/{id}", s.patchChange)

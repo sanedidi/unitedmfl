@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Allowed } from "@/lib/auth";
 import { Link, Route, Routes, useNavigate, useParams } from "react-router";
 import { PageHead } from "@/components/Layout";
 import { Empty, ErrorBox, Field, Loading, Modal, useConfirm, useToast } from "@/components/ui";
@@ -32,7 +33,7 @@ function StadiumsList() {
   return (
     <>
       <PageHead title="Stadionlar" sub="Tribunalar, sektorlar va o‘rinlar sxemasi. Bitta sxema ko‘p matchlarda ishlatiladi"
-        actions={<><Link className="btn" to="new?from=templates">Shablondan yaratish</Link><Link className="btn btn-primary" to="new"><I.plus /> Yangi stadion</Link></>} />
+        actions={<Allowed to="create"><Link className="btn" to="new?from=templates">Shablondan yaratish</Link><Link className="btn btn-primary" to="new"><I.plus /> Yangi stadion</Link></Allowed>} />
       {loading && !data ? <Loading /> : (
         <div className="st-cards">
           {data!.items.map((v) => (
@@ -50,7 +51,7 @@ function StadiumsList() {
               </div>
             </div>
           ))}
-          <Link to="new" className="st-card st-new"><I.plus size={24} /><b>Yangi stadion</b><span className="muted small">Bo‘sh maydon, mavjud sxemadan nusxa yoki shablonlar</span></Link>
+          <Allowed to="create"><Link to="new" className="st-card st-new"><I.plus size={24} /><b>Yangi stadion</b><span className="muted small">Bo‘sh maydon, mavjud sxemadan nusxa yoki shablonlar</span></Link></Allowed>
         </div>
       )}
     </>

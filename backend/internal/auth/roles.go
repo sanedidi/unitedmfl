@@ -75,7 +75,8 @@ func (r *Roles) load(ctx context.Context) (map[string]map[string]bool, error) {
 	return out, rows.Err()
 }
 
-// Can reports whether role has permission perm. Administrators can do everything.
+// Can reports whether role has permission perm ("news:create"; a bare page key
+// means view). Administrators can do everything.
 func (r *Roles) Can(ctx context.Context, role, perm string) bool {
 	if role == RoleAdmin {
 		return true
@@ -84,7 +85,7 @@ func (r *Roles) Can(ctx context.Context, role, perm string) bool {
 	if perm == PermUploads {
 		return uploadsAllowed(set)
 	}
-	return set[perm]
+	return set[Normalize(perm)]
 }
 
 // Permissions returns the permission list of a role (used by the admin UI).
@@ -105,10 +106,10 @@ func (r *Roles) Permissions(ctx context.Context, role string) []string {
 	return out
 }
 
-// uploadsAllowed: image uploads come with any page except the gate scanner alone.
+// uploadsAllowed: image uploads come with any right to create or edit something.
 func uploadsAllowed(set map[string]bool) bool {
 	for p := range set {
-		if p != PermScan {
+		if _, a := SplitKey(p); a == ActCreate || a == ActEdit {
 			return true
 		}
 	}

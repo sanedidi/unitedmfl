@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Allowed } from "@/lib/auth";
 import { Link, useNavigate, useParams } from "react-router";
 import { api, ApiError, blobUrl, request, type Page } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
@@ -32,7 +33,7 @@ export function ProtocolsPage() {
   }, [data, reload]);
   return (
     <>
-      <PageHead title="Protokollar" sub="Match protokollarini yuklash (PDF, rasm yoki telefon surati), tekshirish va natijaga qo‘llash" actions={<button className="btn btn-primary" onClick={() => setUpload(true)}><I.upload size={16} /> Protokol yuklash</button>} />
+      <PageHead title="Protokollar" sub="Match protokollarini yuklash (PDF, rasm yoki telefon surati), tekshirish va natijaga qo‘llash" actions={<Allowed to="create"><button className="btn btn-primary" onClick={() => setUpload(true)}><I.upload size={16} /> Protokol yuklash</button></Allowed>} />
       <div className="card">
         <div className="toolbar">
           <div className="seg">
@@ -40,7 +41,7 @@ export function ProtocolsPage() {
           </div>
         </div>
         {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading && !data ? <Loading /> : !data?.items.length ? (
-          <Empty title="Protokollar yo‘q" text="Birinchi protokolni yuklang — tizim jamoalar, hisob, tarkib, voqealar va hakamlarni o‘zi taniydi." action={<button className="btn btn-primary" onClick={() => setUpload(true)}><I.upload size={16} /> Yuklash</button>} />
+          <Empty title="Protokollar yo‘q" text="Birinchi protokolni yuklang — tizim jamoalar, hisob, tarkib, voqealar va hakamlarni o‘zi taniydi." action={<Allowed to="create"><button className="btn btn-primary" onClick={() => setUpload(true)}><I.upload size={16} /> Yuklash</button></Allowed>} />
         ) : (
           <div className="table-wrap"><table className="table">
             <thead><tr><th>Fayl</th><th>Match (protokol bo‘yicha)</th><th className="hide-mobile">Yuklangan</th><th>Holat</th><th>Muammolar</th></tr></thead>
@@ -204,9 +205,11 @@ export function ProtocolReviewPage() {
         sub={<span className="row wrap"><Badge tone={STATUS[p.status]?.tone}>{STATUS[p.status]?.label}</Badge> {ex && <span>{ex.tournament} · {ex.stage} · {ex.date} {ex.time}</span>}</span>}
         actions={<>
           {fileUrl && <a className="btn" href={fileUrl} target="_blank" rel="noreferrer"><I.eye size={16} /> Asl fayl</a>}
-          {(p.status === "failed" || p.status === "review") && <button className="btn" onClick={reprocess}><I.refresh size={16} /> Qayta tanish</button>}
-          {editable && <button className="btn btn-danger" onClick={reject}>Rad etish</button>}
-          {editable && <button className="btn btn-primary" onClick={async () => { if (dirty) await save(); setApplyOpen(true); }} disabled={!matchId}><I.check size={16} /> Qo‘llash</button>}
+          <Allowed to="edit">
+            {(p.status === "failed" || p.status === "review") && <button className="btn" onClick={reprocess}><I.refresh size={16} /> Qayta tanish</button>}
+            {editable && <button className="btn btn-danger" onClick={reject}>Rad etish</button>}
+            {editable && <button className="btn btn-primary" onClick={async () => { if (dirty) await save(); setApplyOpen(true); }} disabled={!matchId}><I.check size={16} /> Qo‘llash</button>}
+          </Allowed>
         </>} />
 
       {(p.status === "processing" || p.status === "uploaded") && (

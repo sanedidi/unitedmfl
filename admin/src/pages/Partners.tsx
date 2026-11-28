@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Allowed } from "@/lib/auth";
 import { Link, Route, Routes, useNavigate, useParams } from "react-router";
 import { api, ApiError, request, uploadWithProgress, type Page } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
@@ -141,7 +142,7 @@ function PartnerList() {
       <PageHead title="Hamkorlar" sub="Homiylar va hamkorlar saytning bosh sahifasida logotip bilan chiqadi"
         actions={<>
           <a className="btn btn-dark" href={`${SITE_URL}/hamkorlar`} target="_blank" rel="noopener noreferrer">Saytda ko‘rish</a>
-          <button className="btn btn-primary" onClick={() => navigate("/partners/new")}><I.plus size={16} /> Qo‘shish</button>
+          <Allowed to="create"><button className="btn btn-primary" onClick={() => navigate("/partners/new")}><I.plus size={16} /> Qo‘shish</button></Allowed>
         </>} />
       <div className="pt-cols">
         <div className="stack" style={{ gap: 16, minWidth: 0 }}>
@@ -159,7 +160,7 @@ function PartnerList() {
           <div className="card">
             {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading && !data ? <Loading /> : !shown.length ? (
               <Empty title={items.length ? "Hech narsa topilmadi" : "Hamkorlar yo‘q"} text={items.length ? undefined : "Birinchi homiyni qo‘shing — u bosh sahifada logotip bilan chiqadi."}
-                action={!items.length && <button className="btn btn-primary" onClick={() => navigate("/partners/new")}><I.plus size={16} /> Qo‘shish</button>} />
+                action={!items.length && <Allowed to="create"><button className="btn btn-primary" onClick={() => navigate("/partners/new")}><I.plus size={16} /> Qo‘shish</button></Allowed>} />
             ) : (
               <div className="table-wrap"><table className="table pt-table">
                 <thead><tr><th className="pt-c-drag" /><th className="pt-c-logo">Logotip</th><th>Nomi</th><th className="pt-c-kind">Turi</th><th className="pt-c-on center">Faol</th><th className="pt-c-act" /></tr></thead>
@@ -184,7 +185,7 @@ function PartnerList() {
                       <td className="pt-c-on center" onClick={(e) => e.stopPropagation()}><Toggle checked={p.is_active} onChange={(v) => setActive(p, v)} label={`${p.name} saytda`} /></td>
                       <td className="pt-c-act actions" onClick={(e) => e.stopPropagation()}>
                         <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(`/partners/${p.id}`)} aria-label="Tahrirlash"><I.edit size={18} /></button>
-                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => remove(p)} aria-label="O‘chirish"><I.trash size={18} /></button>
+                        <Allowed to="delete"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => remove(p)} aria-label="O‘chirish"><I.trash size={18} /></button></Allowed>
                       </td>
                     </tr>
                   ))}
@@ -242,7 +243,7 @@ function BlockSettingsCard() {
             </div>
             <SwitchRow title="«Sizning brendingiz» kartochkasi" hint="Hamkorlik formasiga olib boradi" checked={v.show_cta} onChange={(x) => setV({ ...v, show_cta: x })} />
             <SwitchRow title="Blokni ko‘rsatish" hint="O‘chirilsa, bosh sahifada blok chiqmaydi" checked={v.show_block} onChange={(x) => setV({ ...v, show_block: x })} />
-            <button className="btn btn-dark btn-block" onClick={save} disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
+            <Allowed to="edit"><button className="btn btn-dark btn-block" onClick={save} disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button></Allowed>
           </>
         )}
       </div>
@@ -341,7 +342,7 @@ function PartnerForm({ item, list, settings }: { item: Partner | null; list: Par
         title={title}
         actions={<>
           <button type="button" className="btn btn-ghost" onClick={cancel}>Bekor qilish</button>
-          <button type="submit" className="btn btn-primary" disabled={busy || uploading} title={uploading ? "Video yuklanmoqda…" : undefined}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
+          <Allowed to={item ? "edit" : "create"}><button type="submit" className="btn btn-primary" disabled={busy || uploading} title={uploading ? "Video yuklanmoqda…" : undefined}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button></Allowed>
         </>} />
       <div className="edit-layout">
         <div className="stack" style={{ gap: 24, minWidth: 0 }}>
@@ -370,7 +371,7 @@ function PartnerForm({ item, list, settings }: { item: Partner | null; list: Par
               <p className="pt-hint">{values.video_url && values.show_video ? "▶ — hamkorning videosi bor: plitka bosilganda video ochiladi" : values.url ? "Plitka bosilganda hamkor sayti yangi oynada ochiladi" : "Havola va video yo‘q — plitka bosilmaydi"}{!values.is_active && " · hozir saytda yashirin"}</p>
             </div>
           </div>
-          {item && <button type="button" className="pt-delete" onClick={remove}><I.trash size={16} /> Hamkorni o‘chirish</button>}
+          {item && <Allowed to="delete"><button type="button" className="pt-delete" onClick={remove}><I.trash size={16} /> Hamkorni o‘chirish</button></Allowed>}
         </aside>
       </div>
     </form>

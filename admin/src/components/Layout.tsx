@@ -11,7 +11,7 @@ export type Item = { to: string; label: string; icon: ReactNode; perm: string; c
 export const NAV: { group?: string; items: Item[] }[] = [
   { items: [{ to: "/", label: "Dashboard", icon: <I.grid />, perm: "dashboard" }] },
   { group: "Turnir", items: [
-    { to: "/matches", label: "Matchlar", icon: <I.calendar />, perm: "matches:read" },
+    { to: "/matches", label: "Matchlar", icon: <I.calendar />, perm: "matches" },
     { to: "/protocols", label: "Protokollar", icon: <I.doc />, perm: "protocols", count: "protocols" },
     { to: "/live", label: "Live-pult", icon: <I.radio />, perm: "live" },
     { to: "/teams", label: "Jamoalar", icon: <I.shirt />, perm: "teams" },

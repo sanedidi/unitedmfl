@@ -23,7 +23,7 @@ const RoleAdmin = "admin"
 // Permissions — one per admin page, plus a few extra actions inside a page.
 const (
 	PermDashboard   = "dashboard"
-	PermMatchesRead = "matches:read"
+	PermMatchesRead = "matches" // the Matchlar page (a bare page key means «view»)
 	PermMatchesEdit = "matches:edit"
 	PermLive        = "live"
 	PermProtocols   = "protocols"
@@ -66,18 +66,26 @@ const (
 	PermWildberries = "wildberries"
 )
 
-// Extra is an additional action inside a page (shown as a sub-checkbox).
-type Extra struct {
+// Actions a role may have on a page. A bare page key ("news") means view.
+const (
+	ActView   = "view"
+	ActCreate = "create"
+	ActEdit   = "edit"
+	ActDelete = "delete"
+)
+
+// ActionLabels names the actions in the admin UI, in matrix column order.
+var ActionLabels = []struct {
 	Key   string `json:"key"`
 	Label string `json:"label"`
-}
+}{{ActView, "Ko‘rish"}, {ActCreate, "Yaratish"}, {ActEdit, "Tahrirlash"}, {ActDelete, "O‘chirish"}}
 
-// Page is one admin page that a role may open.
+// Page is one admin page that a role may open, with the actions it has.
 type Page struct {
-	Key    string  `json:"key"`
-	Label  string  `json:"label"`
-	Hint   string  `json:"hint"`
-	Extras []Extra `json:"extras,omitempty"`
+	Key     string   `json:"key"`
+	Label   string   `json:"label"`
+	Hint    string   `json:"hint"`
+	Actions []string `json:"actions"`
 }
 
 // PageGroup mirrors a group of the admin side menu.
@@ -86,85 +94,142 @@ type PageGroup struct {
 	Pages []Page `json:"pages"`
 }
 
+var (
+	aV    = []string{ActView}
+	aVE   = []string{ActView, ActEdit}
+	aVCE  = []string{ActView, ActCreate, ActEdit}
+	aVED  = []string{ActView, ActEdit, ActDelete}
+	aVCED = []string{ActView, ActCreate, ActEdit, ActDelete}
+)
+
 // Catalog lists every page in the order of the admin side menu.
 var Catalog = []PageGroup{
-	{"Asosiy", []Page{{Key: PermDashboard, Label: "Dashboard", Hint: "Statistika va sayt tashriflari"}}},
+	{"Asosiy", []Page{{PermDashboard, "Dashboard", "Statistika va tashriflar", aV}}},
 	{"Turnir", []Page{
-		{Key: PermMatchesRead, Label: "Matchlar", Hint: "Ro‘yxat va match kartasi", Extras: []Extra{{PermMatchesEdit, "Tahrirlash ham mumkin"}}},
-		{Key: PermProtocols, Label: "Protokollar", Hint: "Yuklash va tasdiqlash"},
-		{Key: PermLive, Label: "Live-pult", Hint: "Match davomida voqealar, Telegram bot"},
-		{Key: PermTeams, Label: "Jamoalar", Hint: "Jamoalar, forma va jamoa kabinetlari"},
-		{Key: PermApplications, Label: "Arizalar", Hint: "Ro‘yxatdan o‘tish arizalari", Extras: []Extra{{PermApplicationsDelete, "Arizalarni o‘chirish ham mumkin"}}},
-		{Key: PermGroups, Label: "Guruhlar", Hint: "Guruhlar tarkibi"},
-		{Key: PermPlayers, Label: "O‘yinchilar", Hint: "O‘yinchilar bazasi"},
-		{Key: PermStandings, Label: "Turnir jadvali", Hint: "Jadvalni tuzatish"},
-		{Key: PermSeasons, Label: "Mavsumlar", Hint: "Mavsum va bosqichlar"},
+		{PermMatchesRead, "Matchlar", "Taqvim, natijalar, tarkiblar", aVCED},
+		{PermProtocols, "Protokollar", "Yuklash va tasdiqlash", aVCE},
+		{PermLive, "Live-pult", "Voqea kiritish — tahrirlash", aVE},
+		{PermTeams, "Jamoalar", "Jamoa, forma, kabinet", aVCED},
+		{PermApplications, "Arizalar", "Havolalar va arizalar", aVCED},
+		{PermGroups, "Guruhlar", "Guruhlar tarkibi", aVCED},
+		{PermPlayers, "O‘yinchilar", "O‘yinchilar bazasi", aVCED},
+		{PermStandings, "Turnir jadvali", "Jadvalni tuzatish", aVE},
+		{PermSeasons, "Mavsumlar", "Mavsum va bosqichlar", aVCED},
 	}},
 	{"Kontent", []Page{
-		{Key: PermHomepage, Label: "Bosh sahifa", Hint: "Bloklar konstruktori"},
-		{Key: PermNews, Label: "Yangiliklar", Hint: "Maqolalar"},
-		{Key: PermBanners, Label: "Hero-bannerlar", Hint: "Bosh sahifa bannerlari"},
-		{Key: PermVideos, Label: "Videolar", Hint: "Video va yuklash"},
-		{Key: PermPartners, Label: "Hamkorlar", Hint: "Homiylar va hamkorlar"},
-		{Key: PermInstagram, Label: "Instagram", Hint: "Postlar lentasi"},
+		{PermHomepage, "Bosh sahifa", "Konstruktor, nashr", aVE},
+		{PermNews, "Yangiliklar", "Maqolalar", aVCED},
+		{PermBanners, "Hero-bannerlar", "Bannerlar", aVCED},
+		{PermVideos, "Videolar", "Video va yuklash", aVCED},
+		{PermPartners, "Hamkorlar", "Homiylar", aVCED},
+		{PermInstagram, "Instagram", "Ulash, postlarni yashirish", aVE},
 	}},
 	{"Do‘kon va aloqa", []Page{
-		{Key: PermTickets, Label: "Chiptalar", Hint: "Sotuv, buyurtmalar, qaytarish"},
-		{Key: PermStadiums, Label: "Stadionlar", Hint: "Stadion konstruktori"},
-		{Key: PermScan, Label: "Kirish nazorati", Hint: "Chiptalarni skanerlash"},
-		{Key: PermMerch, Label: "Merch", Hint: "Mahsulotlar"},
-		{Key: PermRequests, Label: "Murojaatlar", Hint: "Saytdan xabarlar"},
+		{PermTickets, "Chiptalar", "Sotuv, buyurtmalar, qaytarish", aVCE},
+		{PermStadiums, "Stadionlar", "Stadion konstruktori", aVCED},
+		{PermScan, "Kirish nazorati", "Skanerlash", aV},
+		{PermMerch, "Merch", "Mahsulotlar", aVCED},
+		{PermRequests, "Murojaatlar", "Javob berish, o‘chirish", aVED},
 	}},
 	{"Tizim", []Page{
-		{Key: PermAI, Label: "AI-servis", Hint: "OpenAI va Gemini ulanishi"},
-		{Key: PermStickers, Label: "Telegram stikerlar", Hint: "Stiker paketlari"},
-		{Key: PermWildberries, Label: "Wildberries", Hint: "Do‘kon ulanishi"},
-		{Key: PermUsers, Label: "Foydalanuvchilar", Hint: "Admin foydalanuvchilari"},
-		{Key: PermRoles, Label: "Rollar va huquqlar", Hint: "Rollar va sahifalarga kirish"},
-		{Key: PermAudit, Label: "Audit jurnali", Hint: "Kim nima qildi"},
+		{PermAI, "AI-servis", "Ulanish va sozlamalar", aVE},
+		{PermStickers, "Telegram stikerlar", "Stiker paketlari", aVE},
+		{PermWildberries, "Wildberries", "Do‘kon ulanishi", aVE},
+		{PermUsers, "Foydalanuvchilar", "Admin xodimlari", aVCED},
+		{PermRoles, "Rollar va huquqlar", "Rollar", aVCED},
+		{PermAudit, "Audit jurnali", "Faqat ko‘rish", aV},
 	}},
 }
 
-// AllPermissions returns every page and extra permission from the catalog.
-func AllPermissions() []string {
-	var out []string
+// FindPage returns the catalog page with key.
+func FindPage(key string) (Page, bool) {
 	for _, g := range Catalog {
 		for _, p := range g.Pages {
-			out = append(out, p.Key)
-			for _, e := range p.Extras {
-				out = append(out, e.Key)
+			if p.Key == key {
+				return p, true
 			}
 		}
 	}
-	return out
+	return Page{}, false
 }
 
-// KnownPermission reports whether p is a page or extra from the catalog.
-func KnownPermission(p string) bool {
-	for _, k := range AllPermissions() {
-		if k == p {
+func has(list []string, v string) bool {
+	for _, x := range list {
+		if x == v {
 			return true
 		}
 	}
 	return false
 }
 
-// extraOwner maps an extra permission to the page it belongs to.
-func extraOwner(p string) string {
+// Key builds a permission key such as "news:create".
+func Key(page, action string) string { return page + ":" + action }
+
+// SplitKey splits "news:create" into page and action; a bare key means view.
+func SplitKey(k string) (page, action string) {
+	if i := strings.LastIndexByte(k, ':'); i >= 0 {
+		return k[:i], k[i+1:]
+	}
+	return k, ActView
+}
+
+// Normalize turns a permission into its full key: "news" → "news:view".
+func Normalize(k string) string {
+	p, a := SplitKey(k)
+	return Key(p, a)
+}
+
+// PageAction is the permission an action on a page needs. When the page has no
+// such action (publishing on Bosh sahifa is a POST, but the page only has
+// view and edit) the action counts as editing, and on a view-only page as viewing.
+func PageAction(page, action string) string {
+	pg, ok := FindPage(page)
+	if !ok || has(pg.Actions, action) {
+		return Key(page, action)
+	}
+	if action != ActView && has(pg.Actions, ActEdit) {
+		return Key(page, ActEdit)
+	}
+	return Key(page, ActView)
+}
+
+// AllPermissions returns every page action from the catalog.
+func AllPermissions() []string {
+	var out []string
 	for _, g := range Catalog {
-		for _, pg := range g.Pages {
-			for _, e := range pg.Extras {
-				if e.Key == p {
-					return pg.Key
-				}
+		for _, p := range g.Pages {
+			for _, a := range p.Actions {
+				out = append(out, Key(p.Key, a))
 			}
 		}
 	}
-	return ""
+	return out
 }
 
-// NormalizePermissions drops unknown and duplicate keys, drops extras whose page
-// is not granted and returns the rest in catalog order.
+// KnownPermission reports whether p is a page action from the catalog.
+func KnownPermission(p string) bool {
+	page, action := SplitKey(p)
+	pg, ok := FindPage(page)
+	return ok && has(pg.Actions, action)
+}
+
+// Describe names a permission for messages: "Yangiliklar — o‘chirish".
+func Describe(k string) string {
+	page, action := SplitKey(k)
+	label := page
+	if pg, ok := FindPage(page); ok {
+		label = pg.Label
+	}
+	for _, a := range ActionLabels {
+		if a.Key == action {
+			return label + " — " + strings.ToLower(a.Label)
+		}
+	}
+	return label
+}
+
+// NormalizePermissions drops unknown and duplicate keys, adds «view» to every
+// page that has another action and returns the rest in catalog order.
 func NormalizePermissions(in []string) (out []string, unknown []string) {
 	set := map[string]bool{}
 	for _, p := range in {
@@ -173,15 +238,13 @@ func NormalizePermissions(in []string) (out []string, unknown []string) {
 			continue
 		}
 		set[p] = true
+		page, _ := SplitKey(p)
+		set[Key(page, ActView)] = true
 	}
 	for _, p := range AllPermissions() {
-		if !set[p] {
-			continue
+		if set[p] {
+			out = append(out, p)
 		}
-		if o := extraOwner(p); o != "" && !set[o] {
-			continue
-		}
-		out = append(out, p)
 	}
 	return out, unknown
 }

@@ -29,22 +29,23 @@ import (
 
 func (s *Server) mountRegistrationAdmin(r chi.Router) {
 	s.mountTeamCabinetAdmin(r)
-	r.Group(func(r chi.Router) {
-		r.Use(s.can(auth.PermApplications))
-		h := s.crud(regLinksRes)
+	h := s.crud(regLinksRes)
+	r.With(s.can(auth.Key(auth.PermApplications, auth.ActCreate))).Post("/registration/links", h.create)
+	r.With(s.can(auth.Key(auth.PermApplications, auth.ActDelete))).Delete("/registration/links/{id}", s.deleteLink)
+	// drafts and rejected applications may be removed with the edit right (canDeleteApp)
+	r.With(s.canAny(edit(auth.PermApplications), auth.Key(auth.PermApplications, auth.ActDelete))).Delete("/applications/{id}", s.deleteApplication)
+	r.Group(func(r chi.Router) { // reviewing, approving and links: view or edit
+		r.Use(s.canEdit(auth.PermApplications))
 		r.Get("/registration/config", s.regConfig)
 		r.Get("/registration/links", s.adminLinks)
-		r.Post("/registration/links", h.create)
 		r.Get("/registration/links/{id}", s.adminLink)
 		r.Patch("/registration/links/{id}", h.patch)
-		r.Delete("/registration/links/{id}", s.deleteLink)
 		r.Post("/registration/links/{id}/regenerate", s.regenerateLink)
 
 		r.Get("/applications", s.adminApplications)
 		r.Get("/applications/{id}", s.adminApplication)
 		r.Patch("/applications/{id}", s.patchApplication)
 		r.Get("/applications/{id}/delete-info", s.applicationDeleteInfo)
-		r.Delete("/applications/{id}", s.deleteApplication)
 		r.Post("/applications/{id}/review", s.reviewApplication)
 		r.Post("/applications/{id}/approve", s.approveApplication)
 		r.Post("/applications/{id}/request-changes", s.requestChanges)
@@ -583,7 +584,7 @@ func (s *Server) canDeleteApp(r *http.Request, status string, withTeam bool) boo
 	if s.Roles.Can(r.Context(), c.Role, auth.PermApplicationsDelete) {
 		return true
 	}
-	return !withTeam && (status == "draft" || status == "rejected")
+	return !withTeam && (status == "draft" || status == "rejected") && s.Roles.Can(r.Context(), c.Role, edit(auth.PermApplications))
 }
 
 func (s *Server) applicationDeleteInfo(w http.ResponseWriter, r *http.Request) {

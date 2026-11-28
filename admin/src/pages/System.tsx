@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
-import { useAuth } from "@/lib/auth";
+import { useAuth, Allowed } from "@/lib/auth";
 import { fmtDateTime } from "@/lib/format";
 import { Link } from "react-router";
 import { loadRoles, type Role } from "@/pages/Roles";
@@ -30,7 +30,7 @@ export function UsersPage() {
   }
   return (
     <>
-      <PageHead title="Foydalanuvchilar" sub="Admin panelga kirish huquqiga ega xodimlar" actions={<button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} /> Foydalanuvchi qo‘shish</button>} />
+      <PageHead title="Foydalanuvchilar" sub="Admin panelga kirish huquqiga ega xodimlar" actions={<Allowed to="create"><button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} /> Foydalanuvchi qo‘shish</button></Allowed>} />
       <div className="card">
         {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading || !data ? <Loading /> : (
           <div className="table-wrap"><table className="table">
@@ -41,7 +41,7 @@ export function UsersPage() {
                 <td>{u.role_name || u.role}</td>
                 <td>{u.status === "active" ? <Badge tone="ok">Faol</Badge> : <Badge tone="danger">Bloklangan</Badge>}</td>
                 <td className="hide-mobile nowrap">{u.last_login_at ? fmtDateTime(u.last_login_at) : "—"}</td>
-                <td className="actions" onClick={(e) => e.stopPropagation()}>{u.id !== user?.id && <button className="btn btn-ghost btn-sm btn-icon" onClick={() => remove(u)} aria-label="O‘chirish"><I.trash size={16} /></button>}</td>
+                <td className="actions" onClick={(e) => e.stopPropagation()}>{u.id !== user?.id && <Allowed to="delete"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => remove(u)} aria-label="O‘chirish"><I.trash size={16} /></button></Allowed>}</td>
               </tr>
             ))}</tbody>
           </table></div>
@@ -83,9 +83,9 @@ function UserDrawer({ item, roles, onClose, onSaved }: { item: U | null; roles: 
     }
   }
   return (
-    <Drawer title={item ? item.name : "Yangi foydalanuvchi"} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Bekor qilish</button><button className="btn btn-primary" onClick={save} disabled={busy}>Saqlash</button></>}>
+    <Drawer title={item ? item.name : "Yangi foydalanuvchi"} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Bekor qilish</button><Allowed to={item ? "edit" : "create"}><button className="btn btn-primary" onClick={save} disabled={busy}>Saqlash</button></Allowed></>}>
       <FormFields fields={fields} values={form.values} set={form.set} errors={form.errors} />
-      {can("roles") && <div className="small" style={{ marginTop: 12 }}><Link to="/roles/new" className="accent-text row" style={{ gap: 6, display: "inline-flex" }}><I.plus size={14} /> Yangi rol yaratish</Link></div>}
+      {can("roles:create") && <div className="small" style={{ marginTop: 12 }}><Link to="/roles/new" className="accent-text row" style={{ gap: 6, display: "inline-flex" }}><I.plus size={14} /> Yangi rol yaratish</Link></div>}
       <div className="alert info" style={{ marginTop: 20 }}><I.alert size={16} /> Parolni xodimga xavfsiz kanal orqali yuboring va birinchi kirishdan so‘ng almashtirishni so‘rang.</div>
     </Drawer>
   );

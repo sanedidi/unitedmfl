@@ -440,7 +440,7 @@ export function PlayerPhotoCard({ c }: { c: CardCtx }) {
             {unchanged && p && s === "multi" && (
               <div className="alert warn"><I.alert size={16} /><div>Rasmda bir nechta odam. <button type="button" className="link-btn" onClick={() => setHint(true)}>Kim ekanini belgilash</button> yoki yakka rasm yuklang.</div></div>
             )}
-            {unchanged && p && (s === "" || s === "cancelled") && p.team_has_kit && photo && can("teams") && (
+            {unchanged && p && (s === "" || s === "cancelled") && p.team_has_kit && photo && can("teams:edit") && (
               <button type="button" className="btn btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => act("regenerate")} disabled={!!busy}>✦ Jamoa formasida kiyintirish</button>
             )}
           </>

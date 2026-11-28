@@ -47,7 +47,7 @@ type roleDTO struct {
 	Description string     `json:"description"`
 	IsSystem    bool       `json:"is_system"`
 	Permissions []string   `json:"permissions"`
-	Pages       int        `json:"pages"` // pages (not extras) the role opens
+	Pages       int        `json:"pages"` // pages the role opens (has view on)
 	Users       int        `json:"users"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	UserList    []roleUser `json:"user_list,omitempty"`
@@ -58,20 +58,15 @@ func (s *Server) permissionCatalog(w http.ResponseWriter, r *http.Request) {
 	for _, g := range auth.Catalog {
 		total += len(g.Pages)
 	}
-	httpx.JSON(w, 200, map[string]any{"groups": auth.Catalog, "total": total})
+	httpx.JSON(w, 200, map[string]any{"groups": auth.Catalog, "actions": auth.ActionLabels, "total": total})
 }
 
-// pageCount counts granted pages, leaving out extras such as matches:edit.
+// pageCount counts the pages a role may open (has «view» on).
 func pageCount(perms []string) int {
 	n := 0
-	for _, g := range auth.Catalog {
-		for _, p := range g.Pages {
-			for _, x := range perms {
-				if x == p.Key {
-					n++
-					break
-				}
-			}
+	for _, x := range perms {
+		if _, a := auth.SplitKey(x); a == auth.ActView {
+			n++
 		}
 	}
 	return n
@@ -285,8 +280,8 @@ func (s *Server) patchRole(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, r, httpx.BadRequest("Administrator rolini o‘zgartirib bo‘lmaydi"))
 		return
 	}
-	if me := claimsFrom(r.Context()); in.Permissions != nil && me != nil && me.Role == cur.Slug && !contains(perms, auth.PermRoles) {
-		httpx.Fail(w, r, httpx.BadRequest("O‘z rolingizdan «Rollar va huquqlar» sahifasini olib bo‘lmaydi"))
+	if me := claimsFrom(r.Context()); in.Permissions != nil && me != nil && me.Role == cur.Slug && !contains(perms, edit(auth.PermRoles)) {
+		httpx.Fail(w, r, httpx.BadRequest("O‘z rolingizdan «Rollar va huquqlar» sahifasini tahrirlash huquqini olib bo‘lmaydi"))
 		return
 	}
 	tx, err := s.DB.BeginTx(r.Context(), nil)

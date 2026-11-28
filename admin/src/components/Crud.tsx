@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Route, Routes, useNavigate, useParams } from "react-router";
+import { usePage } from "@/lib/auth";
 import { api, ApiError, type Page } from "@/lib/api";
 import { useDebounced, useLoad } from "@/lib/hooks";
 import { fromLocalInput, jerseyInput, slugify, toLocalInput } from "@/lib/format";
@@ -141,8 +142,11 @@ export function CrudDrawer({ title, resource, fields, item, defaults, onClose, o
   const form = useForm(fields, item, defaults);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
+  const pg = usePage();
+  const ro = item ? !pg.edit : !pg.create;
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
+    if (ro) return;
     setBusy(true);
     try {
       const body = form.payload();
@@ -157,12 +161,15 @@ export function CrudDrawer({ title, resource, fields, item, defaults, onClose, o
     }
   }
   return (
-    <Drawer title={item ? `${title}: tahrirlash` : `Yangi: ${title.toLowerCase()}`} onClose={onClose} footer={<>
+    <Drawer title={item ? `${title}: ${ro ? "ko‘rish" : "tahrirlash"}` : `Yangi: ${title.toLowerCase()}`} onClose={onClose} footer={ro ? <button className="btn" onClick={onClose}>Yopish</button> : <>
       <button className="btn" onClick={onClose}>Bekor qilish</button>
       <button className="btn btn-primary" onClick={() => save()} disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
     </>}>
+      {ro && !pg.readOnly && <div className="alert info" style={{ marginBottom: 16 }}><I.lock size={16} /> Faqat o‘qish uchun: rolingizda tahrirlash huquqi yo‘q.</div>}
       <form onSubmit={save}>
-        <FormFields fields={fields} values={form.values} set={form.set} errors={form.errors} />
+        <fieldset className="ro-fieldset" disabled={ro}>
+          <FormFields fields={fields} values={form.values} set={form.set} errors={form.errors} />
+        </fieldset>
         <button hidden type="submit" />
       </form>
       {item && extra?.(item)}
@@ -219,6 +226,9 @@ export function CrudPage<T extends Rec>(p: CrudProps<T>) {
   const setEdit = (r: Rec | null) => (asPage ? navigate(r ? `${p.base}/${r.id}` : `${p.base}/new`) : setDrawerItem(r));
   const toast = useToast();
   const confirm = useConfirm();
+  const pg = usePage();
+  const canCreate = p.canCreate !== false && pg.create;
+  const canDelete = p.canDelete !== false && pg.del;
   const limit = p.limit || 25;
   useEffect(() => setPage(1), [dq, flt]);
   const qs = useMemo(() => {
@@ -243,7 +253,7 @@ export function CrudPage<T extends Rec>(p: CrudProps<T>) {
 
   return (
     <>
-      <PageHead title={p.title} sub={p.sub} actions={<>{p.headActions}{p.canCreate !== false && <button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} /> Qo‘shish</button>}</>} />
+      <PageHead title={p.title} sub={p.sub} actions={<>{p.headActions}{canCreate && <button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} /> Qo‘shish</button>}</>} />
       <div className="card">
         {(p.searchable || p.filters?.length) && (
           <div className="toolbar">
@@ -262,7 +272,7 @@ export function CrudPage<T extends Rec>(p: CrudProps<T>) {
           </div>
         )}
         {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading && !data ? <Loading /> : !data?.items.length ? (
-          <Empty title="Hech narsa topilmadi" text={p.emptyText} action={p.canCreate !== false ? <button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} /> Qo‘shish</button> : undefined} />
+          <Empty title="Hech narsa topilmadi" text={p.emptyText} action={canCreate ? <button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} /> Qo‘shish</button> : undefined} />
         ) : (
           <div className="table-wrap">
             <table className="table">
@@ -272,8 +282,8 @@ export function CrudPage<T extends Rec>(p: CrudProps<T>) {
                   <tr key={r.id} className="clickable" onClick={() => setEdit(r)}>
                     {p.columns.map((c) => <td key={c.label} className={c.className}>{c.render(r)}</td>)}
                     <td className="actions" onClick={(e) => e.stopPropagation()}>
-                      <button className="btn btn-ghost btn-sm btn-icon" aria-label="Tahrirlash" onClick={() => setEdit(r)}><I.edit size={16} /></button>
-                      {p.canDelete !== false && <button className="btn btn-ghost btn-sm btn-icon" aria-label="O‘chirish" onClick={() => remove(r)}><I.trash size={16} /></button>}
+                      <button className="btn btn-ghost btn-sm btn-icon" aria-label={pg.edit ? "Tahrirlash" : "Ko‘rish"} onClick={() => setEdit(r)}>{pg.edit ? <I.edit size={16} /> : <I.eye size={16} />}</button>
+                      {canDelete && <button className="btn btn-ghost btn-sm btn-icon" aria-label="O‘chirish" onClick={() => remove(r)}><I.trash size={16} /></button>}
                     </td>
                   </tr>
                 ))}
@@ -320,7 +330,10 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(() => JSON.stringify(form.values));
   const [version, setVersion] = useState(0);
-  const dirty = JSON.stringify(form.values) !== saved;
+  const pg = usePage();
+  // without the right to edit (or to create, for a new item) the form opens read-only
+  const ro = item ? !pg.edit : !pg.create;
+  const dirty = !ro && JSON.stringify(form.values) !== saved;
   const back = p.listPath || p.base;
   const ctx: CardCtx = { item, values: form.values, set: form.set, version, errors: form.errors };
   const blocked = p.saveBlocked?.(form.values);
@@ -332,11 +345,13 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
   }, [dirty]);
   const titleField = p.titleField || p.fields.find((f) => !f.type || f.type === "text")?.name;
   const title = item ? String(form.values[titleField || ""] || item[titleField || ""] || p.singular) : `Yangi: ${p.singular.toLowerCase()}`;
+  if (!item && ro) return <Empty title="Yaratish yopiq" text={`Rolingizda «${p.title}» sahifasida yangi yozuv yaratish huquqi yo‘q.`} action={<button className="btn" onClick={() => navigate(back)}>Ro‘yxatga qaytish</button>} />;
   const main = p.fields.filter((f) => !f.side);
   const side = p.fields.filter((f) => f.side);
 
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
+    if (ro) return;
     if (blocked) {
       toast(blocked, "error");
       return;
@@ -374,11 +389,13 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
   }
   return (
     <form onSubmit={save}>
-      <PageHead title={title} sub={<span className="crumbs"><a href={back} onClick={(e) => { e.preventDefault(); cancel(); }}>{p.title}</a> / <b>{item ? "Tahrirlash" : "Yangi"}</b>{dirty && <span className="muted small"> · saqlanmagan o‘zgarishlar</span>}</span>}
-        actions={<>
+      <PageHead title={title} sub={<span className="crumbs"><a href={back} onClick={(e) => { e.preventDefault(); cancel(); }}>{p.title}</a> / <b>{ro ? "Ko‘rish" : item ? "Tahrirlash" : "Yangi"}</b>{dirty && <span className="muted small"> · saqlanmagan o‘zgarishlar</span>}</span>}
+        actions={ro ? <button type="button" className="btn" onClick={cancel}>Ro‘yxatga qaytish</button> : <>
           <button type="button" className="btn btn-ghost" onClick={cancel}>Bekor qilish</button>
           <button type="submit" className="btn btn-primary" disabled={busy || !!blocked} title={blocked}>{busy ? "Saqlanmoqda…" : blocked ? "Kuting…" : "Saqlash"}</button>
         </>} />
+      {ro && !pg.readOnly && <div className="alert info" style={{ marginBottom: 24 }}><I.lock size={16} /> Faqat o‘qish uchun ochildi: rolingizda bu sahifada tahrirlash huquqi yo‘q.</div>}
+      <fieldset className="ro-fieldset" disabled={ro}>
       <div className="edit-layout">
         <div className="stack" style={{ gap: 24 }}>
           {main.length > 0 && (
@@ -399,9 +416,10 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
             </div>
           )}
           {p.sideCardsAfter?.(ctx)}
-          {item && p.canDelete !== false && <button type="button" className="btn btn-ghost danger-text" style={{ alignSelf: "flex-start" }} onClick={remove}><I.trash size={16} /> {p.singular}ni o‘chirish</button>}
+          {item && p.canDelete !== false && pg.del && <button type="button" className="btn btn-ghost danger-text" style={{ alignSelf: "flex-start" }} onClick={remove}><I.trash size={16} /> {p.singular}ni o‘chirish</button>}
         </aside>
       </div>
+      </fieldset>
     </form>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Allowed } from "@/lib/auth";
 import { Link, Route, Routes, useNavigate } from "react-router";
 import { api, type Page } from "@/lib/api";
 import { useLoad } from "@/lib/hooks";
@@ -37,9 +38,9 @@ function GroupsList() {
   return (
     <>
       <PageHead title="Guruhlar" sub="Turnir jadvali guruhlar bo‘yicha hisoblanadi. Jamoani guruhga shu yerda yoki jamoa sahifasida qo‘shing."
-        actions={<button className="btn btn-primary" onClick={create}><I.plus size={16} /> Yangi guruh</button>} />
+        actions={<Allowed to="create"><button className="btn btn-primary" onClick={create}><I.plus size={16} /> Yangi guruh</button></Allowed>} />
       {error ? <ErrorBox error={error} retry={() => { groups.reload(); teams.reload(); }} /> : loading ? <Loading /> : !groups.data?.items.length ? (
-        <div className="card"><Empty title="Hali guruh yo‘q" text="Guruh yarating va unga jamoalarni qo‘shing — turnir jadvali avtomatik bo‘linadi." action={<button className="btn btn-primary" onClick={create}><I.plus size={16} /> Yangi guruh</button>} /></div>
+        <div className="card"><Empty title="Hali guruh yo‘q" text="Guruh yarating va unga jamoalarni qo‘shing — turnir jadvali avtomatik bo‘linadi." action={<Allowed to="create"><button className="btn btn-primary" onClick={create}><I.plus size={16} /> Yangi guruh</button></Allowed>} /></div>
       ) : (
         <div className="group-grid">
           {groups.data.items.map((g) => {
@@ -62,7 +63,7 @@ function GroupsList() {
               </Link>
             );
           })}
-          <button type="button" className="group-card group-new" onClick={create}><I.plus size={20} /><span>Yangi guruh</span></button>
+          <Allowed to="create"><button type="button" className="group-card group-new" onClick={create}><I.plus size={20} /><span>Yangi guruh</span></button></Allowed>
         </div>
       )}
       {!!ungrouped.length && groups.data?.items.length ? (

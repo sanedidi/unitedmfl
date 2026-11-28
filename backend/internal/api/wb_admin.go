@@ -28,7 +28,7 @@ func (s *Server) mountWB(r chi.Router) {
 		r.Delete("/wb/token", s.wbDisconnect)
 	})
 	r.Group(func(r chi.Router) { // shop work
-		r.Use(s.canAny(auth.PermMerch, auth.PermWildberries))
+		r.Use(s.canEdit(auth.PermMerch, auth.PermWildberries)) // sync, push and import edit products
 		r.Get("/wb", s.wbState)
 		r.Post("/wb/sync", s.wbSyncNow)
 		r.Get("/wb/subjects", s.wbSubjects)
