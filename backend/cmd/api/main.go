@@ -73,6 +73,17 @@ func run() error {
 	} else {
 		slog.Info("telegram bot disabled: TELEGRAM_BOT_TOKEN is empty")
 	}
+	// Media reja: a separate bot for team managers and moderators
+	if cfg.MediaBotToken != "" {
+		if cfg.MediaBotToken == cfg.TelegramToken {
+			slog.Error("media bot disabled: TELEGRAM_MEDIA_BOT_TOKEN must be another bot than TELEGRAM_BOT_TOKEN")
+		} else {
+			mbot := tgbot.New(tgbot.Options{Mode: tgbot.ModeMedia, Token: cfg.MediaBotToken, APIURL: cfg.TelegramAPIURL, DB: conn, Tokens: server.Tokens, Roles: server.Roles, API: handler})
+			go mbot.Run(ctx)
+		}
+	} else {
+		slog.Info("media bot disabled: TELEGRAM_MEDIA_BOT_TOKEN is empty")
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,

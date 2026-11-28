@@ -520,7 +520,7 @@ var ruMessages = map[string]string{
 	"Sana noto‘g‘ri": "Неверная дата",
 	"Guruhda jamoa yo‘q": "В группе нет команд",
 	"Havola hali yuborilmagan": "Ссылка ещё не отправлена",
-	"Telegram bot ulanmagan: serverda TELEGRAM_BOT_TOKEN yo‘q": "Telegram-бот не подключён: на сервере нет TELEGRAM_BOT_TOKEN",
+	"Media bot ulanmagan: serverda TELEGRAM_MEDIA_BOT_TOKEN yo‘q": "Медиа-бот не подключён: на сервере нет TELEGRAM_MEDIA_BOT_TOKEN",
 	"Final o‘yinni yoki sanani tanlang": "Выберите финальный матч или дату",
 	"Matchning sanasi kiritilmagan": "У матча не указана дата",
 	"Jamoa ikki marta keltirilgan": "Команда указана дважды",

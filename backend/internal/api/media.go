@@ -231,7 +231,7 @@ func (s *Server) mediaOverview(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, g)
 	}
-	httpx.JSON(w, 200, map[string]any{"bot": s.Cfg.TelegramToken != "", "today": today, "kpi": k, "groups": out})
+	httpx.JSON(w, 200, map[string]any{"bot": s.Cfg.MediaBotToken != "", "today": today, "kpi": k, "groups": out})
 }
 
 type mediaEvent struct {
@@ -312,7 +312,7 @@ func (s *Server) mediaGroup(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, r, err)
 		return
 	}
-	out := map[string]any{"bot": s.Cfg.TelegramToken != "", "today": today, "group": g, "plan": nil, "final_match": nil,
+	out := map[string]any{"bot": s.Cfg.MediaBotToken != "", "today": today, "group": g, "plan": nil, "final_match": nil,
 		"tasks": []any{}, "activity": []any{}, "members_changed": false, "members": members}
 	ids := members
 	if p != nil {
@@ -619,8 +619,8 @@ func (s *Server) mediaRemind(w http.ResponseWriter, r *http.Request) {
 	if p == nil {
 		return
 	}
-	if s.Cfg.TelegramToken == "" {
-		httpx.Fail(w, r, httpx.BadRequest("Telegram bot ulanmagan: serverda TELEGRAM_BOT_TOKEN yo‘q"))
+	if s.Cfg.MediaBotToken == "" {
+		httpx.Fail(w, r, httpx.BadRequest("Media bot ulanmagan: serverda TELEGRAM_MEDIA_BOT_TOKEN yo‘q"))
 		return
 	}
 	now := mediaNow()

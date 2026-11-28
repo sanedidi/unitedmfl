@@ -99,7 +99,7 @@ function BotOff() {
   return (
     <div className="alert warn" style={{ marginBottom: 16 }}>
       <I.alert size={16} />
-      <div>{tx("Telegram bot ulanmagan — menejerlarga eslatmalar yuborilmaydi. Serverda TELEGRAM_BOT_TOKEN ni kiriting va API ni qayta ishga tushiring.")}</div>
+      <div>{tx("Media bot ulanmagan — menejerlarga eslatmalar yuborilmaydi. Serverda TELEGRAM_MEDIA_BOT_TOKEN ni kiriting va API ni qayta ishga tushiring.")}</div>
     </div>
   );
 }
@@ -243,7 +243,7 @@ function MediaGroup() {
       <PageHead title={tx("Guruh {0} — media reja", data.group.code)} sub={p ? tx("{0} — {1} kunlik sikl, final o‘yinga qarab hisoblanadi", teamsLine, diffDays(p.start, p.end) + 1) : teamsLine}
         actions={<>
           <Link className="btn" to="/media">{tx("Barcha guruhlar")}</Link>
-          {p && <Allowed to="edit"><button className="btn btn-primary" onClick={remind} disabled={busy || !data.bot} title={!data.bot ? tx("Telegram bot ulanmagan") : undefined}><I.telegram size={16} /> {tx("Menejerlarga eslatma")}</button></Allowed>}
+          {p && <Allowed to="edit"><button className="btn btn-primary" onClick={remind} disabled={busy || !data.bot} title={!data.bot ? tx("Media bot ulanmagan") : undefined}><I.telegram size={16} /> {tx("Menejerlarga eslatma")}</button></Allowed>}
         </>} />
       <div className="tabs" style={{ marginBottom: 16 }}>
         {(groups.data?.items || []).map((g) => (
@@ -315,7 +315,7 @@ function MediaGroup() {
                   </div>
                 ))}
               </div>
-              <div className="mr-hint">{tx("Menejer botda /start ni bosadi va «Telefon raqamni yuborish» tugmasi orqali shu raqamni yuboradi — shundan keyin eslatmalar keladi.")}</div>
+              <div className="mr-hint">{tx("Menejer Media botda (Live-pult emas) /start ni bosadi va «Telefon raqamni yuborish» tugmasi orqali shu raqamni yuboradi — shundan keyin eslatmalar keladi.")}</div>
             </div>
             <div className="card">
               <div className="card-head"><h3>{tx("So‘nggi harakatlar")}</h3></div>
@@ -762,7 +762,7 @@ function ManagerModal({ team, onClose, onDone }: { team: MTeam; onClose: () => v
       <div className="stack">
         <Field label={tx("Ism")} error={err.name}><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={tx("Masalan: Aziz R.")} /></Field>
         <Field label={tx("Telefon")} error={err.phone} hint={tx("Shu raqam bilan botga kiradi. Raqam o‘zgarsa, eski Telegram ulanishi o‘chadi.")}><input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 90 123 45 67" inputMode="tel" /></Field>
-        <div className="alert info"><I.telegram size={16} /><div>{tx("Menejer botda /start ni bosadi va «Telefon raqamni yuborish» tugmasini bosadi. Kechqurun va ertalab topshiriqlar keladi, post havolasini shu yerga yuboradi.")}</div></div>
+        <div className="alert info"><I.telegram size={16} /><div>{tx("Menejer Media botda (Live-pult emas) /start ni bosadi va «Telefon raqamni yuborish» tugmasini bosadi. Kechqurun va ertalab topshiriqlar keladi, post havolasini shu yerga yuboradi.")}</div></div>
       </div>
     </Modal>
   );
@@ -1040,7 +1040,7 @@ function MediaReview() {
           })}
         </div>
       )}
-      <div className="mr-note"><I.telegram size={16} /><span>{tx("Moderatorlar xuddi shu navbatni Telegram botda ham oladi: har bir yangi havola — «Tasdiqlash / Qaytarish» tugmalari bilan. Huquq: «Media reja — tahrirlash».")}</span></div>
+      <div className="mr-note"><I.telegram size={16} /><span>{tx("Moderatorlar xuddi shu navbatni Media botda ham oladi: har bir yangi havola — «Tasdiqlash / Qaytarish» tugmalari bilan. Huquq: «Media reja — tahrirlash», kartochkada telefon.")}</span></div>
       {ret && (
         <Modal title={tx("Qaytarish: {0} · {1}", ret.team_name, ret.label)} onClose={() => setRet(null)} footer={<>
           <button className="btn" onClick={() => setRet(null)}>{tx("Bekor qilish")}</button>

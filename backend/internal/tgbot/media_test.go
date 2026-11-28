@@ -70,6 +70,7 @@ func TestMediaBot(t *testing.T) {
 	must(`DELETE FROM media_outbox`)
 	must(`DELETE FROM telegram_links`)
 	must(`DELETE FROM media_manager_links`)
+	must(`DELETE FROM media_moderator_links`)
 	must(`DELETE FROM users WHERE email LIKE '%@media-bot.test'`)
 	must(`UPDATE media_settings SET last_report_on = NULL`)
 
@@ -127,7 +128,8 @@ func TestMediaBot(t *testing.T) {
 	fake := &fakeTelegram{}
 	tgSrv := httptest.NewServer(fake)
 	defer tgSrv.Close()
-	b := New(Options{Token: "TEST", APIURL: tgSrv.URL, DB: conn, Tokens: server.Tokens, API: server.Routes()})
+	b := New(Options{Mode: ModeMedia, Token: "TEST", APIURL: tgSrv.URL, DB: conn, Tokens: server.Tokens, API: server.Routes()})
+	live := New(Options{Token: "LIVE", APIURL: tgSrv.URL, DB: conn, Tokens: server.Tokens, API: server.Routes()})
 	clock := time.Date(2026, 11, 28, 8, 0, 0, 0, media.TZ)
 	b.now = func() time.Time { return clock }
 
@@ -152,9 +154,24 @@ func TestMediaBot(t *testing.T) {
 	if !has(texts, "Prime XI</b> jamoasi menejerisiz") || !has(texts, "Prime XI — Guruh") || !has(kbs, "QL:"+fmt.Sprint(click)) {
 		t.Fatalf("manager welcome: %v %v", texts, kbs)
 	}
-	// a manager is not a Live-pult operator
-	if a := answers(cb(mgrTG, mgrChat, "L")); !strings.Contains(a, "Ruxsat yo‘q") {
-		t.Fatalf("manager in the Live-pult: %s", a)
+	// the Live-pult is another bot: it lets in neither the manager nor the moderator
+	for _, c := range []struct {
+		tg    int64
+		phone string
+	}{{mgrTG, "+998971113310"}, {modTG, "998909998877"}} {
+		live.safeHandle(ctx, tgUpdate{Message: &tgMessage{MessageID: 1, From: &tgUser{ID: c.tg}, Chat: tgChat{ID: c.tg, Type: "private"},
+			Contact: &tgContact{PhoneNumber: c.phone, UserID: c.tg}}})
+		if txt, _ := lastText(t, fake.take(), "sendMessage"); !strings.Contains(txt, "Ruxsat yo‘q") {
+			t.Fatalf("live bot lets in %d: %s", c.tg, txt)
+		}
+	}
+	// and the media bot has no Live-pult
+	if texts, _ = sentTo(msg(mgrTG, mgrChat, "/matches", nil), mgrChat); has(texts, "Faol matchlar") {
+		t.Fatalf("live menu in the media bot: %v", texts)
+	}
+	// a stranger
+	if texts, _ = sentTo(msg(999, 9999, "/start", nil), 9999); !has(texts, "United MFL Media") {
+		t.Fatalf("media greeting: %v", texts)
 	}
 	// the moderator links too
 	texts, _ = sentTo(msg(modTG, modChat, "", &tgContact{PhoneNumber: "998909998877", UserID: modTG}), modChat)

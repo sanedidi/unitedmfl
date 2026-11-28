@@ -32,6 +32,7 @@ type Config struct {
 	PointsLoss         int
 	LineupBenchMax     int           // substitutes allowed in a matchday squad (0 = no limit)
 	TelegramToken      string        // Live-pult bot token from @BotFather; empty = bot disabled
+	MediaBotToken      string        // Media reja bot (a separate bot) token; empty = no Media reja reminders
 	TelegramAPIURL     string        // Bot API base URL (override only for tests or a local Bot API server)
 	InstagramToken     string        // optional: long-lived token to connect on first start (normally set in the admin)
 	InstagramAPIURL    string        // Instagram Graph API host (override only for tests)
@@ -103,6 +104,7 @@ func Load() (*Config, error) {
 		// Bench size is a proposal until confirmed by the league regulations.
 		LineupBenchMax:      envInt("LINEUP_BENCH_MAX", 9),
 		TelegramToken:       env("TELEGRAM_BOT_TOKEN", ""),
+		MediaBotToken:       env("TELEGRAM_MEDIA_BOT_TOKEN", ""),
 		TelegramAPIURL:      strings.TrimRight(env("TELEGRAM_API_URL", "https://api.telegram.org"), "/"),
 		InstagramToken:      env("INSTAGRAM_ACCESS_TOKEN", ""),
 		InstagramAPIURL:     strings.TrimRight(env("INSTAGRAM_API_URL", "https://graph.instagram.com"), "/"),

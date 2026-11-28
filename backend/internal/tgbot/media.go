@@ -15,19 +15,24 @@ import (
 	"github.com/sanedidi/unitedmfl/backend/internal/media"
 )
 
-// Media reja in the bot.
+// The Media reja bot (Mode: ModeMedia) — a separate bot from the Live-pult.
 //
 // Team managers: the admin writes the manager's phone on the Media reja page;
 // the manager shares the contact and gets the team's plan, reminders the
 // evening before and the morning of each task, and sends the post links back.
 //
-// Moderators: admin users with «Media reja — tahrirlash» linked like Live-pult
-// operators get every new link with «Tasdiqlash / Qaytarish», overdue
+// Moderators: admin users with «Media reja — tahrirlash» and a phone on their
+// user card get every new link with «Tasdiqlash / Qaytarish», overdue
 // escalations, a daily report and a note when a group's final moves.
 //
 // Callback data of this part starts with Q.
 
-const btnPlan = "📋 Mening rejam"
+const (
+	btnPlan = "📋 Mening rejam"
+
+	mediaGreeting = "Assalomu alaykum! Bu <b>United MFL Media</b> boti — jamoa menejerlari va media moderatorlari uchun.\n\nKirish uchun pastdagi tugma orqali telefon raqamingizni yuboring."
+	mediaNoAccess = "⛔ <b>Ruxsat yo‘q.</b>\n\nBu bot faqat United MFL jamoa menejerlari va media moderatorlari uchun. Raqamingiz ro‘yxatda bo‘lmasa, administratorga murojaat qiling."
+)
 
 var managerKeyboard = replyKeyboard{Keyboard: [][]keyButton{{{Text: btnPlan}}}, ResizeKeyboard: true, IsPersistent: true}
 
@@ -96,7 +101,7 @@ func (b *Bot) linkManager(ctx context.Context, from *tgUser, chatID int64, rawPh
 // moderatorFor returns the linked admin user who may approve posts, or nil.
 func (b *Bot) moderatorFor(ctx context.Context, tgUserID int64) (*operator, error) {
 	var op operator
-	err := b.db.QueryRowContext(ctx, `SELECT u.id, u.name, u.role FROM telegram_links t JOIN users u ON u.id = t.user_id
+	err := b.db.QueryRowContext(ctx, `SELECT u.id, u.name, u.role FROM media_moderator_links t JOIN users u ON u.id = t.user_id
 		WHERE t.tg_user_id = $1 AND u.status = 'active' AND u.phone = t.phone`, tgUserID).Scan(&op.UserID, &op.Name, &op.Role)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -110,6 +115,99 @@ func (b *Bot) moderatorFor(ctx context.Context, tgUserID int64) (*operator, erro
 	return &op, nil
 }
 
+// linkModerator connects a Telegram account to the admin user with this phone
+// when the user may approve Media reja posts.
+func (b *Bot) linkModerator(ctx context.Context, from *tgUser, chatID int64, rawPhone string) (*operator, error) {
+	phone, ok := auth.NormalizePhone(rawPhone)
+	if !ok || phone == "" {
+		return nil, nil
+	}
+	var op operator
+	err := b.db.QueryRowContext(ctx, `SELECT id, name, role FROM users WHERE phone = $1 AND status = 'active'`, phone).Scan(&op.UserID, &op.Name, &op.Role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !b.roles.Can(ctx, op.Role, auth.Key(auth.PermMedia, auth.ActEdit)) {
+		return nil, nil
+	}
+	if _, err := b.db.ExecContext(ctx, `INSERT INTO media_moderator_links (tg_user_id, user_id, phone, chat_id, username) VALUES ($1,$2,$3,$4,$5)
+		ON CONFLICT (tg_user_id) DO UPDATE SET user_id = EXCLUDED.user_id, phone = EXCLUDED.phone, chat_id = EXCLUDED.chat_id,
+		username = EXCLUDED.username, created_at = now()`, from.ID, op.UserID, phone, chatID, from.Username); err != nil {
+		return nil, err
+	}
+	return &op, nil
+}
+
+// onMediaBotMessage is every message of the Media reja bot.
+func (b *Bot) onMediaBotMessage(ctx context.Context, m *tgMessage) {
+	chatID := m.Chat.ID
+	if m.Contact != nil {
+		b.onMediaContact(ctx, m)
+		return
+	}
+	text := strings.TrimSpace(m.Text)
+	if text == "/logout" {
+		_, _ = b.db.ExecContext(ctx, `DELETE FROM media_manager_links WHERE tg_user_id = $1`, m.From.ID)
+		_, _ = b.db.ExecContext(ctx, `DELETE FROM media_moderator_links WHERE tg_user_id = $1`, m.From.ID)
+		b.dropSession(chatID)
+		b.sendText(ctx, chatID, "Siz botdan chiqdingiz. Qayta kirish uchun /start ni bosing.", removeKeyboard)
+		return
+	}
+	if b.onMediaMessage(ctx, m) {
+		return
+	}
+	if strings.HasPrefix(text, "/start") {
+		b.sendText(ctx, chatID, mediaGreeting, askPhoneKeyboard)
+		return
+	}
+	b.sendText(ctx, chatID, mediaNoAccess+"\n\nRaqamingiz qo‘shilgan bo‘lsa, uni pastdagi tugma orqali yuboring.", askPhoneKeyboard)
+}
+
+func (b *Bot) onMediaContact(ctx context.Context, m *tgMessage) {
+	chatID := m.Chat.ID
+	if m.Contact.UserID != m.From.ID {
+		b.sendText(ctx, chatID, textNotOwn, askPhoneKeyboard)
+		return
+	}
+	mod, err := b.linkModerator(ctx, m.From, chatID, m.Contact.PhoneNumber)
+	if err != nil {
+		slog.Error("media bot: link moderator", "err", err)
+		b.sendText(ctx, chatID, "Ichki xato. Birozdan so‘ng urinib ko‘ring.", nil)
+		return
+	}
+	teams, err := b.linkManager(ctx, m.From, chatID, m.Contact.PhoneNumber)
+	if err != nil {
+		slog.Error("media bot: link manager", "err", err)
+		b.sendText(ctx, chatID, "Ichki xato. Birozdan so‘ng urinib ko‘ring.", nil)
+		return
+	}
+	if mod == nil && len(teams) == 0 {
+		slog.Info("media bot: access denied", "tg_user_id", m.From.ID, "username", m.From.Username)
+		b.sendText(ctx, chatID, mediaNoAccess, removeKeyboard)
+		return
+	}
+	if mod != nil {
+		slog.Info("media bot: moderator linked", "user_id", mod.UserID, "tg_user_id", m.From.ID)
+		var kb any = removeKeyboard
+		if len(teams) > 0 {
+			kb = nil
+		}
+		b.sendText(ctx, chatID, fmt.Sprintf("✅ Xush kelibsiz, <b>%s</b>!\n\nMenejerlar yuborgan Instagram havolalari shu yerga keladi — «Tasdiqlash» yoki «Qaytarish» ni bosing. Ro‘yxat: /tekshiruv", media.Esc(mod.Name)), kb)
+	}
+	if len(teams) > 0 {
+		names := make([]string, len(teams))
+		for i, t := range teams {
+			names[i] = "<b>" + media.Esc(t.Name) + "</b>"
+		}
+		slog.Info("media bot: manager linked", "tg_user_id", m.From.ID, "teams", len(teams))
+		b.sendText(ctx, chatID, "✅ Siz "+strings.Join(names, ", ")+" jamoasi menejerisiz.\n\nMedia reja topshiriqlarini oldingi kuni kechqurun va o‘sha kuni ertalab shu yerga yuboraman. Post chiqqach, havolasini shu yerga yuboring.", managerKeyboard)
+		b.showManagerPlan(ctx, chatID, teams)
+	}
+}
+
 func (b *Bot) ownsTask(teams []managerTeam, t *media.Task) bool {
 	for _, m := range teams {
 		if m.TeamID == t.TeamID {
@@ -120,7 +218,7 @@ func (b *Bot) ownsTask(teams []managerTeam, t *media.Task) bool {
 }
 
 // onMediaMessage handles a text message of a manager or a moderator. It
-// returns false when the message is not theirs (the Live-pult takes it).
+// returns false when the sender is neither.
 func (b *Bot) onMediaMessage(ctx context.Context, m *tgMessage) bool {
 	chatID := m.Chat.ID
 	text := strings.TrimSpace(m.Text)
@@ -141,7 +239,7 @@ func (b *Bot) onMediaMessage(ctx context.Context, m *tgMessage) bool {
 	}
 
 	if s.await != nil {
-		if strings.HasPrefix(text, "/") || text == btnPlan || text == btnMatches {
+		if strings.HasPrefix(text, "/") || text == btnPlan {
 			s.await = nil // a command cancels the question
 		} else {
 			b.answerAwait(ctx, m, s, teams, mod)
@@ -162,10 +260,6 @@ func (b *Bot) onMediaMessage(ctx context.Context, m *tgMessage) bool {
 			b.linkWithoutTask(ctx, m, s, teams)
 			return true
 		}
-	}
-	live, _ := b.operatorFor(ctx, m.From.ID)
-	if live != nil {
-		return false // the Live-pult menu
 	}
 	if len(teams) > 0 {
 		b.showManagerPlan(ctx, chatID, teams)
@@ -218,7 +312,7 @@ func (b *Bot) answerAwait(ctx context.Context, m *tgMessage, s *session, teams [
 	case "return":
 		s.await = nil
 		if mod == nil {
-			b.sendText(ctx, chatID, textNoAccess, nil)
+			b.sendText(ctx, chatID, mediaNoAccess, nil)
 			return
 		}
 		uid := mod.UserID
@@ -531,7 +625,7 @@ func (b *Bot) managerChats(ctx context.Context, teamID int64) []int64 {
 
 // moderatorChats are the chats of linked users who may approve posts.
 func (b *Bot) moderatorChats(ctx context.Context) []int64 {
-	rows, err := b.db.QueryContext(ctx, `SELECT DISTINCT t.chat_id, u.role FROM telegram_links t JOIN users u ON u.id = t.user_id
+	rows, err := b.db.QueryContext(ctx, `SELECT DISTINCT t.chat_id, u.role FROM media_moderator_links t JOIN users u ON u.id = t.user_id
 		WHERE u.status = 'active' AND u.phone = t.phone`)
 	if err != nil {
 		return nil
