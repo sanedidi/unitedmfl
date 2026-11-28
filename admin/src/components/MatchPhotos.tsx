@@ -5,6 +5,7 @@ import { useLoad } from "@/lib/hooks";
 import { I } from "./Icons";
 import { ErrorBox, Loading, useConfirm, useToast } from "./ui";
 
+import { tx } from "@/lib/i18n";
 export type MatchPhoto = {
   id: number; match_id: number; url: string; thumb_url: string; width: number; height: number;
   bytes: number; original_bytes: number; caption: string; ord: number;
@@ -62,7 +63,7 @@ export function MatchPhotos({ matchId }: { matchId: number }) {
           patchJob(job.key, { stage: "done", bytes: p.bytes });
           setPhotos((ps) => [...ps, p].sort((a, b) => a.ord - b.ord || a.id - b.id));
         })
-        .catch((e) => patchJob(job.key, { stage: "error", error: e instanceof Error ? e.message : "Xato" }))
+        .catch((e) => patchJob(job.key, { stage: "error", error: e instanceof Error ? e.message : tx("Xato") }))
         .finally(() => {
           running.current--;
           pump();
@@ -87,10 +88,10 @@ export function MatchPhotos({ matchId }: { matchId: number }) {
     if (photographer.trim() === (data?.photographer || "")) return;
     try {
       await api.patch(`/admin/matches/${matchId}`, { photographer: photographer.trim() });
-      toast("Fotograf saqlandi");
+      toast(tx("Fotograf saqlandi"));
       reload();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     }
   }
 
@@ -99,7 +100,7 @@ export function MatchPhotos({ matchId }: { matchId: number }) {
     try {
       await api.put(`/admin/matches/${matchId}/photos/order`, next.map((p) => p.id));
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Tartib saqlanmadi", "error");
+      toast(e instanceof Error ? e.message : tx("Tartib saqlanmadi"), "error");
       reload();
     }
   }
@@ -110,27 +111,27 @@ export function MatchPhotos({ matchId }: { matchId: number }) {
       const r = await api.patch<MatchPhoto>(`/admin/match-photos/${p.id}`, { caption });
       setPhotos((ps) => ps.map((x) => (x.id === p.id ? r : x)));
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     }
   }
 
   async function remove(p: MatchPhoto) {
-    if (!(await confirm({ title: "Fotoni o‘chirish", text: "Foto saytdan ham o‘chadi.", ok: "O‘chirish", danger: true }))) return;
+    if (!(await confirm({ title: tx("Fotoni o‘chirish"), text: tx("Foto saytdan ham o‘chadi."), ok: tx("O‘chirish"), danger: true }))) return;
     try {
       await api.del(`/admin/match-photos/${p.id}`);
       setPhotos((ps) => ps.filter((x) => x.id !== p.id));
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     }
   }
 
   async function removeAll() {
-    if (!(await confirm({ title: "Barcha fotolarni o‘chirish", text: `${photos.length} ta foto saytdan ham o‘chadi. Buni qaytarib bo‘lmaydi.`, ok: "Hammasini o‘chirish", danger: true }))) return;
+    if (!(await confirm({ title: tx("Barcha fotolarni o‘chirish"), text: tx("{0} ta foto saytdan ham o‘chadi. Buni qaytarib bo‘lmaydi.", photos.length), ok: tx("Hammasini o‘chirish"), danger: true }))) return;
     try {
       await api.del(`/admin/matches/${matchId}/photos`);
       setPhotos([]);
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     }
   }
 
@@ -153,8 +154,8 @@ export function MatchPhotos({ matchId }: { matchId: number }) {
   return (
     <section className="card">
       <div className="card-head row" style={{ justifyContent: "space-between" }}>
-        <h3>Foto hisobot</h3>
-        <span className="small muted">{photos.length} ta foto</span>
+        <h3>{tx("Foto hisobot")}</h3>
+        <span className="small muted">{photos.length}{" "}{tx("ta foto")}</span>
       </div>
       <div className="card-pad stack" style={{ gap: 16 }}>
         <input ref={input} type="file" accept={ACCEPT} multiple hidden onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
@@ -169,14 +170,14 @@ export function MatchPhotos({ matchId }: { matchId: number }) {
           onDrop={(e) => { if (e.dataTransfer.files.length) { e.preventDefault(); setOver(false); add(e.dataTransfer.files); } }}
         >
           <I.upload size={24} />
-          <b>Fotolarni shu yerga tashlang yoki tanlang</b>
-          <span className="small muted">JPG, PNG, HEIC yoki WebP · bir vaqtda 100 tagacha · avtomatik WebP ga o‘tkaziladi</span>
+          <b>{tx("Fotolarni shu yerga tashlang yoki tanlang")}</b>
+          <span className="small muted">{tx("JPG, PNG, HEIC yoki WebP · bir vaqtda 100 tagacha · avtomatik WebP ga o‘tkaziladi")}</span>
         </div>
 
         <label className="field">
-          <span className="label">Fotograf</span>
-          <input className="input" value={photographer} maxLength={120} placeholder="Ism Familiya" onChange={(e) => setPhotographer(e.target.value)} onBlur={savePhotographer} />
-          <span className="hint">Saytda «Foto: …» deb ko‘rsatiladi</span>
+          <span className="label">{tx("Fotograf")}</span>
+          <input className="input" value={photographer} maxLength={120} placeholder={tx("Ism Familiya")} onChange={(e) => setPhotographer(e.target.value)} onBlur={savePhotographer} />
+          <span className="hint">{tx("Saytda «Foto: …» deb ko‘rsatiladi")}</span>
         </label>
 
         {jobs.length > 0 && (
@@ -186,23 +187,23 @@ export function MatchPhotos({ matchId }: { matchId: number }) {
                 <span className="ellipsis small" title={j.name}>{j.name}</span>
                 <div className="progress"><i style={{ width: `${Math.round((j.stage === "done" ? 1 : j.share) * 100)}%`, opacity: j.stage === "converting" ? 0.5 : 1 }} /></div>
                 <span className={`small ${j.stage === "error" ? "danger-text" : "muted"}`}>
-                  {j.stage === "queued" && "navbatda"}
-                  {j.stage === "uploading" && `${Math.round(j.share * 100)}% · yuklanmoqda`}
-                  {j.stage === "converting" && "WebP ga o‘tkazilmoqda…"}
-                  {j.stage === "done" && `Tayyor · ${fmtBytes(j.size)} → ${fmtBytes(j.bytes || 0)} WebP`}
+                  {j.stage === "queued" && tx("navbatda")}
+                  {j.stage === "uploading" && tx("{0}% · yuklanmoqda", Math.round(j.share * 100))}
+                  {j.stage === "converting" && tx("WebP ga o‘tkazilmoqda…")}
+                  {j.stage === "done" && tx("Tayyor · {0} → {1} WebP", fmtBytes(j.size), fmtBytes(j.bytes || 0))}
                   {j.stage === "error" && j.error}
                 </span>
               </div>
             ))}
-            {active === 0 && <button type="button" className="btn btn-ghost btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => setJobs([])}>Ro‘yxatni tozalash</button>}
+            {active === 0 && <button type="button" className="btn btn-ghost btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => setJobs([])}>{tx("Ro‘yxatni tozalash")}</button>}
           </div>
         )}
 
         {photos.length > 0 && (
           <>
             <div className="row" style={{ justifyContent: "space-between" }}>
-              <span className="small muted">Tartibni sudrab o‘zgartiring. Birinchi foto — muqova.</span>
-              <button type="button" className="btn btn-ghost btn-sm danger-text" onClick={removeAll}>Hammasini o‘chirish</button>
+              <span className="small muted">{tx("Tartibni sudrab o‘zgartiring. Birinchi foto — muqova.")}</span>
+              <button type="button" className="btn btn-ghost btn-sm danger-text" onClick={removeAll}>{tx("Hammasini o‘chirish")}</button>
             </div>
             <div className="photo-grid">
               {photos.map((p, i) => (
@@ -216,13 +217,13 @@ export function MatchPhotos({ matchId }: { matchId: number }) {
                 >
                   <a className="photo-tile" href={p.url} target="_blank" rel="noreferrer" draggable={false}>
                     <img src={p.thumb_url} alt={p.caption} loading="lazy" draggable={false} />
-                    {i === 0 && <span className="cover-badge">MUQOVA</span>}
+                    {i === 0 && <span className="cover-badge">{tx("MUQOVA")}</span>}
                   </a>
                   <div className="row" style={{ gap: 6 }}>
                     <span className="grip" aria-hidden>⋮⋮</span>
-                    <input className="input input-sm grow" defaultValue={p.caption} placeholder="Izoh qo‘shish" maxLength={300} onBlur={(e) => saveCaption(p, e.target.value)} />
-                    {i > 0 && <button type="button" className="btn btn-ghost btn-sm btn-icon" title="Muqova qilish" onClick={() => saveOrder([p, ...photos.filter((x) => x.id !== p.id)])}><I.image size={15} /></button>}
-                    <button type="button" className="btn btn-ghost btn-sm btn-icon" title="O‘chirish" onClick={() => remove(p)}><I.trash size={15} /></button>
+                    <input className="input input-sm grow" defaultValue={p.caption} placeholder={tx("Izoh qo‘shish")} maxLength={300} onBlur={(e) => saveCaption(p, e.target.value)} />
+                    {i > 0 && <button type="button" className="btn btn-ghost btn-sm btn-icon" title={tx("Muqova qilish")} onClick={() => saveOrder([p, ...photos.filter((x) => x.id !== p.id)])}><I.image size={15} /></button>}
+                    <button type="button" className="btn btn-ghost btn-sm btn-icon" title={tx("O‘chirish")} onClick={() => remove(p)}><I.trash size={15} /></button>
                   </div>
                 </div>
               ))}

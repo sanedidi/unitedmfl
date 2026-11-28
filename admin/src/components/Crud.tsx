@@ -9,6 +9,7 @@ import { I } from "./Icons";
 import { PageHead } from "./Layout";
 import { Markdown } from "./Markdown";
 
+import { tx } from "@/lib/i18n";
 export type Opt = { value: string; label: string };
 export type FieldSpec = {
   name: string;
@@ -151,21 +152,21 @@ export function CrudDrawer({ title, resource, fields, item, defaults, onClose, o
     try {
       const body = form.payload();
       const r = item ? await api.patch<Rec>(`${resource}/${item.id}`, body) : await api.post<Rec>(resource, body);
-      toast("Saqlandi");
+      toast(tx("Saqlandi"));
       onSaved(r);
     } catch (err) {
       form.fail(err);
-      toast(err instanceof Error ? err.message : "Xato", "error");
+      toast(err instanceof Error ? err.message : tx("Xato"), "error");
     } finally {
       setBusy(false);
     }
   }
   return (
-    <Drawer title={item ? `${title}: ${ro ? "ko‘rish" : "tahrirlash"}` : `Yangi: ${title.toLowerCase()}`} onClose={onClose} footer={ro ? <button className="btn" onClick={onClose}>Yopish</button> : <>
-      <button className="btn" onClick={onClose}>Bekor qilish</button>
-      <button className="btn btn-primary" onClick={() => save()} disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button>
+    <Drawer title={item ? `${title}: ${ro ? tx("ko‘rish") : tx("tahrirlash")}` : tx("Yangi: {0}", title.toLowerCase())} onClose={onClose} footer={ro ? <button className="btn" onClick={onClose}>{tx("Yopish")}</button> : <>
+      <button className="btn" onClick={onClose}>{tx("Bekor qilish")}</button>
+      <button className="btn btn-primary" onClick={() => save()} disabled={busy}>{busy ? tx("Saqlanmoqda…") : tx("Saqlash")}</button>
     </>}>
-      {ro && !pg.readOnly && <div className="alert info" style={{ marginBottom: 16 }}><I.lock size={16} /> Faqat o‘qish uchun: rolingizda tahrirlash huquqi yo‘q.</div>}
+      {ro && !pg.readOnly && <div className="alert info" style={{ marginBottom: 16 }}><I.lock size={16} />{" "}{tx("Faqat o‘qish uchun: rolingizda tahrirlash huquqi yo‘q.")}</div>}
       <form onSubmit={save}>
         <fieldset className="ro-fieldset" disabled={ro}>
           <FormFields fields={fields} values={form.values} set={form.set} errors={form.errors} />
@@ -240,39 +241,39 @@ export function CrudPage<T extends Rec>(p: CrudProps<T>) {
   const { data, error, loading, reload } = useLoad(() => api.get<Page<T>>(`${p.resource}?${qs}`), [qs, p.resource, p.reloadKey]);
 
   async function remove(r: T) {
-    if (!(await confirm({ title: `${p.singular}ni o‘chirish`, text: p.deleteText || "Bu amalni qaytarib bo‘lmaydi.", ok: "O‘chirish", danger: true }))) return;
+    if (!(await confirm({ title: tx("{0}ni o‘chirish", p.singular), text: p.deleteText || tx("Bu amalni qaytarib bo‘lmaydi."), ok: tx("O‘chirish"), danger: true }))) return;
     try {
       await api.del(`${p.resource}/${r.id}`);
-      toast("O‘chirildi");
+      toast(tx("O‘chirildi"));
       p.onChanged?.();
       reload();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     }
   }
 
   return (
     <>
-      <PageHead title={p.title} sub={p.sub} actions={<>{p.headActions}{canCreate && <button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} /> Qo‘shish</button>}</>} />
+      <PageHead title={p.title} sub={p.sub} actions={<>{p.headActions}{canCreate && <button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} />{" "}{tx("Qo‘shish")}</button>}</>} />
       <div className="card">
         {(p.searchable || p.filters?.length) && (
           <div className="toolbar">
             {p.searchable && (
               <div className="search grow" style={{ maxWidth: 360 }}>
                 <I.search size={16} />
-                <input className="input" placeholder="Qidirish…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Qidirish" />
+                <input className="input" placeholder={tx("Qidirish…")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={tx("Qidirish")} />
               </div>
             )}
             {p.filters?.map((f) => (
               <select key={f.param} className="select" style={{ width: "auto" }} value={flt[f.param] || ""} onChange={(e) => setFlt((x) => ({ ...x, [f.param]: e.target.value }))} aria-label={f.label}>
-                <option value="">{f.label}: barchasi</option>
+                <option value="">{f.label}{tx(": barchasi")}</option>
                 {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             ))}
           </div>
         )}
         {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading && !data ? <Loading /> : !data?.items.length ? (
-          <Empty title="Hech narsa topilmadi" text={p.emptyText} action={canCreate ? <button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} /> Qo‘shish</button> : undefined} />
+          <Empty title={tx("Hech narsa topilmadi")} text={p.emptyText} action={canCreate ? <button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} />{" "}{tx("Qo‘shish")}</button> : undefined} />
         ) : (
           <div className="table-wrap">
             <table className="table">
@@ -282,8 +283,8 @@ export function CrudPage<T extends Rec>(p: CrudProps<T>) {
                   <tr key={r.id} className="clickable" onClick={() => setEdit(r)}>
                     {p.columns.map((c) => <td key={c.label} className={c.className}>{c.render(r)}</td>)}
                     <td className="actions" onClick={(e) => e.stopPropagation()}>
-                      <button className="btn btn-ghost btn-sm btn-icon" aria-label={pg.edit ? "Tahrirlash" : "Ko‘rish"} onClick={() => setEdit(r)}>{pg.edit ? <I.edit size={16} /> : <I.eye size={16} />}</button>
-                      {canDelete && <button className="btn btn-ghost btn-sm btn-icon" aria-label="O‘chirish" onClick={() => remove(r)}><I.trash size={16} /></button>}
+                      <button className="btn btn-ghost btn-sm btn-icon" aria-label={pg.edit ? tx("Tahrirlash") : tx("Ko‘rish")} onClick={() => setEdit(r)}>{pg.edit ? <I.edit size={16} /> : <I.eye size={16} />}</button>
+                      {canDelete && <button className="btn btn-ghost btn-sm btn-icon" aria-label={tx("O‘chirish")} onClick={() => remove(r)}><I.trash size={16} /></button>}
                     </td>
                   </tr>
                 ))}
@@ -344,8 +345,8 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
     return () => window.removeEventListener("beforeunload", h);
   }, [dirty]);
   const titleField = p.titleField || p.fields.find((f) => !f.type || f.type === "text")?.name;
-  const title = item ? String(form.values[titleField || ""] || item[titleField || ""] || p.singular) : `Yangi: ${p.singular.toLowerCase()}`;
-  if (!item && ro) return <Empty title="Yaratish yopiq" text={`Rolingizda «${p.title}» sahifasida yangi yozuv yaratish huquqi yo‘q.`} action={<button className="btn" onClick={() => navigate(back)}>Ro‘yxatga qaytish</button>} />;
+  const title = item ? String(form.values[titleField || ""] || item[titleField || ""] || p.singular) : tx("Yangi: {0}", p.singular.toLowerCase());
+  if (!item && ro) return <Empty title={tx("Yaratish yopiq")} text={tx("Rolingizda «{0}» sahifasida yangi yozuv yaratish huquqi yo‘q.", p.title)} action={<button className="btn" onClick={() => navigate(back)}>{tx("Ro‘yxatga qaytish")}</button>} />;
   const main = p.fields.filter((f) => !f.side);
   const side = p.fields.filter((f) => f.side);
 
@@ -360,47 +361,47 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
     try {
       const body = form.payload();
       const r = item ? await api.patch<Rec>(`${p.resource}/${item.id}`, body) : await api.post<Rec>(p.resource, body);
-      toast("Saqlandi");
+      toast(tx("Saqlandi"));
       p.onChanged?.();
       setSaved(JSON.stringify(form.values));
       setVersion((v) => v + 1);
       if (!item) navigate(`${p.base}/${r.id}`, { replace: true });
     } catch (err) {
       form.fail(err);
-      toast(err instanceof Error ? err.message : "Xato", "error");
+      toast(err instanceof Error ? err.message : tx("Xato"), "error");
     } finally {
       setBusy(false);
     }
   }
   async function cancel() {
-    if (dirty && !(await confirm({ title: "O‘zgarishlar saqlanmagan", text: "Sahifadan chiqsangiz, o‘zgarishlar yo‘qoladi.", ok: "Chiqish", danger: true }))) return;
+    if (dirty && !(await confirm({ title: tx("O‘zgarishlar saqlanmagan"), text: tx("Sahifadan chiqsangiz, o‘zgarishlar yo‘qoladi."), ok: tx("Chiqish"), danger: true }))) return;
     navigate(back);
   }
   async function remove() {
-    if (!item || !(await confirm({ title: `${p.singular}ni o‘chirish`, text: p.deleteText || "Bu amalni qaytarib bo‘lmaydi.", ok: "O‘chirish", danger: true }))) return;
+    if (!item || !(await confirm({ title: tx("{0}ni o‘chirish", p.singular), text: p.deleteText || tx("Bu amalni qaytarib bo‘lmaydi."), ok: tx("O‘chirish"), danger: true }))) return;
     try {
       await api.del(`${p.resource}/${item.id}`);
-      toast("O‘chirildi");
+      toast(tx("O‘chirildi"));
       p.onChanged?.();
       navigate(back, { replace: true });
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     }
   }
   return (
     <form onSubmit={save}>
-      <PageHead title={title} sub={<span className="crumbs"><a href={back} onClick={(e) => { e.preventDefault(); cancel(); }}>{p.title}</a> / <b>{ro ? "Ko‘rish" : item ? "Tahrirlash" : "Yangi"}</b>{dirty && <span className="muted small"> · saqlanmagan o‘zgarishlar</span>}</span>}
-        actions={ro ? <button type="button" className="btn" onClick={cancel}>Ro‘yxatga qaytish</button> : <>
-          <button type="button" className="btn btn-ghost" onClick={cancel}>Bekor qilish</button>
-          <button type="submit" className="btn btn-primary" disabled={busy || !!blocked} title={blocked}>{busy ? "Saqlanmoqda…" : blocked ? "Kuting…" : "Saqlash"}</button>
+      <PageHead title={title} sub={<span className="crumbs"><a href={back} onClick={(e) => { e.preventDefault(); cancel(); }}>{p.title}</a> / <b>{ro ? tx("Ko‘rish") : item ? tx("Tahrirlash") : tx("Yangi")}</b>{dirty && <span className="muted small">{" "}{tx("· saqlanmagan o‘zgarishlar")}</span>}</span>}
+        actions={ro ? <button type="button" className="btn" onClick={cancel}>{tx("Ro‘yxatga qaytish")}</button> : <>
+          <button type="button" className="btn btn-ghost" onClick={cancel}>{tx("Bekor qilish")}</button>
+          <button type="submit" className="btn btn-primary" disabled={busy || !!blocked} title={blocked}>{busy ? tx("Saqlanmoqda…") : blocked ? tx("Kuting…") : tx("Saqlash")}</button>
         </>} />
-      {ro && !pg.readOnly && <div className="alert info" style={{ marginBottom: 24 }}><I.lock size={16} /> Faqat o‘qish uchun ochildi: rolingizda bu sahifada tahrirlash huquqi yo‘q.</div>}
+      {ro && !pg.readOnly && <div className="alert info" style={{ marginBottom: 24 }}><I.lock size={16} />{" "}{tx("Faqat o‘qish uchun ochildi: rolingizda bu sahifada tahrirlash huquqi yo‘q.")}</div>}
       <fieldset className="ro-fieldset" disabled={ro}>
       <div className="edit-layout">
         <div className="stack" style={{ gap: 24 }}>
           {main.length > 0 && (
             <div className="card">
-              <div className="card-head"><h3>Asosiy ma’lumotlar</h3></div>
+              <div className="card-head"><h3>{tx("Asosiy ma’lumotlar")}</h3></div>
               <div className="card-pad"><FormFields fields={main} values={form.values} set={form.set} errors={form.errors} /></div>
             </div>
           )}
@@ -411,12 +412,12 @@ function CrudEditForm<T extends Rec>({ p, item }: { p: CrudProps<T> & { base: st
           {p.sideCards?.(ctx)}
           {side.length > 0 && (
             <div className="card">
-              <div className="card-head"><h3>Holat</h3></div>
+              <div className="card-head"><h3>{tx("Holat")}</h3></div>
               <div className="card-pad side-fields"><FormFields fields={side} values={form.values} set={form.set} errors={form.errors} /></div>
             </div>
           )}
           {p.sideCardsAfter?.(ctx)}
-          {item && p.canDelete !== false && pg.del && <button type="button" className="btn btn-ghost danger-text" style={{ alignSelf: "flex-start" }} onClick={remove}><I.trash size={16} /> {p.singular}ni o‘chirish</button>}
+          {item && p.canDelete !== false && pg.del && <button type="button" className="btn btn-ghost danger-text" style={{ alignSelf: "flex-start" }} onClick={remove}><I.trash size={16} />{" "}{tx("{0}ni o‘chirish", p.singular)}</button>}
         </aside>
       </div>
       </fieldset>

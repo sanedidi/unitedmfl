@@ -5,12 +5,14 @@ import { ChevronLeft, ChevronRight, Close, Download, LinkIcon } from "./Icons";
 import type { MatchPhoto } from "@/lib/types";
 import { responsive } from "@/lib/img";
 
+import { useT } from "@/lib/i18n";
 /** One photo tile: 4:3 thumbnail, opens the viewer. */
 function Tile({ p, onOpen, more, big }: { p: MatchPhoto; onOpen: () => void; more?: number; big?: boolean }) {
+  const tx = useT();
   return (
-    <button type="button" className={`ph-tile${big ? " big" : ""}`} onClick={onOpen} aria-label={more ? `Yana ${more} ta foto` : p.caption || "Fotoni ochish"}>
+    <button type="button" className={`ph-tile${big ? " big" : ""}`} onClick={onOpen} aria-label={more ? tx("Yana {0} ta foto", more) : p.caption || tx("Fotoni ochish")}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img {...(big ? responsive(p.url, "(max-width: 720px) 100vw, 66vw") : { src: p.thumb_url })} alt={p.caption} loading="lazy" decoding="async" width={p.width || undefined} height={p.height || undefined} />
+      <img {...(big ? responsive(p.url, tx("(max-width: 720px) 100vw, 66vw")) : { src: p.thumb_url })} alt={p.caption} loading="lazy" decoding="async" width={p.width || undefined} height={p.height || undefined} />
       {more ? <span className="ph-more">+{more}</span> : null}
     </button>
   );
@@ -18,6 +20,7 @@ function Tile({ p, onOpen, more, big }: { p: MatchPhoto; onOpen: () => void; mor
 
 /** Media tab grid: first `step` photos, then «Yana N ta foto». */
 export function PhotoGrid({ photos, onOpen }: { photos: MatchPhoto[]; onOpen: (i: number) => void }) {
+  const tx = useT();
   const [shown, setShown] = useState(12);
   useEffect(() => {
     if (window.matchMedia("(max-width: 720px)").matches) setShown(8);
@@ -30,7 +33,7 @@ export function PhotoGrid({ photos, onOpen }: { photos: MatchPhoto[]; onOpen: (i
       </div>
       {rest > 0 && (
         <div className="row" style={{ justifyContent: "center", marginTop: 20 }}>
-          <button type="button" className="btn btn-ghost ph-more-btn" onClick={() => setShown((n) => n + 24)}>Yana {rest} ta foto</button>
+          <button type="button" className="btn btn-ghost ph-more-btn" onClick={() => setShown((n) => n + 24)}>{tx("Yana {0} ta foto", rest)}</button>
         </div>
       )}
     </>
@@ -39,13 +42,14 @@ export function PhotoGrid({ photos, onOpen }: { photos: MatchPhoto[]; onOpen: (i
 
 /** Overview teaser: one large + four small, the last says «+N». */
 export function PhotoTeaser({ photos, credit, onOpen, onAll }: { photos: MatchPhoto[]; credit: string; onOpen: (i: number) => void; onAll: () => void }) {
+  const tx = useT();
   const small = photos.slice(1, 5);
   const more = photos.length - 5;
   return (
     <section className="card">
       <div className="ph-teaser-head">
-        <h2 className="h4">Foto hisobot</h2>
-        <button type="button" className="link-btn" onClick={onAll}>Barcha {photos.length} ta foto</button>
+        <h2 className="h4">{tx("Foto hisobot")}</h2>
+        <button type="button" className="link-btn" onClick={onAll}>{tx("Barcha {0} ta foto", photos.length)}</button>
       </div>
       <div className={`ph-teaser${small.length ? "" : " single"}`}>
         <Tile p={photos[0]} big onOpen={() => onOpen(0)} />
@@ -71,6 +75,7 @@ function dotOn(i: number, n: number) {
 export function Lightbox({ photos, index, title, credit, onIndex, onClose }: {
   photos: MatchPhoto[]; index: number; title: string; credit: string; onIndex: (i: number) => void; onClose: () => void;
 }) {
+  const tx = useT();
   const p = photos[index];
   const n = photos.length;
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -122,14 +127,14 @@ export function Lightbox({ photos, index, title, credit, onIndex, onClose }: {
   if (!p) return null;
   // portal: page transitions animate opacity/transform on the page wrapper
   return createPortal(
-    <div className="lb" role="dialog" aria-modal="true" aria-label={`Foto ${index + 1} / ${n}`}>
+    <div className="lb" role="dialog" aria-modal="true" aria-label={tx("Foto {0} / {1}", index + 1, n)}>
       <div className="lb-top">
         <div className="lb-title"><b className="tnum">{index + 1} / {n}</b><span>{title}</span></div>
         <div className="lb-actions">
-          <a className="lb-btn hide-sm" href={p.url} download aria-label="Yuklab olish"><Download size={20} /></a>
-          <button type="button" className="lb-btn hide-sm" onClick={share} aria-label="Havolani nusxalash"><LinkIcon size={20} /></button>
-          {copied && <span className="lb-toast">Havola nusxalandi</span>}
-          <button ref={closeRef} type="button" className="lb-btn" onClick={onClose} aria-label="Yopish"><Close size={20} /></button>
+          <a className="lb-btn hide-sm" href={p.url} download aria-label={tx("Yuklab olish")}><Download size={20} /></a>
+          <button type="button" className="lb-btn hide-sm" onClick={share} aria-label={tx("Havolani nusxalash")}><LinkIcon size={20} /></button>
+          {copied && <span className="lb-toast">{tx("Havola nusxalandi")}</span>}
+          <button ref={closeRef} type="button" className="lb-btn" onClick={onClose} aria-label={tx("Yopish")}><Close size={20} /></button>
         </div>
       </div>
       <div
@@ -143,19 +148,19 @@ export function Lightbox({ photos, index, title, credit, onIndex, onClose }: {
           touch.current = null;
         }}
       >
-        {n > 1 && <button type="button" className="lb-btn lb-nav prev" onClick={() => go(-1)} aria-label="Oldingi"><ChevronLeft size={24} /></button>}
+        {n > 1 && <button type="button" className="lb-btn lb-nav prev" onClick={() => go(-1)} aria-label={tx("Oldingi")}><ChevronLeft size={24} /></button>}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img key={p.id} src={p.url} alt={p.caption} width={p.width || undefined} height={p.height || undefined} />
-        {n > 1 && <button type="button" className="lb-btn lb-nav next" onClick={() => go(1)} aria-label="Keyingi"><ChevronRight size={24} /></button>}
+        {n > 1 && <button type="button" className="lb-btn lb-nav next" onClick={() => go(1)} aria-label={tx("Keyingi")}><ChevronRight size={24} /></button>}
       </div>
       <div className="lb-caption">
         {p.caption && <p>{p.caption}</p>}
         {credit && <span>{credit}</span>}
       </div>
       {n > 1 && (
-        <div className="lb-thumbs" role="tablist" aria-label="Fotolar">
+        <div className="lb-thumbs" role="tablist" aria-label={tx("Fotolar")}>
           {photos.map((q, i) => (
-            <button key={q.id} type="button" role="tab" aria-selected={i === index} className={i === index ? "on" : ""} onClick={() => onIndex(i)} aria-label={`Foto ${i + 1}`}>
+            <button key={q.id} type="button" role="tab" aria-selected={i === index} className={i === index ? "on" : ""} onClick={() => onIndex(i)} aria-label={tx("Foto {0}", i + 1)}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={q.thumb_url} alt="" loading="lazy" />
             </button>
@@ -167,8 +172,8 @@ export function Lightbox({ photos, index, title, credit, onIndex, onClose }: {
           {Array.from({ length: Math.min(n, 5) }, (_, k) => <i key={k} className={k === dotOn(index, n) ? "on" : ""} />)}
         </span>
         <span className="lb-actions">
-          <a className="lb-btn" href={p.url} download aria-label="Yuklab olish"><Download size={20} /></a>
-          <button type="button" className="lb-btn" onClick={share} aria-label="Ulashish"><LinkIcon size={20} /></button>
+          <a className="lb-btn" href={p.url} download aria-label={tx("Yuklab olish")}><Download size={20} /></a>
+          <button type="button" className="lb-btn" onClick={share} aria-label={tx("Ulashish")}><LinkIcon size={20} /></button>
         </span>
       </div>
     </div>,

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { initials } from "./format";
 
+import { getT } from "@/lib/i18n/server";
 export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_TYPE = "image/png";
 
@@ -39,6 +40,7 @@ function loadLogo() {
 
 /** Branded 1200×630 social preview: white card on graphite, one lime accent. */
 export async function ogImage(p: { kicker: string; title: string; subtitle?: string; home?: Team; away?: Team; center?: string }) {
+  const tx = await getT();
   const versus = p.home !== undefined || p.away !== undefined;
   const badge = await loadLogo();
   return new ImageResponse(
@@ -47,7 +49,7 @@ export async function ogImage(p: { kicker: string; title: string; subtitle?: str
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={badge} width={72} height={72} alt="" />
-          <div style={{ fontFamily: "Inter", fontSize: 34, letterSpacing: -1 }}>United MFL</div>
+          <div style={{ fontFamily: "Inter", fontSize: 34, letterSpacing: -1 }}>{tx("United MFL")}</div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14, fontSize: 22, letterSpacing: 3, color: "#fff" }}>
             <div style={{ width: 32, height: 3, background: LIME }} />
             {p.kicker.toUpperCase()}
@@ -57,12 +59,12 @@ export async function ogImage(p: { kicker: string; title: string; subtitle?: str
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", color: INK, borderRadius: 8, padding: "36px 48px" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, width: 320 }}>
               <Crest team={p.home ?? null} size={128} />
-              <div style={{ fontSize: 36, textAlign: "center" }}>{p.home?.name || "Aniqlanmagan"}</div>
+              <div style={{ fontSize: 36, textAlign: "center" }}>{p.home?.name || tx("Aniqlanmagan")}</div>
             </div>
             <div style={{ fontFamily: "Archivo", fontSize: p.center && p.center.length > 6 ? 72 : 112, color: INK, letterSpacing: -3 }}>{p.center || "VS"}</div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, width: 320 }}>
               <Crest team={p.away ?? null} size={128} />
-              <div style={{ fontSize: 36, textAlign: "center" }}>{p.away?.name || "Aniqlanmagan"}</div>
+              <div style={{ fontSize: 36, textAlign: "center" }}>{p.away?.name || tx("Aniqlanmagan")}</div>
             </div>
           </div>
         ) : (

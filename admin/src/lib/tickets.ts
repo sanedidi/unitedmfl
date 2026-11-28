@@ -1,3 +1,4 @@
+import { tx } from "@/lib/i18n";
 // Stadium layout model (constructor) and ticket types shared by the admin pages.
 
 export type Zone = { key: string; name: string; kind: "oddiy" | "vip"; color: string };
@@ -273,20 +274,20 @@ export type OrderRow = { id: number; number: string; created_at: string; paid_at
 export type TicketV = { id: number; number: string; zone_key: string; zone_name: string; zone_kind: string; section: string; row: string; seat: number | null; gate: string; price: number; holder_name: string; status: string; face_status: string; activated_at: string | null; transfer_sent_at: string | null; used_at: string | null; used_gate: string; perks: string[] };
 
 export const SALE_STATUS: Record<string, { label: string; tone: string }> = {
-  none: { label: "Sotuv yo‘q", tone: "" }, draft: { label: "Qoralama", tone: "" }, open: { label: "Sotuvda", tone: "ok" },
-  paused: { label: "To‘xtatilgan", tone: "warn" }, closed: { label: "Yopilgan", tone: "" },
+  none: { label: tx("Sotuv yo‘q"), tone: "" }, draft: { label: tx("Qoralama"), tone: "" }, open: { label: tx("Sotuvda"), tone: "ok" },
+  paused: { label: tx("To‘xtatilgan"), tone: "warn" }, closed: { label: tx("Yopilgan"), tone: "" },
 };
 export const ORDER_STATUS: Record<string, { label: string; tone: string }> = {
-  pending: { label: "To‘lov kutilmoqda", tone: "warn" }, paid: { label: "To‘langan", tone: "ok" }, refund_requested: { label: "Qaytarish so‘rovi", tone: "info" },
-  partially_refunded: { label: "Qisman qaytarilgan", tone: "info" }, refunded: { label: "Qaytarilgan", tone: "danger" }, cancelled: { label: "Bekor", tone: "" }, expired: { label: "Muddati o‘tgan", tone: "" },
+  pending: { label: tx("To‘lov kutilmoqda"), tone: "warn" }, paid: { label: tx("To‘langan"), tone: "ok" }, refund_requested: { label: tx("Qaytarish so‘rovi"), tone: "info" },
+  partially_refunded: { label: tx("Qisman qaytarilgan"), tone: "info" }, refunded: { label: tx("Qaytarilgan"), tone: "danger" }, cancelled: { label: tx("Bekor"), tone: "" }, expired: { label: tx("Muddati o‘tgan"), tone: "" },
 };
 export const TICKET_STATUS: Record<string, { label: string; tone: string }> = {
-  pending: { label: "To‘lanmagan", tone: "warn" }, active: { label: "Faol", tone: "ok" }, used: { label: "Kirdi", tone: "info" }, cancelled: { label: "Bekor", tone: "" }, refunded: { label: "Qaytarilgan", tone: "danger" },
+  pending: { label: tx("To‘lanmagan"), tone: "warn" }, active: { label: tx("Faol"), tone: "ok" }, used: { label: tx("Kirdi"), tone: "info" }, cancelled: { label: tx("Bekor"), tone: "" }, refunded: { label: tx("Qaytarilgan"), tone: "danger" },
 };
-export const PROVIDER: Record<string, string> = { payme: "Payme", click: "Click", uzum: "Uzum", cash: "Kassa", test: "Test", "": "—" };
+export const PROVIDER: Record<string, string> = { payme: "Payme", click: "Click", uzum: "Uzum", cash: tx("Kassa"), test: tx("Test"), "": "—" };
 export const SCAN_RESULT: Record<string, { label: string; tone: string }> = {
-  ok: { label: "Kirdi", tone: "ok" }, face_ok: { label: "Yuz mos keldi", tone: "ok" }, document: { label: "Hujjat bilan", tone: "ok" },
-  used: { label: "Ishlatilgan chipta", tone: "danger" }, stale: { label: "QR eskirgan (skrinshot)", tone: "warn" }, invalid: { label: "Soxta / noma’lum", tone: "danger" },
-  cancelled: { label: "Bekor qilingan chipta", tone: "danger" }, wrong_match: { label: "Boshqa match", tone: "warn" }, not_activated: { label: "Faollashtirilmagan", tone: "warn" },
-  face_mismatch: { label: "Yuz mos kelmadi", tone: "danger" }, rejected: { label: "Rad etildi", tone: "danger" },
+  ok: { label: tx("Kirdi"), tone: "ok" }, face_ok: { label: tx("Yuz mos keldi"), tone: "ok" }, document: { label: tx("Hujjat bilan"), tone: "ok" },
+  used: { label: tx("Ishlatilgan chipta"), tone: "danger" }, stale: { label: tx("QR eskirgan (skrinshot)"), tone: "warn" }, invalid: { label: tx("Soxta / noma’lum"), tone: "danger" },
+  cancelled: { label: tx("Bekor qilingan chipta"), tone: "danger" }, wrong_match: { label: tx("Boshqa match"), tone: "warn" }, not_activated: { label: tx("Faollashtirilmagan"), tone: "warn" },
+  face_mismatch: { label: tx("Yuz mos kelmadi"), tone: "danger" }, rejected: { label: tx("Rad etildi"), tone: "danger" },
 };

@@ -7,11 +7,13 @@ import { PageTitle } from "@/components/SectionHead";
 import { ResultRow } from "@/components/Match";
 import { pageMeta } from "@/lib/seo";
 
+import { getT } from "@/lib/i18n/server";
 export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
+  const tx = await getT();
   const sp = await searchParams;
   return pageMeta({
-    title: "Matchlar taqvimi va natijalar",
-    description: "United MFL 2026 barcha matchlari: o‘yinlar taqvimi, yakuniy natijalar, jonli hisob, bosqichlar va match markazlari.",
+    title: tx("Matchlar taqvimi va natijalar"),
+    description: tx("United MFL 2026 barcha matchlari: o‘yinlar taqvimi, yakuniy natijalar, jonli hisob, bosqichlar va match markazlari."),
     path: "/matchlar",
     noindex: !!(sp.bosqich || sp.holat), // filtered views point to the main list
   });
@@ -20,6 +22,7 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
 type SP = Promise<{ bosqich?: string; holat?: string }>;
 
 export default async function MatchesPage({ searchParams }: { searchParams: SP }) {
+  const tx = await getT();
   const sp = await searchParams;
   const status = sp.holat === "yakunlangan" ? "finished" : sp.holat === "kelgusi" ? "scheduled" : "";
   const qs = new URLSearchParams({ limit: "200" });
@@ -50,20 +53,20 @@ export default async function MatchesPage({ searchParams }: { searchParams: SP }
 
   return (
     <>
-      <PageTitle overline="United MFL 2026" title="Matchlar" lead="Mavsumning barcha o‘yinlari: taqvim, natijalar va match markazlari." />
+      <PageTitle overline={tx("United MFL 2026")} title={tx("Matchlar")} lead={tx("Mavsumning barcha o‘yinlari: taqvim, natijalar va match markazlari.")} />
       <div className="container">
         <div className="filters">
-          <span className="label">Holat</span>
+          <span className="label">{tx("Holat")}</span>
           <div className="chips">
-            <Link className="chip" href={href({ holat: undefined })} aria-current={!sp.holat ? "page" : undefined}>Barchasi</Link>
-            <Link className="chip" href={href({ holat: "kelgusi" })} aria-current={sp.holat === "kelgusi" ? "page" : undefined}>Kelgusi</Link>
-            <Link className="chip" href={href({ holat: "yakunlangan" })} aria-current={sp.holat === "yakunlangan" ? "page" : undefined}>Yakunlangan</Link>
+            <Link className="chip" href={href({ holat: undefined })} aria-current={!sp.holat ? "page" : undefined}>{tx("Barchasi")}</Link>
+            <Link className="chip" href={href({ holat: "kelgusi" })} aria-current={sp.holat === "kelgusi" ? "page" : undefined}>{tx("Kelgusi")}</Link>
+            <Link className="chip" href={href({ holat: "yakunlangan" })} aria-current={sp.holat === "yakunlangan" ? "page" : undefined}>{tx("Yakunlangan")}</Link>
           </div>
           {stages.length > 0 && (
             <>
-              <span className="label">Bosqich</span>
+              <span className="label">{tx("Bosqich")}</span>
               <div className="chips">
-                <Link className="chip" href={href({ bosqich: undefined })} aria-current={!sp.bosqich ? "page" : undefined}>Hammasi</Link>
+                <Link className="chip" href={href({ bosqich: undefined })} aria-current={!sp.bosqich ? "page" : undefined}>{tx("Hammasi")}</Link>
                 {stages.map((s) => (
                   <Link key={s.id} className="chip" href={href({ bosqich: String(s.id) })} aria-current={sp.bosqich === String(s.id) ? "page" : undefined}>{s.name}</Link>
                 ))}
@@ -74,12 +77,12 @@ export default async function MatchesPage({ searchParams }: { searchParams: SP }
 
         {live.length > 0 && (
           <>
-            <div className="day-head"><span className="badge badge-live">Jonli</span><b>Hozir maydonda</b></div>
+            <div className="day-head"><span className="badge badge-live">{tx("Jonli")}</span><b>{tx("Hozir maydonda")}</b></div>
             <div className="card">{live.map((m) => <ResultRow key={m.id} match={m} />)}</div>
           </>
         )}
 
-        {days.length === 0 && live.length === 0 && <div className="empty" style={{ marginTop: 32 }}>Tanlangan filtr bo‘yicha matchlar topilmadi.</div>}
+        {days.length === 0 && live.length === 0 && <div className="empty" style={{ marginTop: 32 }}>{tx("Tanlangan filtr bo‘yicha matchlar topilmadi.")}</div>}
 
         {days.map((d) => (
           <section key={d.key}>

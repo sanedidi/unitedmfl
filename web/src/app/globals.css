@@ -99,6 +99,9 @@ button { font: inherit; color: inherit; }
 .nav { display: flex; gap: 28px; flex: 1; align-self: stretch; }
 .nav a { display: flex; align-items: center; font-size: 14px; font-weight: 500; color: var(--text-2); position: relative; white-space: nowrap; }
 .nav a:hover { color: var(--text); }
+/* Russian labels are wider: tighten the header a little */
+html[lang="ru"] .header-inner { gap: 28px; }
+html[lang="ru"] .nav { gap: 20px; }
 .nav a[aria-current="page"] { color: var(--text); }
 .nav a[aria-current="page"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent); }
 .header-actions { display: flex; align-items: center; gap: 16px; }
@@ -109,8 +112,10 @@ button { font: inherit; color: inherit; }
 .lang summary::-webkit-details-marker { display: none; }
 .lang summary:hover { background: var(--bg-muted); }
 .lang-menu { position: absolute; right: 0; top: 44px; min-width: 180px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 6px; box-shadow: 0 12px 32px rgba(16, 18, 22, .12); z-index: 60; }
-.lang-menu a, .lang-menu span { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: var(--r-sm); font-size: 14px; }
-.lang-menu a[aria-current="true"] { background: var(--bg-muted); font-weight: 600; }
+.lang-menu a, .lang-menu button, .lang-menu span { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: var(--r-sm); font-size: 14px; }
+.lang-menu button { width: 100%; background: none; border: 0; color: inherit; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.lang-menu button:hover { background: var(--bg-muted); }
+.lang-menu a[aria-current="true"], .lang-menu button[aria-current="true"] { background: var(--bg-muted); font-weight: 600; }
 .lang-menu span { color: var(--text-muted); }
 .lang-menu small { font-size: 11px; color: var(--text-muted); }
 .menu-btn { display: none; }
@@ -575,8 +580,9 @@ a.partner:hover { border-color: var(--border-strong); }
   .mobile-nav > a:not(.btn)::after { content: ""; width: 7px; height: 7px; border-right: 1.5px solid var(--text-muted); border-top: 1.5px solid var(--text-muted); transform: rotate(45deg); }
   .mobile-nav > a[aria-current="page"] { box-shadow: inset 3px 0 0 var(--accent); padding-left: 12px; }
   .mobile-nav .seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border); border-radius: var(--r-sm); margin-top: 24px; overflow: hidden; }
-  .mobile-nav .seg a, .mobile-nav .seg span { text-align: center; padding: 10px 0; font-size: 12px; font-weight: 600; color: var(--text-muted); }
-  .mobile-nav .seg a[aria-current="true"] { background: var(--bg-inverse); color: var(--text-inverse); }
+  .mobile-nav .seg button { background: none; border: 0; font: inherit; cursor: pointer; }
+  .mobile-nav .seg a, .mobile-nav .seg button, .mobile-nav .seg span { text-align: center; padding: 10px 0; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .mobile-nav .seg a[aria-current="true"], .mobile-nav .seg button[aria-current="true"] { background: var(--bg-inverse); color: var(--text-inverse); }
 }
 @media (max-width: 1024px) {
   .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

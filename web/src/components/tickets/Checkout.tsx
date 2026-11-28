@@ -6,10 +6,12 @@ import { StadiumMap, zoneTint } from "./StadiumMap";
 import { PROVIDERS, TicketApiError, fmtSum, tapi, type PublicSale, type ZoneOffer } from "@/lib/tickets";
 import { fmtDate, fmtTime } from "@/lib/format";
 
+import { useT } from "@/lib/i18n";
 export function Steps({ step }: { step: 1 | 2 | 3 }) {
-  const items = ["Chipta tanlash", "Ma’lumotlar va to‘lov", "Chiptalar"];
+  const tx = useT();
+  const items = [tx("Chipta tanlash"), tx("Ma’lumotlar va to‘lov"), tx("Chiptalar")];
   return (
-    <ol className="tk-steps" aria-label="Bosqichlar">
+    <ol className="tk-steps" aria-label={tx("Bosqichlar")}>
       {items.map((t, i) => (
         <li key={t} className={i + 1 < step ? "done" : i + 1 === step ? "on" : ""} aria-current={i + 1 === step ? "step" : undefined}>
           <i>{i + 1 < step ? <Check size={14} /> : i + 1}</i><span>{t}</span>
@@ -19,9 +21,13 @@ export function Steps({ step }: { step: 1 | 2 | 3 }) {
   );
 }
 
-const ZONE_SUB = (z: ZoneOffer) => z.subtitle || `${(z.sections || []).join(", ")} ${(z.sections || []).length > 1 ? "sektorlar" : "sektor"} · ${z.mode === "free" ? "erkin o‘rindiq" : "raqamlangan o‘rindiq"}`;
+const ZONE_SUB = (z: ZoneOffer) => {
+  const tx = useT();
+  return (z.subtitle || `${(z.sections || []).join(", ")} ${(z.sections || []).length > 1 ? "sektorlar" : "sektor"} · ${z.mode === "free" ? tx("erkin o‘rindiq") : tx("raqamlangan o‘rindiq")}`);
+};
 
 export function Checkout({ matchId, onStep }: { matchId: number; onStep?: (s: 1 | 2) => void }) {
+  const tx = useT();
   const router = useRouter();
   const [sale, setSale] = useState<PublicSale | null>(null);
   const [err, setErr] = useState("");
@@ -55,21 +61,21 @@ export function Checkout({ matchId, onStep }: { matchId: number; onStep?: (s: 1 
   });
 
   if (err) return <div className="tk-alert danger">{err}</div>;
-  if (!sale) return <div className="tk-skel" aria-busy="true">Yuklanmoqda…</div>;
+  if (!sale) return <div className="tk-skel" aria-busy="true">{tx("Yuklanmoqda…")}</div>;
   if (sale.status !== "open") return <Closed sale={sale} />;
 
   const pay = async () => {
     setFields({});
     const f: Record<string, string> = {};
-    if (name.trim().length < 3) f.buyer_name = "Ism familiyani kiriting";
-    if (phone.replace(/\D/g, "").length !== 12) f.phone = "Telefon: +998 XX XXX XX XX";
-    if (!agree) f.agree = "Oferta shartlariga rozilik kerak";
-    if (!provider) f.provider = "To‘lov usulini tanlang";
+    if (name.trim().length < 3) f.buyer_name = tx("Ism familiyani kiriting");
+    if (phone.replace(/\D/g, "").length !== 12) f.phone = tx("Telefon: +998 XX XXX XX XX");
+    if (!agree) f.agree = tx("Oferta shartlariga rozilik kerak");
+    if (!provider) f.provider = tx("To‘lov usulini tanlang");
     named.forEach((z) => {
       const list = holders[z.zone_key] || [];
       for (let i = 0; i < (qty[z.zone_key] || 0); i++) {
         const v = i === 0 && selfHolder ? name : list[i] || "";
-        if (v.trim().length < 3) f[`h_${z.zone_key}_${i}`] = "Ism familiya";
+        if (v.trim().length < 3) f[`h_${z.zone_key}_${i}`] = tx("Ism familiya");
       }
     });
     if (Object.keys(f).length) { setFields(f); return; }
@@ -97,26 +103,26 @@ export function Checkout({ matchId, onStep }: { matchId: number; onStep?: (s: 1 
 
   const summary = (
     <aside className="tk-aside card card-pad">
-      <h2 className="h4">Buyurtma</h2>
-      {count === 0 ? <p className="muted tk-small">Hali chipta tanlanmagan. Sxemadan sektorni yoki pastdagi kartochkani tanlang.</p> : (
+      <h2 className="h4">{tx("Buyurtma")}</h2>
+      {count === 0 ? <p className="muted tk-small">{tx("Hali chipta tanlanmagan. Sxemadan sektorni yoki pastdagi kartochkani tanlang.")}</p> : (
         <div className="tk-lines">
           {zones.filter((z) => qty[z.zone_key]).map((z) => (
-            <div key={z.zone_key} className="tk-line"><span>{z.title} × {qty[z.zone_key]}<small>{z.mode === "numbered" ? "eng yaxshi bo‘sh o‘rin beriladi" : "erkin o‘rindiq"}</small></span><b>{fmtSum(z.price * qty[z.zone_key])}</b></div>
+            <div key={z.zone_key} className="tk-line"><span>{z.title} × {qty[z.zone_key]}<small>{z.mode === "numbered" ? tx("eng yaxshi bo‘sh o‘rin beriladi") : tx("erkin o‘rindiq")}</small></span><b>{fmtSum(z.price * qty[z.zone_key])}</b></div>
           ))}
-          <div className="tk-line"><span>Xizmat haqi</span><b>{fmtSum(fee)}</b></div>
+          <div className="tk-line"><span>{tx("Xizmat haqi")}</span><b>{fmtSum(fee)}</b></div>
         </div>
       )}
-      <div className="tk-total"><span>Jami</span><b>{fmtSum(total)}</b></div>
+      <div className="tk-total"><span>{tx("Jami")}</span><b>{fmtSum(total)}</b></div>
       {step === 1 ? (
-        <button className="btn btn-primary btn-lg btn-block" disabled={!count} onClick={() => setStep(2)}>Davom etish</button>
+        <button className="btn btn-primary btn-lg btn-block" disabled={!count} onClick={() => setStep(2)}>{tx("Davom etish")}</button>
       ) : (
         <>
-          <button className="btn btn-primary btn-lg btn-block" disabled={busy || !count} onClick={pay}>{busy ? "Kutilmoqda…" : `${fmtSum(total)} to‘lash`}</button>
-          <button className="btn btn-text btn-block" onClick={() => setStep(1)}>Orqaga — chipta tanlash</button>
-          <p className="tk-note"><Lock size={14} /> To‘lov to‘lov tizimi sahifasida xavfsiz amalga oshiriladi</p>
+          <button className="btn btn-primary btn-lg btn-block" disabled={busy || !count} onClick={pay}>{busy ? tx("Kutilmoqda…") : tx("{0} to‘lash", fmtSum(total))}</button>
+          <button className="btn btn-text btn-block" onClick={() => setStep(1)}>{tx("Orqaga — chipta tanlash")}</button>
+          <p className="tk-note"><Lock size={14} />{" "}{tx("To‘lov to‘lov tizimi sahifasida xavfsiz amalga oshiriladi")}</p>
         </>
       )}
-      <p className="tk-note"><Clock size={14} /> Tanlangan chiptalar to‘lov uchun {sale.hold_minutes} daqiqaga band qilinadi</p>
+      <p className="tk-note"><Clock size={14} />{" "}{tx("Tanlangan chiptalar to‘lov uchun {0} daqiqaga band qilinadi", sale.hold_minutes)}</p>
     </aside>
   );
 
@@ -127,38 +133,38 @@ export function Checkout({ matchId, onStep }: { matchId: number; onStep?: (s: 1 
           <>
             {sale.layout && (
               <section className="card card-pad">
-                <div className="tk-head"><h2 className="h4">1. Zonani tanlang</h2><small className="muted">Sxemadagi sektorni yoki pastdagi kartochkani bosing</small></div>
+                <div className="tk-head"><h2 className="h4">{tx("1. Zonani tanlang")}</h2><small className="muted">{tx("Sxemadagi sektorni yoki pastdagi kartochkani bosing")}</small></div>
                 <StadiumMap layout={sale.layout} offers={zones} selected={selected} onPick={(k) => { const z = zones.find((x) => x.zone_key === k); if (z && !qty[k]) set(z, 1); }} />
                 <div className="tk-legend">
                   {zones.map((z) => <span key={z.zone_key}><i style={{ background: zoneTint(z) }} />{z.title} · {fmtSum(z.price)}</span>)}
-                  <span><i className="on" />Tanlangan</span><span><i className="off" />Sotilgan</span>
+                  <span><i className="on" />{tx("Tanlangan")}</span><span><i className="off" />{tx("Sotilgan")}</span>
                 </div>
               </section>
             )}
             <section>
-              <div className="tk-head"><h2 className="h4">2. Chipta turi va soni</h2><small className="muted">Bitta buyurtmada {max} tagacha chipta</small></div>
+              <div className="tk-head"><h2 className="h4">{tx("2. Chipta turi va soni")}</h2><small className="muted">{tx("Bitta buyurtmada {0} tagacha chipta", max)}</small></div>
               <div className="tk-cards">
                 {zones.map((z) => {
                   const q = qty[z.zone_key] || 0, sold = z.left === 0;
                   return (
                     <div key={z.zone_key} className={`tk-type${z.kind === "vip" ? " vip" : ""}${q ? " on" : ""}${sold ? " sold" : ""}`} onClick={() => !q && !sold && set(z, 1)}>
-                      <div className="tk-type-top"><span className="overline">{z.kind === "vip" ? "VIP zona" : zoneTint(z) !== "#C3C8CF" ? "Narx toifasi" : "Oddiy zona"}</span>{q > 0 && <span className="tk-pill"><Check size={12} /> Tanlandi</span>}{sold && <span className="tk-pill off">Sotildi</span>}</div>
+                      <div className="tk-type-top"><span className="overline">{z.kind === "vip" ? tx("VIP zona") : zoneTint(z) !== "#C3C8CF" ? tx("Narx toifasi") : tx("Oddiy zona")}</span>{q > 0 && <span className="tk-pill"><Check size={12} />{" "}{tx("Tanlandi")}</span>}{sold && <span className="tk-pill off">{tx("Sotildi")}</span>}</div>
                       <h3 className="h3">{z.title}</h3>
                       <p className="tk-sub">{ZONE_SUB(z)}</p>
-                      <div className="tk-price"><b>{new Intl.NumberFormat("ru-RU").format(z.price)}</b><span>so‘m / 1 kishi</span></div>
+                      <div className="tk-price"><b>{new Intl.NumberFormat("ru-RU").format(z.price)}</b><span>{tx("so‘m / 1 kishi")}</span></div>
                       <ul className="tk-perks">
-                        <li><Check size={14} /> Elektron chipta, kirish QR-kod orqali</li>
-                        {z.gate && <li><Check size={14} /> Kirish: {z.gate}-darvoza</li>}
+                        <li><Check size={14} />{" "}{tx("Elektron chipta, kirish QR-kod orqali")}</li>
+                        {z.gate && <li><Check size={14} />{" "}{tx("Kirish: {0}-darvoza", z.gate)}</li>}
                         {(z.perks || []).filter(Boolean).map((p) => <li key={p}><Check size={14} /> {p}</li>)}
-                        {z.named && <li><Check size={14} /> Ismli chipta — kirishda tekshiriladi</li>}
-                        {(sale.face_mode === "all" || (sale.face_mode === "vip" && z.kind === "vip")) && <li><Shield size={14} /> Chipta egasining yuziga bog‘lanadi</li>}
+                        {z.named && <li><Check size={14} />{" "}{tx("Ismli chipta — kirishda tekshiriladi")}</li>}
+                        {(sale.face_mode === "all" || (sale.face_mode === "vip" && z.kind === "vip")) && <li><Shield size={14} />{" "}{tx("Chipta egasining yuziga bog‘lanadi")}</li>}
                       </ul>
                       <div className="tk-type-foot" onClick={(e) => e.stopPropagation()}>
-                        <span className={z.left < 30 && !sold ? "tk-few" : ""}>{sold ? "Barcha chiptalar sotildi" : `Qoldi: ${z.left} ta`}</span>
+                        <span className={z.left < 30 && !sold ? "tk-few" : ""}>{sold ? tx("Barcha chiptalar sotildi") : tx("Qoldi: {0} ta", z.left)}</span>
                         <div className="tk-qty">
-                          <button aria-label="Kamaytirish" disabled={!q} onClick={() => set(z, q - 1)}><Minus size={16} /></button>
+                          <button aria-label={tx("Kamaytirish")} disabled={!q} onClick={() => set(z, q - 1)}><Minus size={16} /></button>
                           <b aria-live="polite">{q}</b>
-                          <button aria-label="Ko‘paytirish" disabled={sold || q >= z.left || count >= max} onClick={() => set(z, q + 1)}><Plus size={16} /></button>
+                          <button aria-label={tx("Ko‘paytirish")} disabled={sold || q >= z.left || count >= max} onClick={() => set(z, q + 1)}><Plus size={16} /></button>
                         </div>
                       </div>
                     </div>
@@ -166,28 +172,28 @@ export function Checkout({ matchId, onStep }: { matchId: number; onStep?: (s: 1 
                 })}
               </div>
             </section>
-            <div className="tk-alert"><Shield size={18} /> Chiptalar elektron: to‘lovdan so‘ng QR-kodli chipta va chek SMS{sale.telegram_delivery ? " va Telegram" : ""} orqali yuboriladi. Qaytarish — o‘yin boshlanishidan {sale.refund_hours} soat oldingacha.</div>
+            <div className="tk-alert"><Shield size={18} />{" "}{tx("Chiptalar elektron: to‘lovdan so‘ng QR-kodli chipta va chek SMS")}{sale.telegram_delivery ? tx(" va Telegram") : ""}{" "}{tx("orqali yuboriladi. Qaytarish — o‘yin boshlanishidan {0} soat oldingacha.", sale.refund_hours)}</div>
           </>
         ) : (
           <>
             <section className="card card-pad stack">
-              <div><h2 className="h4">1. Aloqa ma’lumotlari</h2><p className="tk-sub">Chipta va chek shu raqamga SMS{sale.telegram_delivery ? " va Telegram" : ""} orqali yuboriladi</p></div>
+              <div><h2 className="h4">{tx("1. Aloqa ma’lumotlari")}</h2><p className="tk-sub">{tx("Chipta va chek shu raqamga SMS")}{sale.telegram_delivery ? tx(" va Telegram") : ""}{" "}{tx("orqali yuboriladi")}</p></div>
               <div className="tk-form">
-                <F label="Ism familiya" hint="Lotin harflarida" err={fields.buyer_name}><input className="input" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Aziz Karimov" /></F>
-                <F label="Telefon" hint="Chipta havolasi shu raqamga keladi" err={fields.phone}><input className="input" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(fmtPhone(e.target.value))} /></F>
-                <F label="Email (ixtiyoriy)" hint="Chek nusxasi uchun" err={fields.email}><input className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="aziz@example.uz" /></F>
+                <F label={tx("Ism familiya")} hint={tx("Lotin harflarida")} err={fields.buyer_name}><input className="input" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder={tx("Aziz Karimov")} /></F>
+                <F label={tx("Telefon")} hint={tx("Chipta havolasi shu raqamga keladi")} err={fields.phone}><input className="input" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(fmtPhone(e.target.value))} /></F>
+                <F label={tx("Email (ixtiyoriy)")} hint={tx("Chek nusxasi uchun")} err={fields.email}><input className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="aziz@example.uz" /></F>
                 {sale.telegram_delivery && (
-                  <label className="tk-toggle"><span><b>Telegram bot orqali olish</b><small>@unitedmfl_bot chiptani darhol yuboradi</small></span><input type="checkbox" role="switch" checked={telegram} onChange={(e) => setTelegram(e.target.checked)} /></label>
+                  <label className="tk-toggle"><span><b>{tx("Telegram bot orqali olish")}</b><small>{tx("@unitedmfl_bot chiptani darhol yuboradi")}</small></span><input type="checkbox" role="switch" checked={telegram} onChange={(e) => setTelegram(e.target.checked)} /></label>
                 )}
               </div>
             </section>
             {named.map((z) => (
               <section key={z.zone_key} className="card card-pad stack">
-                <div><h2 className="h4">2. {z.title} — chipta egalari</h2><p className="tk-sub">{z.title} chiptalari ismga yoziladi — kirishda shaxsni tasdiqlovchi hujjat so‘ralishi mumkin</p></div>
+                <div><h2 className="h4">2. {z.title}{" "}{tx("— chipta egalari")}</h2><p className="tk-sub">{z.title}{" "}{tx("chiptalari ismga yoziladi — kirishda shaxsni tasdiqlovchi hujjat so‘ralishi mumkin")}</p></div>
                 {Array.from({ length: qty[z.zone_key] }, (_, i) => (
                   <div key={i} className="stack" style={{ gap: 8 }}>
-                    {i === 0 && <label className="tk-check"><input type="checkbox" checked={selfHolder} onChange={(e) => setSelfHolder(e.target.checked)} /> Egasi — xaridorning o‘zi</label>}
-                    <F label={`${i + 1}-chipta egasining ismi`} hint="Hujjatdagi kabi yozing" err={fields[`h_${z.zone_key}_${i}`]}>
+                    {i === 0 && <label className="tk-check"><input type="checkbox" checked={selfHolder} onChange={(e) => setSelfHolder(e.target.checked)} />{" "}{tx("Egasi — xaridorning o‘zi")}</label>}
+                    <F label={`${i + 1}-chipta egasining ismi`} hint={tx("Hujjatdagi kabi yozing")} err={fields[`h_${z.zone_key}_${i}`]}>
                       <input className="input" disabled={i === 0 && selfHolder} value={i === 0 && selfHolder ? name : (holders[z.zone_key] || [])[i] || ""}
                         onChange={(e) => setHolders((h) => { const l = [...(h[z.zone_key] || [])]; l[i] = e.target.value; return { ...h, [z.zone_key]: l }; })} />
                     </F>
@@ -196,8 +202,8 @@ export function Checkout({ matchId, onStep }: { matchId: number; onStep?: (s: 1 
               </section>
             ))}
             <section className="card card-pad stack">
-              <h2 className="h4">{named.length ? 3 : 2}. To‘lov usuli</h2>
-              {sale.providers.length === 0 ? <div className="tk-alert danger">Onlayn to‘lov hozircha ulanmagan — chiptalarni stadion kassasidan oling.</div> : (
+              <h2 className="h4">{named.length ? 3 : 2}{tx(". To‘lov usuli")}</h2>
+              {sale.providers.length === 0 ? <div className="tk-alert danger">{tx("Onlayn to‘lov hozircha ulanmagan — chiptalarni stadion kassasidan oling.")}</div> : (
                 <div className="tk-pay">
                   {sale.providers.map((p) => (
                     <label key={p} className={provider === p ? "on" : ""}>
@@ -209,7 +215,7 @@ export function Checkout({ matchId, onStep }: { matchId: number; onStep?: (s: 1 
                 </div>
               )}
               {fields.provider && <small className="tk-err">{fields.provider}</small>}
-              <label className="tk-check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> Ommaviy oferta va chiptani qaytarish shartlari bilan tanishdim</label>
+              <label className="tk-check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />{" "}{tx("Ommaviy oferta va chiptani qaytarish shartlari bilan tanishdim")}</label>
               {fields.agree && <small className="tk-err">{fields.agree}</small>}
             </section>
           </>
@@ -240,12 +246,13 @@ function F({ label, hint, err, children }: { label: string; hint?: string; err?:
 }
 
 function Closed({ sale }: { sale: PublicSale }) {
+  const tx = useT();
   const t: Record<string, [string, string]> = {
-    none: ["Chipta sotuvi hali boshlanmagan", "Sotuv ochilganda shu sahifada «Chipta sotib olish» tugmasi paydo bo‘ladi."],
-    soon: ["Sotuv tez orada boshlanadi", sale.sale_from ? `Sotuv ${fmtDate(sale.sale_from)}, ${fmtTime(sale.sale_from)} da ochiladi.` : ""],
-    paused: ["Sotuv vaqtincha to‘xtatilgan", "Birozdan keyin qayta kiring."],
-    closed: ["Onlayn sotuv yakunlandi", "Qolgan chiptalarni stadion kassasidan so‘rang."],
-    sold_out: ["Barcha chiptalar sotildi", "Qaytarilgan chiptalar shu sahifada yana sotuvga chiqadi."],
+    none: [tx("Chipta sotuvi hali boshlanmagan"), tx("Sotuv ochilganda shu sahifada «Chipta sotib olish» tugmasi paydo bo‘ladi.")],
+    soon: [tx("Sotuv tez orada boshlanadi"), sale.sale_from ? tx("Sotuv {0}, {1} da ochiladi.", fmtDate(sale.sale_from), fmtTime(sale.sale_from)) : ""],
+    paused: [tx("Sotuv vaqtincha to‘xtatilgan"), tx("Birozdan keyin qayta kiring.")],
+    closed: [tx("Onlayn sotuv yakunlandi"), tx("Qolgan chiptalarni stadion kassasidan so‘rang.")],
+    sold_out: [tx("Barcha chiptalar sotildi"), tx("Qaytarilgan chiptalar shu sahifada yana sotuvga chiqadi.")],
   };
   const [h, p] = t[sale.status] || t.none;
   return <div className="card card-pad tk-empty"><Info size={28} /><h2 className="h3">{h}</h2><p className="muted">{p}</p></div>;

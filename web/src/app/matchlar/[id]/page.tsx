@@ -10,6 +10,8 @@ import { MatchCentre } from "@/components/MatchCentre";
 import { ChevronRight } from "@/components/Icons";
 import { JsonLd } from "@/components/JsonLd";
 
+import type { T } from "@/lib/i18n";
+import { getT } from "@/lib/i18n/server";
 type P = Promise<{ id: string }>;
 
 // Live matches change every few seconds; finished ones are cached until the admin edits them.
@@ -18,28 +20,30 @@ const load = cache(async (param: string) => {
   return id ? apiOrNull<MatchDetail>(`/matches/${id}`, { revalidate: 15 }) : null;
 });
 
-function describe(d: MatchDetail) {
+function describe(d: MatchDetail, tx: T) {
   const m = d.match;
-  const h = m.home?.name || "Aniqlanmagan", a = m.away?.name || "Aniqlanmagan";
+  const h = m.home?.name || tx("Aniqlanmagan"), a = m.away?.name || tx("Aniqlanmagan");
   const when = `${fmtDate(m.kickoff_at)}, ${fmtTime(m.kickoff_at)}`;
   const where = m.venue ? `, ${m.venue}` : "";
   const stage = m.stage?.name ? `${m.stage.name}. ` : "";
-  if (isLive(m)) return `${stage}${h} — ${a}: jonli hisob ${m.home_score ?? 0}:${m.away_score ?? 0}, voqealar va tarkiblar real vaqtda.`;
+  if (isLive(m)) return tx("{0}{1} — {2}: jonli hisob {3}:{4}, voqealar va tarkiblar real vaqtda.", stage, h, a, m.home_score ?? 0, m.away_score ?? 0);
   if (m.status === "finished" && m.home_score != null) {
     const goals = d.events.filter((e) => ["goal", "penalty_goal", "own_goal"].includes(e.type)).map((e) => e.player_name).filter(Boolean);
-    const scorers = goals.length ? ` Gollar: ${[...new Set(goals)].join(", ")}.` : "";
-    return clip(`${stage}${h} ${m.home_score}:${m.away_score} ${a}${m.home_pen != null ? ` (pen. ${m.home_pen}:${m.away_pen})` : ""} — ${when}${where}.${scorers} Tarkiblar, voqealar va statistika.`);
+    const scorers = goals.length ? tx(" Gollar: {0}.", [...new Set(goals)].join(", ")) : "";
+    return clip(tx("{0}{1} {2}:{3} {4}{5} — {6}{7}.{8} Tarkiblar, voqealar va statistika.", stage, h, m.home_score, m.away_score, a, m.home_pen != null ? ` (pen. ${m.home_pen}:${m.away_pen})` : "", when, where, scorers));
   }
-  return clip(`${stage}${h} — ${a}: ${when}${where}. Match taqvimi, chiptalar va tarkiblar — United MFL.`);
+  return clip(tx("{0}{1} — {2}: {3}{4}. Match taqvimi, chiptalar va tarkiblar — United MFL.", stage, h, a, when, where));
 }
 
 export async function generateMetadata({ params }: { params: P }): Promise<Metadata> {
+  const tx = await getT();
   const d = await load((await params).id);
-  if (!d) return { title: "Match topilmadi", robots: { index: false } };
-  return pageMeta({ title: matchTitle(d.match), description: describe(d), path: matchPath(d.match), image: `${matchPath(d.match)}/opengraph-image` });
+  if (!d) return { title: tx("Match topilmadi"), robots: { index: false } };
+  return pageMeta({ title: matchTitle(d.match), description: describe(d, tx), path: matchPath(d.match), image: `${matchPath(d.match)}/opengraph-image` });
 }
 
 export default async function MatchPage({ params }: { params: P }) {
+  const tx = await getT();
   const param = (await params).id;
   const d = await load(param);
   if (!d) notFound();
@@ -57,7 +61,7 @@ export default async function MatchPage({ params }: { params: P }) {
     "@type": "SportsEvent",
     "@id": `${abs(canonical)}#event`,
     name: `${m.home?.name || "Aniqlanmagan"} — ${m.away?.name || "Aniqlanmagan"}`,
-    description: describe(d),
+    description: describe(d, tx),
     url: abs(canonical),
     startDate: m.kickoff_at,
     eventStatus: `https://schema.org/${statusMap[m.status] || "EventScheduled"}`,
@@ -80,7 +84,7 @@ export default async function MatchPage({ params }: { params: P }) {
   return (
     <div className="container">
       <nav className="crumbs" aria-label="Breadcrumb">
-        <Link href="/matchlar">Matchlar</Link><ChevronRight size={12} />
+        <Link href="/matchlar">{tx("Matchlar")}</Link><ChevronRight size={12} />
         {m.stage && <><Link href={`/matchlar?bosqich=${m.stage.id}`}>{m.stage.name}</Link><ChevronRight size={12} /></>}
         <b>{eventLd.name}</b>
       </nav>

@@ -16,6 +16,7 @@ import { PartnerLink } from "@/components/Partners";
 import { PARTNER_CONTACT, partnerGroups } from "@/lib/partners";
 import { sized, responsive } from "@/lib/img";
 
+import { lazyT, useT } from "@/lib/i18n";
 /** Everything the homepage modules may need, fetched once per request. */
 export type HomeData = {
   banners: Banner[];
@@ -40,7 +41,7 @@ export type HomeData = {
 
 type Ctx = { b: Block; d: HomeData; season?: Season };
 
-const DEFAULT_HEAD: Partial<Record<Block["type"], [string, string?, string?]>> = {
+const DEFAULT_HEAD: Partial<Record<Block["type"], [string, string?, string?]>> = lazyT({
   fmatch: ["Asosiy match", "/matchlar", "Barcha matchlar"],
   live: ["Jonli", "/matchlar", "Barcha matchlar"],
   upcoming: ["Matchlar", "/matchlar", "Barcha matchlar"],
@@ -56,14 +57,17 @@ const DEFAULT_HEAD: Partial<Record<Block["type"], [string, string?, string?]>> =
   team: ["Jamoa", "/jamoalar", "Barcha jamoalar"],
   partners: ["Hamkorlar", "/biz-haqimizda#aloqa", "Hamkor bo‘lish"],
   shop: ["Rasmiy do‘kon", "/merch", "Barcha mahsulotlar"],
-};
+}, ["0", "2"] as const);
 
 function Head({ b, title, href, label }: { b: Block; title?: string; href?: string; label?: string }) {
+  const tx = useT();
   if (b.hideTitle) return null;
   const def = DEFAULT_HEAD[b.type] || [""];
-  const t = b.title || title || def[0];
+  // Admin-entered titles are content; ones equal to a known Uzbek label still get translated.
+  const t = b.title ? tx(b.title) : title || def[0];
   if (!t) return null;
-  return <SectionHead title={t} href={b.linkHref || href || def[1]} linkLabel={b.linkLabel || label || def[2]} />;
+  const ll = b.linkLabel ? tx(b.linkLabel) : label || def[2];
+  return <SectionHead title={t} href={b.linkHref || href || def[1]} linkLabel={ll} />;
 }
 
 /** Card columns for a block `span` columns wide (CSS narrows them further on small screens). */
@@ -78,13 +82,14 @@ const seasonLabel = (s?: Season) => s?.name || "United MFL";
 // ---------- matches ----------
 
 function MiniMatch({ m }: { m: Match }) {
+  const tx = useT();
   const played = m.home_score != null && m.away_score != null && m.status !== "scheduled";
   return (
     <Link href={matchPath(m)} className={`hp-mini${isLive(m) ? " is-live" : ""}`}>
-      <span className="hp-mini-date">{isLive(m) ? <span className="badge badge-live">Jonli</span> : <>{fmtDate(m.kickoff_at, false)}<small>{played ? "Yakunlandi" : fmtTime(m.kickoff_at)}</small></>}</span>
+      <span className="hp-mini-date">{isLive(m) ? <span className="badge badge-live">{tx("Jonli")}</span> : <>{fmtDate(m.kickoff_at, false)}<small>{played ? tx("Yakunlandi") : fmtTime(m.kickoff_at)}</small></>}</span>
       <span className="hp-mini-teams">
-        <span><Crest team={m.home} size={20} /> <b>{m.home?.name || "Aniqlanmagan"}</b>{played && <em className="tnum">{m.home_score}</em>}</span>
-        <span><Crest team={m.away} size={20} /> <b>{m.away?.name || "Aniqlanmagan"}</b>{played && <em className="tnum">{m.away_score}</em>}</span>
+        <span><Crest team={m.home} size={20} /> <b>{m.home?.name || tx("Aniqlanmagan")}</b>{played && <em className="tnum">{m.home_score}</em>}</span>
+        <span><Crest team={m.away} size={20} /> <b>{m.away?.name || tx("Aniqlanmagan")}</b>{played && <em className="tnum">{m.away_score}</em>}</span>
       </span>
     </Link>
   );
@@ -100,6 +105,7 @@ function MatchList({ b, list, season }: { b: Block; list: Match[]; season?: Seas
 const byKickoff = (a: Match, b: Match) => +new Date(a.kickoff_at) - +new Date(b.kickoff_at);
 
 function Upcoming({ b, d, season }: Ctx) {
+  const tx = useT();
   const count = num(b.props?.count, 4, 1, 12);
   const live = bool(b.props?.withLive, true) ? d.matches.filter(isLive) : [];
   const next = d.matches.filter((m) => m.status === "scheduled").sort(byKickoff);
@@ -107,7 +113,7 @@ function Upcoming({ b, d, season }: Ctx) {
   if (bool(b.props?.withResults, false)) list = [...list, ...d.matches.filter(isFinished).sort((x, y) => -byKickoff(x, y))];
   list = list.slice(0, count);
   if (!list.length) return null;
-  return <><Head b={b} title={live.length ? "Jonli va yaqin matchlar" : undefined} /><MatchList b={b} list={list} season={season} /></>;
+  return <><Head b={b} title={live.length ? tx("Jonli va yaqin matchlar") : undefined} /><MatchList b={b} list={list} season={season} /></>;
 }
 
 function Results({ b, d, season }: Ctx) {
@@ -128,6 +134,7 @@ function pickFeatured(d: HomeData, id: number): Match | undefined {
 }
 
 function FeaturedMatch({ b, d, season }: Ctx) {
+  const tx = useT();
   const m = pickFeatured(d, num(b.props?.matchId, 0, 0, 1e9));
   if (!m) return null;
   const played = m.home_score != null && m.away_score != null && m.status !== "scheduled";
@@ -135,7 +142,7 @@ function FeaturedMatch({ b, d, season }: Ctx) {
   const side = (t: TeamRef | null) => (
     <div className="hp-fm-team">
       <Crest team={t} size={b.span >= 8 ? 72 : 52} />
-      <b>{t?.name || "Aniqlanmagan"}</b>
+      <b>{t?.name || tx("Aniqlanmagan")}</b>
     </div>
   );
   return (
@@ -144,7 +151,7 @@ function FeaturedMatch({ b, d, season }: Ctx) {
       <article className={`card hp-fm${isLive(m) ? " is-live" : ""}`}>
         <div className="hp-fm-top">
           <span className="overline">{stage} · {seasonLabel(season)}</span>
-          {isLive(m) ? <span className="badge badge-live">Jonli</span> : played ? <span className="badge badge-muted">Yakunlandi</span> : <span className="badge badge-upcoming">{fmtDate(m.kickoff_at, false)}</span>}
+          {isLive(m) ? <span className="badge badge-live">{tx("Jonli")}</span> : played ? <span className="badge badge-muted">{tx("Yakunlandi")}</span> : <span className="badge badge-upcoming">{fmtDate(m.kickoff_at, false)}</span>}
         </div>
         <div className="hp-fm-board">
           {side(m.home)}
@@ -154,8 +161,8 @@ function FeaturedMatch({ b, d, season }: Ctx) {
         <div className="hp-fm-foot">
           <span>{m.venue || fmtDate(m.kickoff_at)}</span>
           <span className="row" style={{ gap: 8 }}>
-            {m.ticket_url && m.status === "scheduled" && <a className="btn btn-primary btn-sm" href={m.ticket_url} target="_blank" rel="noopener noreferrer">Chipta</a>}
-            <Link className="btn btn-dark btn-sm" href={matchPath(m)}>Match markazi</Link>
+            {m.ticket_url && m.status === "scheduled" && <a className="btn btn-primary btn-sm" href={m.ticket_url} target="_blank" rel="noopener noreferrer">{tx("Chipta")}</a>}
+            <Link className="btn btn-dark btn-sm" href={matchPath(m)}>{tx("Match markazi")}</Link>
           </span>
         </div>
       </article>
@@ -206,6 +213,7 @@ function Scorers({ b, d }: Ctx) {
 }
 
 function Stats({ b, d, season }: Ctx) {
+  const tx = useT();
   const L = d.leaders;
   const leagueTeams = d.teams.filter((t) => t.group_label);
   const top = (L?.team_goals || []).filter((t) => t.group_label)[0];
@@ -213,13 +221,13 @@ function Stats({ b, d, season }: Ctx) {
   return (
     <>
       <Head b={b} />
-      <section className={`card numbers${b.span >= 8 ? " hp-numbers-wide" : ""}`} aria-label="Liga raqamlarda">
-        <div className="number-row"><b className="tnum">{L?.summary.goals ?? 0}</b><span>gol<small>{L?.summary.matches ?? 0} ta e’lon qilingan matchda</small></span></div>
-        <div className="number-row"><b className="tnum">{(L?.summary.goals_per_match ?? 0).toString().replace(".", ",")}</b><span>gol / match<small>Mavsum bo‘yicha o‘rtacha</small></span></div>
+      <section className={`card numbers${b.span >= 8 ? " hp-numbers-wide" : ""}`} aria-label={tx("Liga raqamlarda")}>
+        <div className="number-row"><b className="tnum">{L?.summary.goals ?? 0}</b><span>{tx("gol")}<small>{L?.summary.matches ?? 0}{" "}{tx("ta e’lon qilingan matchda")}</small></span></div>
+        <div className="number-row"><b className="tnum">{(L?.summary.goals_per_match ?? 0).toString().replace(".", ",")}</b><span>{tx("gol / match")}<small>{tx("Mavsum bo‘yicha o‘rtacha")}</small></span></div>
         {top ? (
-          <Link href={`/jamoalar/${top.slug}`} className="number-row"><b className="tnum">{top.goals}</b><span>gol — {top.name}<small>Eng hujumkor jamoa</small></span></Link>
+          <Link href={`/jamoalar/${top.slug}`} className="number-row"><b className="tnum">{top.goals}</b><span>{tx("gol —")}{" "}{top.name}<small>{tx("Eng hujumkor jamoa")}</small></span></Link>
         ) : (
-          <div className="number-row"><b className="tnum">{season?.teams_planned ?? leagueTeams.length}</b><span>jamoa<small>Mavsum ishtirokchilari</small></span></div>
+          <div className="number-row"><b className="tnum">{season?.teams_planned ?? leagueTeams.length}</b><span>{tx("jamoa")}<small>{tx("Mavsum ishtirokchilari")}</small></span></div>
         )}
       </section>
       {scorers.length > 0 && <div style={{ marginTop: 24 }}><ScorerList list={scorers} /></div>}
@@ -250,6 +258,7 @@ function News({ b, d }: Ctx) {
 }
 
 function FeaturedNews({ b, d }: Ctx) {
+  const tx = useT();
   const slug = str(b.props?.slug);
   const n = slug ? d.pinnedNews[slug] : d.news[0];
   if (!n) return null;
@@ -258,12 +267,12 @@ function FeaturedNews({ b, d }: Ctx) {
     <>
       {b.title && !b.hideTitle && <Head b={b} />}
       <Link href={newsPath(n)} className={`hp-fnews${wide ? " wide" : ""}${b.variant === "featured" && b.span === 12 ? " poster" : ""}`}>
-        <div className="news-cover">{n.cover_url ? <Img src={n.cover_url} alt="" sizes={wide ? "(max-width: 1024px) 100vw, 760px" : "(max-width: 1024px) 100vw, 420px"} /> : <div className="ph" aria-hidden>UNITED MFL</div>}</div>
+        <div className="news-cover">{n.cover_url ? <Img src={n.cover_url} alt="" sizes={wide ? "(max-width: 1024px) 100vw, 760px" : "(max-width: 1024px) 100vw, 420px"} /> : <div className="ph" aria-hidden>{tx("UNITED MFL")}</div>}</div>
         <div className="hp-fnews-body">
           <div className="news-meta">{n.category && <span className="overline">{n.category}</span>}<span className="news-date">{fmtDate(n.published_at)}</span></div>
           <h3>{n.title}</h3>
           {n.excerpt && <p>{n.excerpt}</p>}
-          <span className="hp-more">O‘qish <ArrowRight size={16} /></span>
+          <span className="hp-more">{tx("O‘qish")}{" "}<ArrowRight size={16} /></span>
         </div>
       </Link>
     </>
@@ -277,6 +286,7 @@ function Videos({ b, d }: Ctx) {
 }
 
 function Gallery({ b, d }: Ctx) {
+  const tx = useT();
   const g = d.galleries[b.id];
   if (!g?.photos?.length) return null;
   const photos = g.photos.slice(0, num(b.props?.count, 5, 1, 12));
@@ -284,10 +294,10 @@ function Gallery({ b, d }: Ctx) {
   const title = `${g.match.home?.name || "?"} — ${g.match.away?.name || "?"}`;
   return (
     <>
-      <Head b={b} href={href} label="Fotoreportaj" />
+      <Head b={b} href={href} label={tx("Fotoreportaj")} />
       <div className={`hp-gallery${b.span >= 8 ? " wide" : ""}`}>
         {photos.map((p, i) => (
-          <Link key={p.id} href={href} className={`ph-tile${i === 0 ? " big" : ""}`} aria-label={i === 0 ? `${title}: fotoreportaj` : undefined}>
+          <Link key={p.id} href={href} className={`ph-tile${i === 0 ? " big" : ""}`} aria-label={i === 0 ? tx("{0}: fotoreportaj", title) : undefined}>
             <Img src={p.thumb_url || p.url} alt={p.caption || ""} sizes={i === 0 ? "(max-width: 720px) 100vw, 640px" : "(max-width: 720px) 50vw, 240px"} />
           </Link>
         ))}
@@ -333,6 +343,7 @@ function Social({ b, d }: Ctx) {
 }
 
 function PlayerSpot({ b, d }: Ctx) {
+  const tx = useT();
   const p = d.players[b.id];
   if (!p) return null;
   const s = p.stats;
@@ -345,9 +356,9 @@ function PlayerSpot({ b, d }: Ctx) {
           <span className="overline">{p.team?.name || "United MFL"}{p.player.number != null ? ` · #${p.player.number}` : ""}</span>
           <h3>{p.player.full_name}</h3>
           <div className="hp-player-stats">
-            <div><b className="tnum">{s.goals}</b><span>gol</span></div>
-            <div><b className="tnum">{s.appearances}</b><span>match</span></div>
-            <div><b className="tnum">{s.yellow}</b><span>sariq</span></div>
+            <div><b className="tnum">{s.goals}</b><span>{tx("gol")}</span></div>
+            <div><b className="tnum">{s.appearances}</b><span>{tx("match")}</span></div>
+            <div><b className="tnum">{s.yellow}</b><span>{tx("sariq")}</span></div>
           </div>
         </div>
       </Link>
@@ -356,6 +367,7 @@ function PlayerSpot({ b, d }: Ctx) {
 }
 
 function TeamSpot({ b, d }: Ctx) {
+  const tx = useT();
   const t = d.teamDetails[b.id];
   if (!t) return null;
   const next = t.matches.filter((m) => m.status === "scheduled").sort(byKickoff)[0];
@@ -367,8 +379,8 @@ function TeamSpot({ b, d }: Ctx) {
         <div className="grow">
           <span className="overline">{t.team.group_label ? groupName(t.team.group_label, t.team.group_name) : "United MFL"}</span>
           <h3>{t.team.name}</h3>
-          <p className="muted">{t.players.length} ta o‘yinchi{t.team.leader ? ` · Sardor: ${t.team.leader}` : ""}</p>
-          {next && <p className="hp-team-next">Keyingi match: <b>{next.home?.id === t.team.id ? next.away?.name : next.home?.name}</b> · {fmtDate(next.kickoff_at, false)}, {fmtTime(next.kickoff_at)}</p>}
+          <p className="muted">{t.players.length}{" "}{tx("ta o‘yinchi")}{t.team.leader ? tx(" · Sardor: {0}", t.team.leader) : ""}</p>
+          {next && <p className="hp-team-next">{tx("Keyingi match:")}{" "}<b>{next.home?.id === t.team.id ? next.away?.name : next.home?.name}</b> · {fmtDate(next.kickoff_at, false)}, {fmtTime(next.kickoff_at)}</p>}
         </div>
       </Link>
     </>
@@ -384,16 +396,17 @@ const partnerCols = { main: (span: number) => Math.max(1, Math.floor(span / 6)),
  * the partner's video, any other tile the partner's site.
  */
 function Partners({ b, d }: Ctx) {
+  const tx = useT();
   const data = d.partners;
   if (!data || !data.settings.show_block) return null;
   const groups = partnerGroups(data.items);
   const cta = data.settings.show_cta;
   if (!groups.length && !cta) return null;
   const labelled = groups.length > 1;
-  const ctaTile = <Link href={PARTNER_CONTACT} className="ptile ptile-cta">+ Sizning brendingiz</Link>;
+  const ctaTile = <Link href={PARTNER_CONTACT} className="ptile ptile-cta">{tx("+ Sizning brendingiz")}</Link>;
   return (
     <>
-      {!b.hideTitle && <SectionHead title={data.settings.title || "Hamkorlar"} href={b.linkHref || PARTNER_CONTACT} linkLabel={b.linkLabel || "Hamkor bo‘lish"} />}
+      {!b.hideTitle && <SectionHead title={data.settings.title || tx("Hamkorlar")} href={b.linkHref || PARTNER_CONTACT} linkLabel={b.linkLabel || tx("Hamkor bo‘lish")} />}
       <div className="hp-partners">
         {groups.map((g, gi) => {
           const last = gi === groups.length - 1;
@@ -421,6 +434,7 @@ function Partners({ b, d }: Ctx) {
 }
 
 function PromoBanner({ b }: Ctx) {
+  const tx = useT();
   const p = b.props || {};
   const image = str(p.image), imageM = str(p.imageMobile), title = str(p.title);
   if (!image && !title) return null;
@@ -432,7 +446,7 @@ function PromoBanner({ b }: Ctx) {
         <picture className="hp-banner-bg">
           {imageM && <source media="(max-width: 720px)" srcSet={responsive(imageM, "100vw").srcSet || imageM} sizes="100vw" />}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img {...responsive(image, "(max-width: 1280px) 100vw, 1280px")} alt="" loading="lazy" decoding="async" />
+          <img {...responsive(image, tx("(max-width: 1280px) 100vw, 1280px"))} alt="" loading="lazy" decoding="async" />
         </picture>
       )}
       <div className="hp-banner-copy">
@@ -470,18 +484,17 @@ function Shop({ b, d }: Ctx) {
 }
 
 function Intro({ b, d, season }: Ctx) {
+  const tx = useT();
   const leagueTeams = d.teams.filter((t) => t.group_label);
-  const title = str(b.props?.title) || "United MFL — media futbol ligasi";
+  const title = str(b.props?.title) || tx("United MFL — media futbol ligasi");
   const text = str(b.props?.text);
   return (
     <section className="intro" aria-labelledby="intro-title">
       <div className="container intro-inner">
         <h1 id="intro-title">{title}</h1>
         {text ? <p className="lead">{text}</p> : (
-          <p className="lead">
-            United MFL{season ? ` ${season.name.replace("United MFL ", "")} mavsumida` : ""} {season?.teams_planned ?? leagueTeams.length} ta jamoa: blogerlar, sportchilar va san’at yulduzlari.
-            Bu yerda <Link href="/matchlar">matchlar taqvimi va natijalar</Link>, <Link href="/jadval">turnir jadvali</Link>,{" "}
-            <Link href="/jamoalar">jamoalar</Link>, <Link href="/oyinchilar">o‘yinchilar</Link> va <Link href="/yangiliklar">liga yangiliklari</Link>.
+          <p className="lead">{tx("United MFL")}{season ? tx(" {0} mavsumida", season.name.replace("United MFL ", "")) : ""}{" "}{tx("{0} ta jamoa: blogerlar, sportchilar va san’at yulduzlari. Bu yerda", season?.teams_planned ?? leagueTeams.length)}{" "}<Link href="/matchlar">{tx("matchlar taqvimi va natijalar")}</Link>, <Link href="/jadval">{tx("turnir jadvali")}</Link>,{" "}
+            <Link href="/jamoalar">{tx("jamoalar")}</Link>, <Link href="/oyinchilar">{tx("o‘yinchilar")}</Link>{" "}{tx("va")}{" "}<Link href="/yangiliklar">{tx("liga yangiliklari")}</Link>.
           </p>
         )}
       </div>

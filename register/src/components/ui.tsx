@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { I } from "./Icons";
 
+import { tx } from "@/lib/i18n";
 /* ---------- toasts ---------- */
 type Toast = { id: number; text: string; kind: "ok" | "error" };
 const ToastCtx = createContext<(text: string, kind?: Toast["kind"]) => void>(() => {});
@@ -36,7 +37,7 @@ export function Modal({ title, onClose, children, footer, small }: { title: Reac
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal${small ? " sm" : ""}`} role="dialog" aria-modal="true">
-        <div className="modal-head"><h2>{title}</h2><button type="button" className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Yopish"><I.x /></button></div>
+        <div className="modal-head"><h2>{title}</h2><button type="button" className="btn btn-ghost btn-icon" onClick={onClose} aria-label={tx("Yopish")}><I.x /></button></div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>
@@ -56,7 +57,7 @@ export function Field({ label, opt, hint, error, children }: { label: string; op
 }
 
 export function Spinner() {
-  return <span className="spinner" aria-label="Yuklanmoqda" />;
+  return <span className="spinner" aria-label={tx("Yuklanmoqda")} />;
 }
 export const Loading = () => <div className="loading"><Spinner /></div>;
 
@@ -70,11 +71,11 @@ export function CheckLine({ level, children }: { level: "error" | "warn" | "ok";
 }
 
 export const STATUS_PILL: Record<string, { tone: string; label: string }> = {
-  draft: { tone: "neutral", label: "Qoralama" },
-  submitted: { tone: "info", label: "Yuborildi" },
-  review: { tone: "info", label: "Ko‘rib chiqilmoqda" },
-  changes: { tone: "warn", label: "Tuzatish kerak" },
-  approved: { tone: "ok", label: "Tasdiqlangan" },
-  rejected: { tone: "danger", label: "Rad etilgan" },
+  draft: { tone: "neutral", label: tx("Qoralama") },
+  submitted: { tone: "info", label: tx("Yuborildi") },
+  review: { tone: "info", label: tx("Ko‘rib chiqilmoqda") },
+  changes: { tone: "warn", label: tx("Tuzatish kerak") },
+  approved: { tone: "ok", label: tx("Tasdiqlangan") },
+  rejected: { tone: "danger", label: tx("Rad etilgan") },
 };
 export const Pill = ({ tone, children }: { tone: string; children: ReactNode }) => <span className={`pill ${tone}`}>{children}</span>;

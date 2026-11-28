@@ -1,3 +1,4 @@
+import { lazyT, useT } from "@/lib/i18n";
 // Ticket sale on the site: types shared by the checkout, order and ticket pages
 // and a tiny browser-side client for the public ticket API.
 
@@ -36,6 +37,7 @@ export class TicketApiError extends Error {
 }
 
 export async function tapi<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const tx = useT();
   const init: RequestInit = { method, headers: { Accept: "application/json" }, cache: "no-store" };
   if (body instanceof FormData) init.body = body;
   else if (body !== undefined) { init.body = JSON.stringify(body); (init.headers as Record<string, string>)["Content-Type"] = "application/json"; }
@@ -44,22 +46,26 @@ export async function tapi<T>(method: string, path: string, body?: unknown): Pro
   if (!res.ok) {
     let e: { message?: string; fields?: Record<string, string>; code?: string } = {};
     try { e = (await res.json()).error || {}; } catch { /* not json */ }
-    throw new TicketApiError(res.status, e.message || (res.status >= 500 ? "Server xatosi — birozdan keyin urinib ko‘ring" : "Xatolik"), e.fields || {}, e.code || "");
+    throw new TicketApiError(res.status, e.message || (res.status >= 500 ? tx("Server xatosi — birozdan keyin urinib ko‘ring") : tx("Xatolik")), e.fields || {}, e.code || "");
   }
   return res.json() as Promise<T>;
 }
 
-export const fmtSum = (n: number) => new Intl.NumberFormat("ru-RU").format(n).replace(/ /g, " ") + " so‘m";
-export const PROVIDERS: Record<string, { name: string; tag: string; sub: string }> = {
+export const fmtSum = (n: number) => {
+  const tx = useT();
+  return (new Intl.NumberFormat("ru-RU").format(n).replace(/ /g, " ") + tx(" so‘m"));
+};
+export const PROVIDERS: Record<string, { name: string; tag: string; sub: string }> = lazyT({
   payme: { name: "Payme", tag: "PM", sub: "Ilova yoki karta orqali" },
   click: { name: "Click", tag: "CL", sub: "Click Evolution ilovasi" },
   uzum: { name: "Uzum Bank", tag: "UZ", sub: "Uzum ilovasi orqali" },
   test: { name: "Test to‘lov", tag: "TS", sub: "Faqat sinov serverida" },
-};
+}, ["sub", "name"] as const);
 
 export function seatLine(t: Pick<TicketV, "section" | "row" | "seat">) {
-  if (t.row) return `Sektor ${t.section}, ${t.row}-qator, ${t.seat}-o‘rin`;
-  return `${t.section.includes(",") ? "Sektorlar " : "Sektor "}${t.section} · erkin o‘rindiq`;
+  const tx = useT();
+  if (t.row) return tx("Sektor {0}, {1}-qator, {2}-o‘rin", t.section, t.row, t.seat);
+  return tx("{0}{1} · erkin o‘rindiq", t.section.includes(",") ? "Sektorlar " : "Sektor ", t.section);
 }
 
 /* ---------- map geometry (same units as the admin constructor) ---------- */
@@ -71,6 +77,7 @@ export function sectionSize(s: Section) {
 }
 /** Seat squares of a section grouped by zone: price categories (zone_seats) get their own path. */
 export function seatPaths(s: Section): Record<string, string> {
+  const tx = useT();
   const out: Record<string, string> = {};
   const n = maxSeats(s);
   s.rows.forEach((r, ri) => {
@@ -80,7 +87,7 @@ export function seatPaths(s: Section): Record<string, string> {
       const x = (pos - 1) * P + (s.aisle_after || []).filter((a) => a < pos).length * AISLE;
       let z = s.zone;
       for (const [k, nums] of Object.entries(r.zone_seats || {})) if (nums.includes(i)) z = k;
-      out[z] = (out[z] || "") + `M${x} ${ri * P}h${SEAT}v${SEAT}h-${SEAT}z`;
+      out[z] = (out[z] || "") + tx("M{0} {1}h{2}v{3}h-{4}z", x, ri * P, SEAT, SEAT, SEAT);
     }
   });
   return out;

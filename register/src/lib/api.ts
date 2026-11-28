@@ -1,3 +1,4 @@
+import { lang, tx } from "@/lib/i18n";
 // Client for the public registration API (/api/v1/register). There are no
 // accounts: the application token in the URL is the representative's key.
 
@@ -95,7 +96,7 @@ async function parse<T>(res: Response): Promise<T> {
   }
   if (!res.ok) {
     const e = body?.error || {};
-    const msg = e.message || (res.status === 404 ? "Topilmadi" : res.status >= 500 ? "Server xatosi — birozdan so‘ng urinib ko‘ring" : `Xatolik (${res.status})`);
+    const msg = e.message || (res.status === 404 ? tx("Topilmadi") : res.status >= 500 ? tx("Server xatosi — birozdan so‘ng urinib ko‘ring") : tx("Xatolik ({0})", res.status));
     throw new ApiError(res.status, e.code || "error", msg, e.fields || {}, body);
   }
   return body as T;
@@ -106,7 +107,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   try {
     res = await fetch(BASE + path, {
       method,
-      headers: body === undefined ? { Accept: "application/json" } : { Accept: "application/json", "Content-Type": "application/json" },
+      headers: body === undefined ? { Accept: "application/json", "X-Lang": lang } : { Accept: "application/json", "Content-Type": "application/json", "X-Lang": lang },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
@@ -121,7 +122,7 @@ async function upload<T>(path: string, file: File, fields: Record<string, string
   fd.append("file", file);
   let res: Response;
   try {
-    res = await fetch(BASE + path, { method: "POST", body: fd });
+    res = await fetch(BASE + path, { method: "POST", body: fd, headers: { "X-Lang": lang } });
   } catch {
     throw new ApiError(0, "network", "Internet aloqasi yo‘q — qayta urinib ko‘ring");
   }
@@ -142,7 +143,7 @@ export const api = {
   uploadMedical: (token: string, file: File) => upload<MedFile>(`${app(token)}/files`, file, { kind: "medical" }),
   importRoster: (token: string, file: File) => upload<ImportResult>(`${app(token)}/import`, file),
   submit: (token: string) => call<Application>("POST", `${app(token)}/submit`, {}),
-  fileUrl: (token: string, file: string) => `${BASE}${app(token)}/files/${encodeURIComponent(file)}`,
+  fileUrl: (token: string, file: string) => tx("{0}{1}/files/{2}", BASE, app(token), encodeURIComponent(file)),
   templateUrl: `${BASE}/template.xlsx`,
 };
 

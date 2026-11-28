@@ -1,15 +1,16 @@
 import { useState, type ReactNode } from "react";
 
+import { tx } from "@/lib/i18n";
 /** Textarea with a preview for the Markdown subset the public site renders. */
 export function Markdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [preview, setPreview] = useState(false);
   return (
     <div className="stack" style={{ gap: 8 }}>
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <span className="hint small muted">## Sarlavha · **qalin** · *kursiv* · - ro‘yxat · &gt; iqtibos · [matn](https://…)</span>
+        <span className="hint small muted">{tx("## Sarlavha · **qalin** · *kursiv* · - ro‘yxat · > iqtibos · [matn](https://…)")}</span>
         <div className="seg">
-          <button type="button" aria-pressed={!preview} onClick={() => setPreview(false)}>Matn</button>
-          <button type="button" aria-pressed={preview} onClick={() => setPreview(true)}>Ko‘rish</button>
+          <button type="button" aria-pressed={!preview} onClick={() => setPreview(false)}>{tx("Matn")}</button>
+          <button type="button" aria-pressed={preview} onClick={() => setPreview(true)}>{tx("Ko‘rish")}</button>
         </div>
       </div>
       {preview ? <div className="md-preview">{render(value)}</div> : <textarea className="textarea" style={{ minHeight: 280 }} value={value} onChange={(e) => onChange(e.target.value)} />}
@@ -19,7 +20,7 @@ export function Markdown({ value, onChange }: { value: string; onChange: (v: str
 
 export function render(text: string): ReactNode {
   const blocks = (text || "").replace(/\r\n/g, "\n").split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
-  if (!blocks.length) return <span className="muted">Matn yo‘q</span>;
+  if (!blocks.length) return <span className="muted">{tx("Matn yo‘q")}</span>;
   return blocks.map((b, i) => {
     if (b.startsWith("### ")) return <h3 key={i}>{inline(b.slice(4))}</h3>;
     if (b.startsWith("## ") || b.startsWith("# ")) return <h2 key={i}>{inline(b.replace(/^#+ /, ""))}</h2>;

@@ -4,6 +4,7 @@ import { num, resolveBlock, str, usesMatchSchedule, type Block, type Layout, typ
 import type { Banner, InstagramFeed, Leaders, Match, MatchDetail, NewsItem, PartnersData, PlayerDetail, Product, Season, Standings, Team, TeamDetail, Video } from "@/lib/types";
 import { renderModule, type HomeData } from "./modules";
 
+import { getT } from "@/lib/i18n/server";
 const NEEDS: Record<string, Block["type"][]> = {
   banners: ["hero"],
   matches: ["fmatch", "live", "upcoming", "results", "gallery"],
@@ -21,6 +22,7 @@ const NEEDS: Record<string, Block["type"][]> = {
  * data the visible blocks need and renders the rows.
  */
 export async function HomeLayout({ layout, now, fresh = false }: { layout: Layout; now: number; fresh?: boolean }) {
+  const tx = await getT();
   const o = fresh ? { revalidate: 0 } : {};
   const needMatchesForSchedule = usesMatchSchedule(layout);
   const firstMatches = needMatchesForSchedule ? await safe(api<Match[]>("/matches?limit=200", o), []) : null;
@@ -116,7 +118,7 @@ export async function HomeLayout({ layout, now, fresh = false }: { layout: Layou
   const hasH1 = rendered.some((r) => r.items.some((x) => x.b.type === "intro"));
   return (
     <div className={`hp${custom ? " hp-mflat" : ""}`}>
-      {!hasH1 && <h1 className="sr-only">United MFL — media futbol ligasi</h1>}
+      {!hasH1 && <h1 className="sr-only">{tx("United MFL — media futbol ligasi")}</h1>}
       {rendered.map(({ row, items }) => {
         const devs = (k: "desktop" | "tablet" | "mobile") => items.every((x) => x.b.devices && !x.b.devices[k]);
         const rowCls = [devs("desktop") && "hp-no-d", devs("tablet") && "hp-no-t", devs("mobile") && "hp-no-m"].filter(Boolean).join(" ");

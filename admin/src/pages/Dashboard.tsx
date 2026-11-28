@@ -10,6 +10,7 @@ import { I } from "@/components/Icons";
 import { StageTag, StatusBadge } from "./Matches";
 import { SiteVisits } from "@/components/SiteVisits";
 
+import { tx } from "@/lib/i18n";
 type Dash = {
   kpi: { matches_total: number; matches_planned: number | null; results_entered: number; teams: number; news_published: number; news_drafts: number; requests_new: number; protocols_review: number };
   upcoming: Match[];
@@ -17,8 +18,8 @@ type Dash = {
   activity: { action: string; entity: string; entity_id: number | null; created_at: string; user_name: string | null }[];
 };
 
-const ACTION: Record<string, string> = { create: "yaratdi", update: "tahrirladi", delete: "o‘chirdi", period: "davrni o‘zgartirdi", event_add: "voqea qo‘shdi", event_edit: "voqeani tahrirladi", event_delete: "voqeani o‘chirdi", lineups: "tarkibni saqladi", upload: "fayl yukladi", apply: "protokolni qo‘lladi", reject: "protokolni rad etdi", edit: "protokolni tahrirladi", reorder: "tartibni o‘zgartirdi", login: "tizimga kirdi" };
-const ENTITY: Record<string, string> = { match: "match", team: "jamoa", player: "o‘yinchi", news: "yangilik", banner: "banner", video: "video", product: "mahsulot", protocol: "protokol", user: "foydalanuvchi", season: "mavsum", stage: "bosqich", contact_request: "murojaat", image: "rasm", product_variant: "o‘lcham", standing_adjustment: "jadval tuzatishi" };
+const ACTION: Record<string, string> = { create: tx("yaratdi"), update: tx("tahrirladi"), delete: tx("o‘chirdi"), period: tx("davrni o‘zgartirdi"), event_add: tx("voqea qo‘shdi"), event_edit: tx("voqeani tahrirladi"), event_delete: tx("voqeani o‘chirdi"), lineups: tx("tarkibni saqladi"), upload: tx("fayl yukladi"), apply: tx("protokolni qo‘lladi"), reject: tx("protokolni rad etdi"), edit: tx("protokolni tahrirladi"), reorder: tx("tartibni o‘zgartirdi"), login: tx("tizimga kirdi") };
+const ENTITY: Record<string, string> = { match: tx("match"), team: tx("jamoa"), player: tx("o‘yinchi"), news: tx("yangilik"), banner: tx("banner"), video: "video", product: tx("mahsulot"), protocol: tx("protokol"), user: tx("foydalanuvchi"), season: tx("mavsum"), stage: tx("bosqich"), contact_request: tx("murojaat"), image: "rasm", product_variant: tx("o‘lcham"), standing_adjustment: tx("jadval tuzatishi") };
 
 export function DashboardPage() {
   const { user, can } = useAuth();
@@ -29,39 +30,39 @@ export function DashboardPage() {
   const k = data.kpi;
   return (
     <>
-      <PageHead title={`Xush kelibsiz, ${user?.name || ""}`} sub="United MFL boshqaruv paneli"
+      <PageHead title={tx("Xush kelibsiz, {0}", user?.name || "")} sub={tx("United MFL boshqaruv paneli")}
         actions={<>
-          {can("protocols") && <Link className="btn" to="/protocols"><I.doc size={16} /> Natija kiritish</Link>}
-          {can("matches:create") && <Link className="btn btn-primary" to="/matches/new"><I.plus size={16} /> Yangi match</Link>}
+          {can("protocols") && <Link className="btn" to="/protocols"><I.doc size={16} />{" "}{tx("Natija kiritish")}</Link>}
+          {can("matches:create") && <Link className="btn btn-primary" to="/matches/new"><I.plus size={16} />{" "}{tx("Yangi match")}</Link>}
         </>} />
       <div className="grid g4" style={{ marginBottom: 16 }}>
-        <Kpi icon={<I.calendar />} label="Matchlar" value={k.matches_planned ?? k.matches_total} sub={`${k.results_entered} ta natija kiritilgan`} to="/matches" />
-        <Kpi icon={<I.shirt />} label="Jamoalar" value={k.teams} to="/teams" />
-        <Kpi icon={<I.news />} label="Yangiliklar" value={k.news_published} sub={k.news_drafts ? `${k.news_drafts} ta qoralama` : undefined} to="/news" />
-        <Kpi icon={<I.inbox />} label="Yangi murojaatlar" value={k.requests_new} sub={k.protocols_review ? `${k.protocols_review} protokol tekshiruvda` : undefined} to={k.protocols_review ? "/protocols" : "/requests"} />
+        <Kpi icon={<I.calendar />} label={tx("Matchlar")} value={k.matches_planned ?? k.matches_total} sub={tx("{0} ta natija kiritilgan", k.results_entered)} to="/matches" />
+        <Kpi icon={<I.shirt />} label={tx("Jamoalar")} value={k.teams} to="/teams" />
+        <Kpi icon={<I.news />} label={tx("Yangiliklar")} value={k.news_published} sub={k.news_drafts ? tx("{0} ta qoralama", k.news_drafts) : undefined} to="/news" />
+        <Kpi icon={<I.inbox />} label={tx("Yangi murojaatlar")} value={k.requests_new} sub={k.protocols_review ? tx("{0} protokol tekshiruvda", k.protocols_review) : undefined} to={k.protocols_review ? "/protocols" : "/requests"} />
       </div>
       <SiteVisits />
       <div className="grid" style={{ gridTemplateColumns: "minmax(0, 1fr) 320px", alignItems: "start" }} data-split>
         <div className="stack">
           <div className="card">
-            <div className="card-head"><h2>Yaqin matchlar</h2><Link to="/matches" className="row small b" style={{ color: "var(--text-accent)" }}>Barchasi <I.arrow size={16} /></Link></div>
-            {!data.upcoming.length ? <Empty title="Rejalashtirilgan matchlar yo‘q" /> : (
+            <div className="card-head"><h2>{tx("Yaqin matchlar")}</h2><Link to="/matches" className="row small b" style={{ color: "var(--text-accent)" }}>{tx("Barchasi")}{" "}<I.arrow size={16} /></Link></div>
+            {!data.upcoming.length ? <Empty title={tx("Rejalashtirilgan matchlar yo‘q")} /> : (
               <div className="table-wrap"><table className="table">
-                <thead><tr><th>Sana</th><th>Bosqich</th><th>Match</th><th>Holat</th><th /></tr></thead>
+                <thead><tr><th>{tx("Sana")}</th><th>{tx("Bosqich")}</th><th>{tx("Match")}</th><th>{tx("Holat")}</th><th /></tr></thead>
                 <tbody>{data.upcoming.map((m) => (
                   <tr key={m.id} className="clickable" onClick={() => nav(`/matches/${m.id}`)}>
                     <td className="nowrap">{fmtShort(m.kickoff_at)}</td><td><StageTag m={m} /></td>
-                    <td><span className="vs"><Crest team={m.home} size={20} /> {m.home?.name || "Aniqlanmagan"} — {m.away?.name || "Aniqlanmagan"} <Crest team={m.away} size={20} /></span></td>
+                    <td><span className="vs"><Crest team={m.home} size={20} /> {m.home?.name || tx("Aniqlanmagan")} — {m.away?.name || tx("Aniqlanmagan")} <Crest team={m.away} size={20} /></span></td>
                     <td><StatusBadge s={m.status} /></td>
-                    <td className="actions" onClick={(e) => e.stopPropagation()}>{can("live") && m.home && m.away && <Link className="btn btn-sm" to={`/live/${m.id}`}>Live-pult <I.radio size={15} /></Link>}</td>
+                    <td className="actions" onClick={(e) => e.stopPropagation()}>{can("live") && m.home && m.away && <Link className="btn btn-sm" to={`/live/${m.id}`}>{tx("Live-pult")}{" "}<I.radio size={15} /></Link>}</td>
                   </tr>
                 ))}</tbody>
               </table></div>
             )}
           </div>
           <div className="card">
-            <div className="card-head"><h2>So‘nggi natijalar</h2></div>
-            {!data.recent_results.length ? <Empty title="Natijalar yo‘q" /> : (
+            <div className="card-head"><h2>{tx("So‘nggi natijalar")}</h2></div>
+            {!data.recent_results.length ? <Empty title={tx("Natijalar yo‘q")} /> : (
               <div className="table-wrap"><table className="table">
                 <tbody>{data.recent_results.map((m) => (
                   <tr key={m.id} className="clickable" onClick={() => nav(`/matches/${m.id}`)}>
@@ -77,21 +78,21 @@ export function DashboardPage() {
         </div>
         <div className="stack">
           <div className="card card-pad stack" style={{ gap: 10 }}>
-            <h2 style={{ fontSize: 16 }}>Tezkor amallar</h2>
-            {can("matches:create") && <Quick to="/matches/new" icon={<I.calendar size={16} />} label="Match qo‘shish" />}
-            {can("news") && <Quick to="/news" icon={<I.news size={16} />} label="Yangilik yozish" />}
-            {can("banners") && <Quick to="/banners" icon={<I.image size={16} />} label="Hero-banner" />}
-            {can("videos") && <Quick to="/videos" icon={<I.play size={16} />} label="Video qo‘shish" />}
-            {can("protocols") && <Quick to="/protocols" icon={<I.doc size={16} />} label="Protokol yuklash" />}
+            <h2 style={{ fontSize: 16 }}>{tx("Tezkor amallar")}</h2>
+            {can("matches:create") && <Quick to="/matches/new" icon={<I.calendar size={16} />} label={tx("Match qo‘shish")} />}
+            {can("news") && <Quick to="/news" icon={<I.news size={16} />} label={tx("Yangilik yozish")} />}
+            {can("banners") && <Quick to="/banners" icon={<I.image size={16} />} label={tx("Hero-banner")} />}
+            {can("videos") && <Quick to="/videos" icon={<I.play size={16} />} label={tx("Video qo‘shish")} />}
+            {can("protocols") && <Quick to="/protocols" icon={<I.doc size={16} />} label={tx("Protokol yuklash")} />}
           </div>
           <div className="card">
-            <div className="card-head"><h2>So‘nggi faoliyat</h2></div>
+            <div className="card-head"><h2>{tx("So‘nggi faoliyat")}</h2></div>
             <div className="card-pad stack" style={{ gap: 12 }}>
-              {!data.activity.length && <span className="muted">Hali faoliyat yo‘q</span>}
+              {!data.activity.length && <span className="muted">{tx("Hali faoliyat yo‘q")}</span>}
               {data.activity.map((a, i) => (
                 <div key={i} className="row" style={{ alignItems: "flex-start" }}>
                   <span className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>{(a.user_name || "?").slice(0, 2).toUpperCase()}</span>
-                  <div className="small"><b>{a.user_name || "Tizim"}</b> {ACTION[a.action] || a.action} {ENTITY[a.entity] || a.entity}{a.entity_id ? ` #${a.entity_id}` : ""}<div className="muted">{ago(a.created_at)}</div></div>
+                  <div className="small"><b>{a.user_name || tx("Tizim")}</b> {ACTION[a.action] || a.action} {ENTITY[a.entity] || a.entity}{a.entity_id ? ` #${a.entity_id}` : ""}<div className="muted">{ago(a.created_at)}</div></div>
                 </div>
               ))}
             </div>

@@ -44,6 +44,18 @@ func Validation(fields map[string]any) *Error {
 // JSON writes v as JSON.
 func JSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if v != nil && writerLang(w) == "ru" {
+		if e, ok := v.(map[string]any); ok {
+			if er, ok := e["error"].(*Error); ok {
+				v = map[string]any{"error": er.localized("ru")}
+			}
+		}
+		if b, err := json.Marshal(v); err == nil {
+			w.WriteHeader(status)
+			_, _ = w.Write(append(localizeJSON(b), '\n'))
+			return
+		}
+	}
 	w.WriteHeader(status)
 	if v != nil {
 		_ = json.NewEncoder(w).Encode(v)
@@ -54,7 +66,7 @@ func JSON(w http.ResponseWriter, status int, v any) {
 func Fail(w http.ResponseWriter, r *http.Request, err error) {
 	var e *Error
 	if errors.As(err, &e) {
-		JSON(w, e.Status, map[string]any{"error": e})
+		JSON(w, e.Status, map[string]any{"error": e.localized(Lang(r))})
 		return
 	}
 	slog.Error("internal error", "err", err, "path", r.URL.Path)
@@ -140,7 +152,7 @@ func CORS(origins []string) func(http.Handler) http.Handler {
 					w.Header().Set("Access-Control-Allow-Origin", origin)
 					w.Header().Set("Vary", "Origin")
 					w.Header().Set("Access-Control-Allow-Credentials", "true")
-					w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Idempotency-Key")
+					w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Idempotency-Key, X-Lang")
 					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 				}
 			}

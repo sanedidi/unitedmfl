@@ -5,20 +5,23 @@ import { Pin, Refresh } from "./ui";
 import { fmtSum, tapi, TicketApiError, type MatchBrief, type TicketV } from "@/lib/tickets";
 import { fmtTime, TZ } from "@/lib/format";
 
+import { useT } from "@/lib/i18n";
 const day = (iso: string | null) => (iso ? new Intl.DateTimeFormat("ru-RU", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso)) : "—");
 
 export function QR({ value, size = 132, dark = false }: { value: string; size?: number; dark?: boolean }) {
+  const tx = useT();
   const [svg, setSvg] = useState("");
   useEffect(() => {
     let live = true;
     QRCode.toString(value, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0B0D10", light: "#FFFFFF" } }).then((s) => live && setSvg(s));
     return () => { live = false; };
   }, [value]);
-  return <div className={`tk-qr${dark ? " dark" : ""}`} style={{ width: size, height: size }} aria-label="QR-kod" role="img" dangerouslySetInnerHTML={{ __html: svg }} />;
+  return <div className={`tk-qr${dark ? " dark" : ""}`} style={{ width: size, height: size }} aria-label={tx("QR-kod")} role="img" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
 /** Live QR: fetched from the server, re-fetched when the 30-second window rolls over. */
 export function LiveQR({ token, size = 168, onState }: { token: string; size?: number; onState?: (s: string) => void }) {
+  const tx = useT();
   const [code, setCode] = useState("");
   const [dynamic, setDynamic] = useState(true);
   const [left, setLeft] = useState(0);
@@ -35,7 +38,7 @@ export function LiveQR({ token, size = 168, onState }: { token: string; size?: n
         if (r.dynamic) t = window.setTimeout(pull, Math.max(1, r.seconds_left) * 1000 + 300);
       } catch (e) {
         if (!alive) return;
-        setErr(e instanceof TicketApiError ? e.message : "QR yuklanmadi");
+        setErr(e instanceof TicketApiError ? e.message : tx("QR yuklanmadi"));
         t = window.setTimeout(pull, 5000);
       }
     };
@@ -49,28 +52,29 @@ export function LiveQR({ token, size = 168, onState }: { token: string; size?: n
     <div className="tk-live">
       {code ? <QR value={code} size={size} /> : <div className="tk-qr" style={{ width: size, height: size }}>{err || "…"}</div>}
       {dynamic && code && (
-        <div className="tk-live-bar"><Refresh size={14} /> QR har 30 soniyada yangilanadi <b>0:{String(left).padStart(2, "0")}</b><i style={{ width: `${(left / 30) * 100}%` }} /></div>
+        <div className="tk-live-bar"><Refresh size={14} />{" "}{tx("QR har 30 soniyada yangilanadi")}{" "}<b>0:{String(left).padStart(2, "0")}</b><i style={{ width: `${(left / 30) * 100}%` }} /></div>
       )}
     </div>
   );
 }
 
 export function ETicket({ t, match, qr, foot }: { t: TicketV; match: MatchBrief; qr?: ReactNode; foot?: ReactNode }) {
+  const tx = useT();
   const vip = t.zone_kind === "vip";
   const [home, away] = splitTitle(match.title);
   return (
     <article className={`tk-eticket${vip ? " vip" : ""}${t.status !== "active" && t.status !== "used" ? " void" : ""}`}>
-      <header><span className="tk-brand"><i />UNITED MFL</span><span>{t.zone_name}</span></header>
+      <header><span className="tk-brand"><i />{tx("UNITED MFL")}</span><span>{t.zone_name}</span></header>
       <div className="tk-et-body">
-        <div className="tk-et-stage">{match.stage ? `${match.stage} · ` : ""}United MFL 2026</div>
-        <div className="tk-et-teams"><b>{home}</b>{away && <><span>vs</span><b>{away}</b></>}</div>
+        <div className="tk-et-stage">{match.stage ? `${match.stage} · ` : ""}{tx("United MFL 2026")}</div>
+        <div className="tk-et-teams"><b>{home}</b>{away && <><span>{tx("vs")}</span><b>{away}</b></>}</div>
         <dl>
-          <div><dt>Sana</dt><dd>{day(match.kickoff_at)}</dd></div>
-          <div><dt>Vaqt</dt><dd>{match.kickoff_at ? fmtTime(match.kickoff_at) : "—"}</dd></div>
-          <div><dt>Darvoza</dt><dd>{t.gate || "—"}</dd></div>
-          <div><dt>Sektor</dt><dd>{t.section.includes(",") ? "Istalgan" : t.section}</dd></div>
-          <div><dt>Qator</dt><dd>{t.row || "—"}</dd></div>
-          <div><dt>O‘rin</dt><dd>{t.seat ?? "Erkin"}</dd></div>
+          <div><dt>{tx("Sana")}</dt><dd>{day(match.kickoff_at)}</dd></div>
+          <div><dt>{tx("Vaqt")}</dt><dd>{match.kickoff_at ? fmtTime(match.kickoff_at) : "—"}</dd></div>
+          <div><dt>{tx("Darvoza")}</dt><dd>{t.gate || "—"}</dd></div>
+          <div><dt>{tx("Sektor")}</dt><dd>{t.section.includes(",") ? tx("Istalgan") : t.section}</dd></div>
+          <div><dt>{tx("Qator")}</dt><dd>{t.row || "—"}</dd></div>
+          <div><dt>{tx("O‘rin")}</dt><dd>{t.seat ?? tx("Erkin")}</dd></div>
         </dl>
         {match.venue && <p className="tk-et-venue"><Pin size={14} /> {match.venue}</p>}
         {vip && (t.perks || []).filter(Boolean).length > 0 && <div className="tk-et-perks">{(t.perks || []).filter(Boolean).map((p) => <span key={p}>{p}</span>)}</div>}
@@ -79,9 +83,9 @@ export function ETicket({ t, match, qr, foot }: { t: TicketV; match: MatchBrief;
       <div className="tk-et-bottom">
         {qr}
         <dl>
-          <div><dt>Chipta egasi</dt><dd>{t.holder_name || "—"}</dd></div>
-          <div><dt>Chipta №</dt><dd className="mono">{t.number}</dd></div>
-          <div><dt>Narx</dt><dd>{fmtSum(t.price)}</dd></div>
+          <div><dt>{tx("Chipta egasi")}</dt><dd>{t.holder_name || "—"}</dd></div>
+          <div><dt>{tx("Chipta №")}</dt><dd className="mono">{t.number}</dd></div>
+          <div><dt>{tx("Narx")}</dt><dd>{fmtSum(t.price)}</dd></div>
         </dl>
       </div>
       {foot && <footer>{foot}</footer>}

@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { TicketView } from "@/components/tickets/TicketView";
+import { getT } from "@/lib/i18n/server";
 import "../../tickets.css";
 
-export const metadata: Metadata = { title: "Chipta", robots: { index: false, follow: false }, referrer: "no-referrer" };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getT();
+  return { title: tx("Chipta"), robots: { index: false, follow: false }, referrer: "no-referrer" };
+}
 
 export default async function TicketPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

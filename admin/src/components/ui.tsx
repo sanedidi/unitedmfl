@@ -3,6 +3,7 @@ import { I } from "./Icons";
 import { initials } from "@/lib/format";
 import { uploadImage } from "@/lib/api";
 
+import { tx } from "@/lib/i18n";
 /* ---------- Toasts ---------- */
 type Toast = { id: number; text: string; kind: "ok" | "error" | "info" };
 const ToastCtx = createContext<(text: string, kind?: Toast["kind"]) => void>(() => {});
@@ -37,7 +38,7 @@ export function Modal({ title, onClose, children, footer, wide }: { title: React
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal${wide ? " wide" : ""}`} role="dialog" aria-modal="true">
-        <div className="modal-head"><h2>{title}</h2><button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Yopish"><I.x /></button></div>
+        <div className="modal-head"><h2>{title}</h2><button className="btn btn-ghost btn-icon" onClick={onClose} aria-label={tx("Yopish")}><I.x /></button></div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>
@@ -49,7 +50,7 @@ export function Drawer({ title, onClose, children, footer }: { title: ReactNode;
   return (
     <div className="overlay drawer-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <aside className="drawer" role="dialog" aria-modal="true">
-        <div className="modal-head"><h2>{title}</h2><button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Yopish"><I.x /></button></div>
+        <div className="modal-head"><h2>{title}</h2><button className="btn btn-ghost btn-icon" onClick={onClose} aria-label={tx("Yopish")}><I.x /></button></div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </aside>
@@ -73,8 +74,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       {children}
       {state && (
         <Modal title={state.title} onClose={() => close(false)} footer={<>
-          <button className="btn" onClick={() => close(false)}>Bekor qilish</button>
-          <button className={`btn ${state.danger ? "btn-danger" : "btn-primary"}`} onClick={() => close(true)} autoFocus>{state.ok || "Tasdiqlash"}</button>
+          <button className="btn" onClick={() => close(false)}>{tx("Bekor qilish")}</button>
+          <button className={`btn ${state.danger ? "btn-danger" : "btn-primary"}`} onClick={() => close(true)} autoFocus>{state.ok || tx("Tasdiqlash")}</button>
         </>}>
           {state.text && <p className="sec" style={{ margin: 0 }}>{state.text}</p>}
         </Modal>
@@ -96,13 +97,13 @@ export const Badge = ({ tone = "", children, plain }: { tone?: string; children:
 export function Empty({ title, text, action }: { title: string; text?: string; action?: ReactNode }) {
   return <div className="empty"><b>{title}</b>{text && <div>{text}</div>}{action && <div style={{ marginTop: 16 }}>{action}</div>}</div>;
 }
-export const Loading = () => <div className="empty">Yuklanmoqda…</div>;
+export const Loading = () => <div className="empty">{tx("Yuklanmoqda…")}</div>;
 export function ErrorBox({ error, retry }: { error: unknown; retry?: () => void }) {
   return (
     <div className="alert danger" role="alert">
       <I.alert size={16} />
       <div className="grow">{error instanceof Error ? error.message : String(error)}</div>
-      {retry && <button className="btn btn-sm" onClick={retry}>Qayta</button>}
+      {retry && <button className="btn btn-sm" onClick={retry}>{tx("Qayta")}</button>}
     </div>
   );
 }
@@ -127,7 +128,7 @@ export function ImageInput({ value, onChange, wide }: { value: string; onChange:
     try {
       onChange(await uploadImage(f));
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Yuklashda xato", "error");
+      toast(e instanceof Error ? e.message : tx("Yuklashda xato"), "error");
     } finally {
       setBusy(false);
       if (ref.current) ref.current.value = "";
@@ -135,12 +136,12 @@ export function ImageInput({ value, onChange, wide }: { value: string; onChange:
   }
   return (
     <div className="img-field">
-      <div className={`img-preview${wide ? " wide" : ""}`} style={value ? { backgroundImage: `url("${value}")` } : undefined}>{!value && "Rasm yo‘q"}</div>
+      <div className={`img-preview${wide ? " wide" : ""}`} style={value ? { backgroundImage: `url("${value}")` } : undefined}>{!value && tx("Rasm yo‘q")}</div>
       <div className="stack grow" style={{ gap: 8 }}>
         <input className="input input-sm" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://… yoki faylni yuklang" />
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <button type="button" className="btn btn-sm" onClick={() => ref.current?.click()} disabled={busy}><I.upload size={15} /> {busy ? "Yuklanmoqda…" : "Yuklash"}</button>
-          {value && <button type="button" className="btn btn-sm btn-ghost" onClick={() => onChange("")}>Olib tashlash</button>}
+          <button type="button" className="btn btn-sm" onClick={() => ref.current?.click()} disabled={busy}><I.upload size={15} /> {busy ? tx("Yuklanmoqda…") : tx("Yuklash")}</button>
+          {value && <button type="button" className="btn btn-sm btn-ghost" onClick={() => onChange("")}>{tx("Olib tashlash")}</button>}
         </div>
       </div>
       <input ref={ref} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif" hidden onChange={(e) => pick(e.target.files?.[0])} />
@@ -153,7 +154,7 @@ export function Pager({ page, total, limit, onPage }: { page: number; total: num
   if (pages <= 1) return null;
   return (
     <div className="row" style={{ justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
-      <span className="muted small">Jami: {total}</span>
+      <span className="muted small">{tx("Jami:")}{" "}{total}</span>
       <div className="row">
         <button className="btn btn-sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>←</button>
         <span className="small">{page} / {pages}</span>

@@ -13,16 +13,18 @@ import { Img } from "@/components/Img";
 import { ViewBeacon } from "@/components/ViewBeacon";
 import { abs, breadcrumbLd, clip, fitTitle, DEFAULT_OG, matchPath, newsPath, ORG_ID, orgRef, pageMeta, SITE_URL } from "@/lib/seo";
 
+import { getT } from "@/lib/i18n/server";
 type P = Promise<{ slug: string }>;
 // cache() dedupes the request between generateMetadata and the page.
 const load = cache(async (slug: string) => apiOrNull<NewsItem>(`/news/${encodeURIComponent(slug)}`));
 
 export async function generateMetadata({ params }: { params: P }): Promise<Metadata> {
+  const tx = await getT();
   const n = await load((await params).slug);
-  if (!n) return { title: "Yangilik topilmadi", robots: { index: false } };
+  if (!n) return { title: tx("Yangilik topilmadi"), robots: { index: false } };
   return pageMeta({
     title: fitTitle(n.title, clip(n.title, 57)),
-    description: clip(n.seo_description || (n.excerpt && n.excerpt.length >= 80 ? n.excerpt : `${n.title}. ${n.excerpt || ""} United MFL yangiliklari.`)),
+    description: clip(n.seo_description || (n.excerpt && n.excerpt.length >= 80 ? n.excerpt : tx("{0}. {1} United MFL yangiliklari.", n.title, n.excerpt || ""))),
     path: newsPath(n),
     image: n.cover_url || null,
     type: "article",
@@ -32,6 +34,7 @@ export async function generateMetadata({ params }: { params: P }): Promise<Metad
 }
 
 export default async function ArticlePage({ params }: { params: P }) {
+  const tx = await getT();
   const n = await load((await params).slug);
   if (!n) notFound();
   const [latest, match] = await Promise.all([
@@ -51,7 +54,7 @@ export default async function ArticlePage({ params }: { params: P }) {
     image: [abs(n.cover_url || DEFAULT_OG)],
     datePublished: n.published_at,
     dateModified: modified || n.published_at,
-    inLanguage: "uz",
+    inLanguage: "uz", // articles are written in Uzbek
     author: n.author ? { "@type": "Person", name: n.author } : { "@type": "Organization", "@id": ORG_ID, name: "United MFL", url: SITE_URL },
     publisher: { ...orgRef, logo: { "@type": "ImageObject", url: `${SITE_URL}/icon.png` } },
     ...(n.category ? { articleSection: n.category } : {}),
@@ -62,14 +65,14 @@ export default async function ArticlePage({ params }: { params: P }) {
     <>
       <article className="container">
         <div className="article">
-          <nav className="crumbs" aria-label="Breadcrumb"><Link href="/yangiliklar">Yangiliklar</Link><ChevronRight size={12} /><b>{n.category || "Maqola"}</b></nav>
+          <nav className="crumbs" aria-label="Breadcrumb"><Link href="/yangiliklar">{tx("Yangiliklar")}</Link><ChevronRight size={12} /><b>{n.category || tx("Maqola")}</b></nav>
           {n.category && <div className="overline">{n.category}</div>}
           <h1 className="h1">{n.title}</h1>
           <div className="row muted" style={{ fontSize: 14, margin: "16px 0 28px", flexWrap: "wrap" }}>
             <time dateTime={n.published_at}>{fmtDate(n.published_at)}</time>
-            {modified && <span>· yangilandi <time dateTime={modified}>{fmtDate(modified)}</time></span>}
+            {modified && <span>{tx("· yangilandi")}{" "}<time dateTime={modified}>{fmtDate(modified)}</time></span>}
             {n.author && <span>· {n.author}</span>}
-            {match && <><span>·</span><Link href={matchPath(match.match)} className="accent">{match.match.home?.name} — {match.match.away?.name}: match markazi</Link></>}
+            {match && <><span>·</span><Link href={matchPath(match.match)} className="accent">{match.match.home?.name}{" "}{tx("— {0}: match markazi", match.match.away?.name)}</Link></>}
           </div>
           {n.cover_url && (
             <div style={{ position: "relative", aspectRatio: "16 / 9", borderRadius: 16, overflow: "hidden", marginBottom: 32, background: "var(--ink-850)" }}>
@@ -84,7 +87,7 @@ export default async function ArticlePage({ params }: { params: P }) {
       {more.length > 0 && (
         <section className="section">
           <div className="container">
-            <h2 className="h3" style={{ marginBottom: 20 }}>Boshqa yangiliklar</h2>
+            <h2 className="h3" style={{ marginBottom: 20 }}>{tx("Boshqa yangiliklar")}</h2>
             <div className="grid grid-3">{more.map((x) => <NewsCard key={x.slug} item={x} />)}</div>
           </div>
         </section>

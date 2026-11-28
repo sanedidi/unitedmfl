@@ -8,13 +8,15 @@ import { Search } from "@/components/Icons";
 import { pageMeta, playerPath } from "@/lib/seo";
 import { sized } from "@/lib/img";
 
+import { getT } from "@/lib/i18n/server";
 export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
+  const tx = await getT();
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.sahifa || "1", 10) || 1);
   const filtered = !!(sp.q || sp.jamoa || sp.pozitsiya);
   return pageMeta({
-    title: page > 1 ? `O‘yinchilar — ${page}-sahifa` : "O‘yinchilar — tarkiblar va statistika",
-    description: "United MFL o‘yinchilari: jamoa, amplua, raqam va mavsum statistikasi.",
+    title: page > 1 ? tx("O‘yinchilar — {0}-sahifa", page) : tx("O‘yinchilar — tarkiblar va statistika"),
+    description: tx("United MFL o‘yinchilari: jamoa, amplua, raqam va mavsum statistikasi."),
     path: page > 1 && !filtered ? `/oyinchilar?sahifa=${page}` : "/oyinchilar",
     noindex: filtered,
   });
@@ -24,6 +26,7 @@ type SP = Promise<{ q?: string; jamoa?: string; pozitsiya?: string; sahifa?: str
 const LIMIT = 48;
 
 export default async function PlayersPage({ searchParams }: { searchParams: SP }) {
+  const tx = await getT();
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.sahifa || "1", 10) || 1);
   const qs = new URLSearchParams({ limit: String(LIMIT), page: String(page) });
@@ -41,20 +44,20 @@ export default async function PlayersPage({ searchParams }: { searchParams: SP }
 
   return (
     <>
-      <PageTitle overline="United MFL 2026" title="O‘yinchilar" />
+      <PageTitle overline={tx("United MFL 2026")} title={tx("O‘yinchilar")} />
       <div className="container">
         <form className="filters" action="/oyinchilar" role="search">
           <div className="search-form grow">
-            <input className="input" name="q" defaultValue={sp.q} placeholder="O‘yinchi ismi" aria-label="O‘yinchi ismi" />
-            <select className="select" name="jamoa" defaultValue={sp.jamoa || ""} aria-label="Jamoa" style={{ maxWidth: 200 }}>
-              <option value="">Barcha jamoalar</option>
+            <input className="input" name="q" defaultValue={sp.q} placeholder={tx("O‘yinchi ismi")} aria-label={tx("O‘yinchi ismi")} />
+            <select className="select" name="jamoa" defaultValue={sp.jamoa || ""} aria-label={tx("Jamoa")} style={{ maxWidth: 200 }}>
+              <option value="">{tx("Barcha jamoalar")}</option>
               {teams.map((t) => <option key={t.id} value={t.slug}>{t.name}</option>)}
             </select>
             {sp.pozitsiya && <input type="hidden" name="pozitsiya" value={sp.pozitsiya} />}
-            <button className="btn btn-primary" aria-label="Qidirish"><Search /></button>
+            <button className="btn btn-primary" aria-label={tx("Qidirish")}><Search /></button>
           </div>
           <div className="chips">
-            <Link className="chip" href={link({ pozitsiya: undefined })} aria-current={!sp.pozitsiya ? "page" : undefined}>Hammasi</Link>
+            <Link className="chip" href={link({ pozitsiya: undefined })} aria-current={!sp.pozitsiya ? "page" : undefined}>{tx("Hammasi")}</Link>
             {Object.entries(POSITION_LABEL).map(([k, v]) => (
               <Link key={k} className="chip" href={link({ pozitsiya: k })} aria-current={sp.pozitsiya === k ? "page" : undefined}>{v}</Link>
             ))}
@@ -62,7 +65,7 @@ export default async function PlayersPage({ searchParams }: { searchParams: SP }
         </form>
 
         {players.length === 0 ? (
-          <div className="empty" style={{ marginTop: 32 }}>O‘yinchilar topilmadi.</div>
+          <div className="empty" style={{ marginTop: 32 }}>{tx("O‘yinchilar topilmadi.")}</div>
         ) : (
           <div className="grid grid-4" style={{ marginTop: 32, gap: 12 }}>
             {players.map((p) => (
@@ -78,8 +81,8 @@ export default async function PlayersPage({ searchParams }: { searchParams: SP }
           </div>
         )}
         <div className="pagination">
-          {page > 1 && <Link className="btn btn-ghost btn-sm" href={link({ sahifa: String(page - 1) })}>← Oldingi</Link>}
-          {players.length === LIMIT && <Link className="btn btn-ghost btn-sm" href={link({ sahifa: String(page + 1) })}>Keyingi →</Link>}
+          {page > 1 && <Link className="btn btn-ghost btn-sm" href={link({ sahifa: String(page - 1) })}>{tx("← Oldingi")}</Link>}
+          {players.length === LIMIT && <Link className="btn btn-ghost btn-sm" href={link({ sahifa: String(page + 1) })}>{tx("Keyingi →")}</Link>}
         </div>
       </div>
     </>

@@ -1313,3 +1313,8 @@ a.alert { text-decoration: none; }
 .perm-matrix .perm-name small { font-size: 12px; font-weight: 400; }
 .perm-legend { font-size: 12px; color: var(--text-2); gap: 6px; }
 @media (max-width: 720px) { .perm-matrix th, .perm-matrix td { width: 64px; padding-left: 2px; padding-right: 2px; } .perm-matrix thead th { font-size: 9px; } }
+
+/* language switcher */
+.lang-switch button { padding: 4px 9px; font-size: 12px; }
+.login-form { position: relative; }
+.login-lang { position: absolute; top: 20px; right: 20px; }

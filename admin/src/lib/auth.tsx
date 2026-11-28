@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, hasSession, login as apiLogin, logout as apiLogout, onLogout, type User } from "./api";
 
+import { tx } from "@/lib/i18n";
 type Ctx = { user: User | null; ready: boolean; can: (perm: string) => boolean; login: (e: string, p: string) => Promise<void>; logout: () => Promise<void> };
 const AuthCtx = createContext<Ctx>(null as unknown as Ctx);
 export const useAuth = () => useContext(AuthCtx);
@@ -25,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
   // "news" means viewing the page; "news:create", "news:edit", "news:delete" are its actions
-  const can = useCallback((perm: string) => !!user && (user.role === "admin" || user.permissions.includes(perm.includes(":") ? perm : `${perm}:view`)), [user]);
+  const can = useCallback((perm: string) => !!user && (user.role === "admin" || user.permissions.includes(perm.includes(":") ? perm : tx("{0}:view", perm))), [user]);
 
   return <AuthCtx.Provider value={{ user, ready, can, login, logout }}>{children}</AuthCtx.Provider>;
 }

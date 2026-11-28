@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { api } from "@/lib/api";
 import { I } from "@/components/Icons";
 
+import { lang, tx } from "@/lib/i18n";
 // «Sayt tashriflari» on the Dashboard and the «N onlayn» counter in the topbar.
 // Numbers come from GET /admin/visitors (see backend/internal/api/visits.go).
 
@@ -24,20 +25,20 @@ type Stats = {
 };
 
 const REFRESH_MS = 30_000;
-const PERIODS: { id: Period; label: string }[] = [{ id: "today", label: "Bugun" }, { id: "7d", label: "7 kun" }, { id: "30d", label: "30 kun" }];
+const PERIODS: { id: Period; label: string }[] = [{ id: "today", label: tx("Bugun") }, { id: "7d", label: tx("7 kun") }, { id: "30d", label: tx("30 kun") }];
 const SOURCE: Record<string, { label: string; color: string }> = {
   instagram: { label: "Instagram", color: "var(--accent)" },
   telegram: { label: "Telegram", color: "var(--n-900)" },
   google: { label: "Google", color: "var(--n-400)" },
-  direct: { label: "To‘g‘ridan kirish", color: "var(--n-200)" },
+  direct: { label: tx("To‘g‘ridan kirish"), color: "var(--n-200)" },
   yandex: { label: "Yandex", color: "var(--n-600)" },
   facebook: { label: "Facebook", color: "var(--blue-600)" },
   youtube: { label: "YouTube", color: "var(--red-500)" },
   tiktok: { label: "TikTok", color: "var(--n-700)" },
-  other: { label: "Boshqa saytlar", color: "var(--n-300)" },
+  other: { label: tx("Boshqa saytlar"), color: "var(--n-300)" },
 };
-const MONTHS = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
-const MON3 = ["yan", "fev", "mar", "apr", "may", "iyun", "iyul", "avg", "sen", "okt", "noy", "dek"];
+const MONTHS = lang === "ru" ? ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] : ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
+const MON3 = lang === "ru" ? ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"] : ["yan", "fev", "mar", "apr", "may", "iyun", "iyul", "avg", "sen", "okt", "noy", "dek"];
 
 const num = (n: number) => new Intl.NumberFormat("ru-RU").format(n).replace(/\s/g, " ");
 const dayParts = (d: string) => { const [, m, dd] = d.split("-").map(Number); return { m, d: dd }; };
@@ -75,9 +76,8 @@ export function OnlinePill() {
   const n = error || !data ? "—" : num(data.total);
   const live = !!data && !error && data.total > 0;
   return (
-    <Link to="/#tashriflar" className={`online-pill${live ? " live" : ""}`} title="Hozir saytda (so‘nggi 5 daqiqa)">
-      <span className="dot" aria-hidden /> <b className="tnum">{n}</b> onlayn
-    </Link>
+    <Link to="/#tashriflar" className={`online-pill${live ? " live" : ""}`} title={tx("Hozir saytda (so‘nggi 5 daqiqa)")}>
+      <span className="dot" aria-hidden /> <b className="tnum">{n}</b>{" "}{tx("onlayn")}</Link>
   );
 }
 
@@ -96,40 +96,40 @@ export function SiteVisits() {
     <div className="card visits" id="tashriflar" ref={ref}>
       <div className="visits-head">
         <div>
-          <h2>Sayt tashriflari</h2>
-          <div className="small muted">unitedmfl.uz · har 30 soniyada yangilanadi</div>
+          <h2>{tx("Sayt tashriflari")}</h2>
+          <div className="small muted">{tx("unitedmfl.uz · har 30 soniyada yangilanadi")}</div>
         </div>
-        <div className="seg" role="group" aria-label="Davr">
+        <div className="seg" role="group" aria-label={tx("Davr")}>
           {PERIODS.map((p) => <button key={p.id} type="button" aria-pressed={period === p.id} onClick={() => setPeriod(p.id)}>{p.label}</button>)}
         </div>
       </div>
       {error && !data ? (
         <div className="visits-state">
           <span className="icon"><I.alert size={20} /></span>
-          <b>Ma’lumotni yuklab bo‘lmadi</b>
-          <span className="small muted">Server javob bermadi. Internet aloqasini tekshirib, qayta urinib ko‘ring.</span>
-          <button className="btn btn-sm" onClick={reload}>Qayta urinish</button>
+          <b>{tx("Ma’lumotni yuklab bo‘lmadi")}</b>
+          <span className="small muted">{tx("Server javob bermadi. Internet aloqasini tekshirib, qayta urinib ko‘ring.")}</span>
+          <button className="btn btn-sm" onClick={reload}>{tx("Qayta urinish")}</button>
         </div>
       ) : !data ? (
-        <div className="visits-skeleton" aria-label="Yuklanmoqda"><i /><i /><i /><i /></div>
+        <div className="visits-skeleton" aria-label={tx("Yuklanmoqda")}><i /><i /><i /><i /></div>
       ) : (
         <>
           <div className="visits-metrics">
             <div className="vm vm-online">
-              <span className="vm-label"><span className="dot" aria-hidden /> Hozir onlayn</span>
+              <span className="vm-label"><span className="dot" aria-hidden />{" "}{tx("Hozir onlayn")}</span>
               <span className="vm-val tnum">{num(data.online.total)}</span>
-              <span className="small">so‘nggi 5 daqiqada saytda faol</span>
-              {data.online.match > 0 && <span className="small muted">{num(data.online.match)} tasi match sahifasida</span>}
+              <span className="small">{tx("so‘nggi 5 daqiqada saytda faol")}</span>
+              {data.online.match > 0 && <span className="small muted">{num(data.online.match)}{" "}{tx("tasi match sahifasida")}</span>}
             </div>
-            <Metric label="Bugun" t={data.t_today} vs="kechaning shu vaqtiga nisbatan" />
-            <Metric label="7 kun" t={data.t_7d} vs="oldingi 7 kunga nisbatan" />
-            <Metric label="30 kun" t={data.t_30d} vs="oldingi 30 kunga nisbatan" />
+            <Metric label={tx("Bugun")} t={data.t_today} vs={tx("kechaning shu vaqtiga nisbatan")} />
+            <Metric label={tx("7 kun")} t={data.t_7d} vs={tx("oldingi 7 kunga nisbatan")} />
+            <Metric label={tx("30 kun")} t={data.t_30d} vs={tx("oldingi 30 kunga nisbatan")} />
           </div>
           {!data.t_30d.views && !data.online.total ? (
             <div className="visits-state">
               <span className="icon"><I.eye size={20} /></span>
-              <b>Hozircha tashriflar yo‘q</b>
-              <span className="small muted">Birinchi tashrif saytda ochilgandan keyin bir necha soniyada shu yerda ko‘rinadi.</span>
+              <b>{tx("Hozircha tashriflar yo‘q")}</b>
+              <span className="small muted">{tx("Birinchi tashrif saytda ochilgandan keyin bir necha soniyada shu yerda ko‘rinadi.")}</span>
             </div>
           ) : shown ? (
             <div className="visits-lower">
@@ -140,7 +140,7 @@ export function SiteVisits() {
               </div>
             </div>
           ) : (
-            <div className="visits-skeleton short" aria-label="Yuklanmoqda"><i /><i /></div>
+            <div className="visits-skeleton short" aria-label={tx("Yuklanmoqda")}><i /><i /></div>
           )}
         </>
       )}
@@ -154,9 +154,9 @@ function Metric({ label, t, vs }: { label: string; t: Totals; vs: string }) {
     <div className="vm">
       <span className="vm-label">{label}</span>
       <span className="vm-val tnum">{num(t.visitors)}</span>
-      {pct == null ? <span className="small muted">taqqoslash uchun ma’lumot yo‘q</span>
+      {pct == null ? <span className="small muted">{tx("taqqoslash uchun ma’lumot yo‘q")}</span>
         : <span className={`small ${pct > 0 ? "up" : pct < 0 ? "down" : "muted"}`}>{pct > 0 ? "↑" : pct < 0 ? "↓" : "="} {Math.abs(pct)}% {vs}</span>}
-      <span className="small muted">{num(t.views)} sahifa ko‘rish</span>
+      <span className="small muted">{num(t.views)}{" "}{tx("sahifa ko‘rish")}</span>
     </div>
   );
 }
@@ -173,18 +173,18 @@ function Chart({ s }: { s: Stats }) {
   const ticks: Tick[] = hourly ? [[0, "both"], [6, "desk"], [12, "both"], [18, "desk"], [23, "both"]]
     : n <= 7 ? s.series.map((_, i): Tick => [i, i % 3 === 0 ? "both" : "desk"])
     : ([[0, "both"], [6, "desk"], [12, "desk"], [15, "phone"], [18, "desk"], [24, "desk"], [n - 1, "both"]] as Tick[]).filter(([i]) => i < n);
-  const label = (i: number) => (i === lastFilled ? (hourly ? "Hozir" : "Bugun") : hourly ? s.series[i].label : shortDate(s.series[i].label));
+  const label = (i: number) => (i === lastFilled ? (hourly ? tx("Hozir") : tx("Bugun")) : hourly ? s.series[i].label : shortDate(s.series[i].label));
   const h = hover != null ? s.series[hover] : null;
   return (
     <div className="visits-chart">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div className="b">{hourly ? "Soatlar bo‘yicha tashrifchilar" : "Kunlik tashrifchilar"}</div>
-          <div className="small muted">{hourly ? `Bugun, ${longDate(s.to)}` : `${longDate(s.from)} — ${longDate(s.to)}`}</div>
+          <div className="b">{hourly ? tx("Soatlar bo‘yicha tashrifchilar") : tx("Kunlik tashrifchilar")}</div>
+          <div className="small muted">{hourly ? tx("Bugun, {0}", longDate(s.to)) : `${longDate(s.from)} — ${longDate(s.to)}`}</div>
         </div>
         <div className="row small" style={{ gap: 16 }}>
-          <span className="legend"><i style={{ background: "var(--accent)" }} />{hourly ? "Joriy soat" : "Bugun"}</span>
-          <span className="legend"><i style={{ background: "var(--n-900)" }} />{hourly ? "Oldingi soatlar" : "Oldingi kunlar"}</span>
+          <span className="legend"><i style={{ background: "var(--accent)" }} />{hourly ? tx("Joriy soat") : tx("Bugun")}</span>
+          <span className="legend"><i style={{ background: "var(--n-900)" }} />{hourly ? tx("Oldingi soatlar") : tx("Oldingi kunlar")}</span>
         </div>
       </div>
       <div className="vc-body">
@@ -194,14 +194,13 @@ function Chart({ s }: { s: Stats }) {
             {s.series.map((p, i) => (
               <button key={p.label} type="button" className={`vc-bar${i === lastFilled ? " now" : ""}${p.visitors == null ? " future" : ""}`}
                 onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)}
-                aria-label={`${hourly ? p.label : longDate(p.label)}: ${p.visitors ?? 0} tashrifchi`}>
+                aria-label={tx("{0}: {1} tashrifchi", hourly ? p.label : longDate(p.label), p.visitors ?? 0)}>
                 <i style={{ height: `${((p.visitors ?? 0) / top) * 100}%` }} />
               </button>
             ))}
             {h && hover != null && (
               <div className="vc-tip" style={tipPos(hover, n)}>
-                {hourly ? h.label : longDate(h.label)} · {num(h.visitors ?? 0)} tashrifchi · {num(h.views ?? 0)} ko‘rish
-              </div>
+                {hourly ? h.label : longDate(h.label)}{" "}{tx("· {0} tashrifchi · {1} ko‘rish", num(h.visitors ?? 0), num(h.views ?? 0))}</div>
             )}
           </div>
           <div className="vc-x small muted">
@@ -227,14 +226,14 @@ function niceMax(n: number) {
   return 10 * pow;
 }
 
-const periodLabel = (p: Period) => (p === "today" ? "Bugun" : p === "7d" ? "7 kun" : "30 kun");
+const periodLabel = (p: Period) => (p === "today" ? tx("Bugun") : p === "7d" ? tx("7 kun") : tx("30 kun"));
 
 function Pages({ s }: { s: Stats }) {
   const max = Math.max(1, ...s.pages.map((p) => p.views));
   return (
     <div className="stack" style={{ gap: 14 }}>
-      <div className="row" style={{ justifyContent: "space-between" }}><b>Ommabop sahifalar</b><span className="small muted">{periodLabel(s.period)} · ko‘rishlar</span></div>
-      {!s.pages.length && <span className="small muted">Bu davrda ko‘rishlar yo‘q</span>}
+      <div className="row" style={{ justifyContent: "space-between" }}><b>{tx("Ommabop sahifalar")}</b><span className="small muted">{periodLabel(s.period)}{" "}{tx("· ko‘rishlar")}</span></div>
+      {!s.pages.length && <span className="small muted">{tx("Bu davrda ko‘rishlar yo‘q")}</span>}
       {s.pages.map((p) => (
         <div key={p.path} className="vp-row">
           <div className="row" style={{ alignItems: "flex-start" }}>
@@ -256,8 +255,8 @@ function Sources({ s }: { s: Stats }) {
   const pct = (v: number) => Math.round((v / total) * 100);
   return (
     <div className="stack" style={{ gap: 12 }}>
-      <div className="row" style={{ justifyContent: "space-between" }}><b>Qayerdan kelishadi</b><span className="small muted">{periodLabel(s.period)}</span></div>
-      {!total ? <span className="small muted">Bu davrda ma’lumot yo‘q</span> : (
+      <div className="row" style={{ justifyContent: "space-between" }}><b>{tx("Qayerdan kelishadi")}</b><span className="small muted">{periodLabel(s.period)}</span></div>
+      {!total ? <span className="small muted">{tx("Bu davrda ma’lumot yo‘q")}</span> : (
         <>
           <div className="vs-bar">{s.sources.map((x) => <i key={x.source} style={{ flexGrow: x.visits, background: (SOURCE[x.source] || SOURCE.other).color }} title={`${(SOURCE[x.source] || SOURCE.other).label}: ${pct(x.visits)}%`} />)}</div>
           <div className="stack" style={{ gap: 8 }}>

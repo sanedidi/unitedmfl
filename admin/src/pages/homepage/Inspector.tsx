@@ -9,6 +9,7 @@ import {
 } from "@/lib/layout";
 import { BI, F, Seg, Switch, useBuilder } from "./shared";
 
+import { tx } from "@/lib/i18n";
 type Tab = 0 | 1 | 2 | 3;
 
 export function Inspector() {
@@ -28,9 +29,9 @@ function EmptyInspector() {
   return (
     <div className="hb-insp-empty">
       <BI.layers size={28} />
-      <b>Blok yoki qatorni tanlang</b>
-      <p>Kanvasdagi blokni bosing — sozlamalar shu yerda chiqadi. Qator raqamini bossangiz, qator sozlamalari ochiladi.</p>
-      <p className="muted small">Modulni chap paneldan kanvasga sudrang. Ctrl+Z — bekor qilish, Delete — o‘chirish.</p>
+      <b>{tx("Blok yoki qatorni tanlang")}</b>
+      <p>{tx("Kanvasdagi blokni bosing — sozlamalar shu yerda chiqadi. Qator raqamini bossangiz, qator sozlamalari ochiladi.")}</p>
+      <p className="muted small">{tx("Modulni chap paneldan kanvasga sudrang. Ctrl+Z — bekor qilish, Delete — o‘chirish.")}</p>
     </div>
   );
 }
@@ -45,7 +46,7 @@ function BlockInspector({ block: b, parent, rowSpan }: { block: Block; parent: B
   const setProps = (patch: Record<string, unknown>) => commit(updateBlock(layout, b.id, (x) => ({ ...x, props: { ...(x.props || {}), ...patch } })));
   const isAlt = !!parent;
   const free = 12 - rowSpan + b.span; // widest span that still fits in the row
-  const tabs = isAlt ? ["Sozlamalar", "Ko‘rinish"] : ["Sozlamalar", "Ko‘rinish", "Qurilmalar", "Vaqt"];
+  const tabs = isAlt ? [tx("Sozlamalar"), tx("Ko‘rinish")] : [tx("Sozlamalar"), tx("Ko‘rinish"), tx("Qurilmalar"), tx("Vaqt")];
 
   const duplicate = () => {
     const f = findBlock(layout, b.id);
@@ -59,7 +60,7 @@ function BlockInspector({ block: b, parent, rowSpan }: { block: Block; parent: B
     select({ kind: "block", id: c.id });
   };
   const remove = () => {
-    if (b.locked) return toast("Blok qulflangan", "error");
+    if (b.locked) return toast(tx("Blok qulflangan"), "error");
     if (isAlt) {
       commit(updateBlock(layout, parent!.id, (x) => ({ ...x, alt: undefined, schedule: x.schedule ? { ...x.schedule, onEnd: "hide" } : x.schedule })));
       select({ kind: "block", id: parent!.id });
@@ -75,13 +76,12 @@ function BlockInspector({ block: b, parent, rowSpan }: { block: Block; parent: B
         <div className="row" style={{ gap: 8 }}>
           <span className="hb-chip"><I.grid size={12} /> {m.name} · {VARIANTS.find((v) => v.key === b.variant)?.label}</span>
           <span className="grow" />
-          {b.locked && <span className="badge plain" title="Qulflangan"><I.lock size={12} /></span>}
+          {b.locked && <span className="badge plain" title={tx("Qulflangan")}><I.lock size={12} /></span>}
         </div>
         <h3>{blockLabel(b)}</h3>
         {isAlt && (
           <button className="hb-back" onClick={() => select({ kind: "block", id: parent!.id })}>
-            ← {blockLabel(parent!)} o‘rnini bosuvchi blok
-          </button>
+            ← {blockLabel(parent!)}{" "}{tx("o‘rnini bosuvchi blok")}</button>
         )}
         <div className="tabs hb-tabs" role="tablist">
           {tabs.map((t, i) => <button key={t} role="tab" aria-selected={tab === i} onClick={() => setTab(i as Tab)}>{t}{i === 3 && b.schedule && b.schedule.mode !== "always" && <i className="hb-dot" />}</button>)}
@@ -90,7 +90,7 @@ function BlockInspector({ block: b, parent, rowSpan }: { block: Block; parent: B
       <div className="hb-insp-body">
         {tab === 0 && (
           <>
-            <F label="Variant">
+            <F label={tx("Variant")}>
               <div className="hb-variants">
                 {VARIANTS.map((v) => (
                   <button key={v.key} type="button" className={`hb-variant v-${v.key}`} aria-pressed={b.variant === v.key} onClick={() => set({ variant: v.key })}>
@@ -100,12 +100,12 @@ function BlockInspector({ block: b, parent, rowSpan }: { block: Block; parent: B
               </div>
             </F>
             {!isAlt && (
-              <F label="Kenglik" value={`${b.span} / 12 ustun`} hint={free < 12 && m.spans.some((s) => s > free) ? "Kengroq qilish uchun qatordagi boshqa blokni toraytiring yoki uni yangi qatorga oling." : undefined}>
-                <div className="hb-span" role="group" aria-label="Kenglik">
+              <F label={tx("Kenglik")} value={`${b.span} / 12 ustun`} hint={free < 12 && m.spans.some((s) => s > free) ? tx("Kengroq qilish uchun qatordagi boshqa blokni toraytiring yoki uni yangi qatorga oling.") : undefined}>
+                <div className="hb-span" role="group" aria-label={tx("Kenglik")}>
                   {Array.from({ length: 12 }, (_, i) => <i key={i} className={i < b.span ? "on" : ""} />)}
                 </div>
                 <Seg full value={b.span} onChange={(v) => set({ span: v })}
-                  options={m.spans.map((s) => ({ key: s, label: s, disabled: s > free, title: s > free ? "Qatorda joy yo‘q" : `${s} ustun` }))} />
+                  options={m.spans.map((s) => ({ key: s, label: s, disabled: s > free, title: s > free ? tx("Qatorda joy yo‘q") : tx("{0} ustun", s) }))} />
               </F>
             )}
             <PropsEditor b={b} setProps={setProps} set={set} />
@@ -116,10 +116,10 @@ function BlockInspector({ block: b, parent, rowSpan }: { block: Block; parent: B
         {tab === 3 && !isAlt && <ScheduleTab b={b} />}
       </div>
       <div className="hb-insp-foot">
-        {!isAlt && <button className="btn btn-sm" onClick={duplicate}><I.copy size={14} /> Nusxa</button>}
-        {!isAlt && <button className="btn btn-sm" onClick={() => set({ hidden: !b.hidden })}>{b.hidden ? <><I.eye size={14} /> Ko‘rsatish</> : <><BI.eyeOff size={14} /> Yashirish</>}</button>}
-        {!isAlt && <button className="btn btn-sm" onClick={() => set({ locked: !b.locked })}>{b.locked ? <><BI.unlock size={14} /> Qulfni ochish</> : <><I.lock size={14} /> Qulflash</>}</button>}
-        <button className="btn btn-sm btn-danger" onClick={remove} disabled={b.locked}><I.trash size={14} /> O‘chirish</button>
+        {!isAlt && <button className="btn btn-sm" onClick={duplicate}><I.copy size={14} />{" "}{tx("Nusxa")}</button>}
+        {!isAlt && <button className="btn btn-sm" onClick={() => set({ hidden: !b.hidden })}>{b.hidden ? <><I.eye size={14} />{" "}{tx("Ko‘rsatish")}</> : <><BI.eyeOff size={14} />{" "}{tx("Yashirish")}</>}</button>}
+        {!isAlt && <button className="btn btn-sm" onClick={() => set({ locked: !b.locked })}>{b.locked ? <><BI.unlock size={14} />{" "}{tx("Qulfni ochish")}</> : <><I.lock size={14} />{" "}{tx("Qulflash")}</>}</button>}
+        <button className="btn btn-sm btn-danger" onClick={remove} disabled={b.locked}><I.trash size={14} />{" "}{tx("O‘chirish")}</button>
       </div>
     </>
   );
@@ -130,32 +130,32 @@ function LookTab({ b, set }: { b: Block; set: (p: Partial<Block>) => void }) {
   const noHead = b.type === "hero" || b.type === "intro" || b.type === "banner";
   return (
     <>
-      {b.type === "partners" && <p className="muted small">Sarlavha «Kontent → Hamkorlar» sahifasida, «Bosh sahifadagi blok» kartochkasida o‘zgartiriladi.</p>}
+      {b.type === "partners" && <p className="muted small">{tx("Sarlavha «Kontent → Hamkorlar» sahifasida, «Bosh sahifadagi blok» kartochkasida o‘zgartiriladi.")}</p>}
       {!noHead && (
         <>
-          {b.type !== "partners" && <F label="Sarlavha" hint="Bo‘sh qoldirilsa, modul nomi ishlatiladi.">
+          {b.type !== "partners" && <F label={tx("Sarlavha")} hint={tx("Bo‘sh qoldirilsa, modul nomi ishlatiladi.")}>
             <input className="input input-sm" value={b.title || ""} placeholder={defaultTitle(b.type) || m.name} maxLength={120} onChange={(e) => set({ title: e.target.value || undefined })} />
           </F>}
-          <Switch label="Sarlavhani yashirish" checked={!!b.hideTitle} onChange={(v) => set({ hideTitle: v || undefined })} />
-          <F label="«Barchasi» havolasi">
+          <Switch label={tx("Sarlavhani yashirish")} checked={!!b.hideTitle} onChange={(v) => set({ hideTitle: v || undefined })} />
+          <F label={tx("«Barchasi» havolasi")}>
             <div className="hb-2">
-              <input className="input input-sm" value={b.linkLabel || ""} placeholder="Matn" maxLength={40} onChange={(e) => set({ linkLabel: e.target.value || undefined })} />
+              <input className="input input-sm" value={b.linkLabel || ""} placeholder={tx("Matn")} maxLength={40} onChange={(e) => set({ linkLabel: e.target.value || undefined })} />
               <input className="input input-sm" value={b.linkHref || ""} placeholder="/matchlar" maxLength={500} onChange={(e) => set({ linkHref: e.target.value || undefined })} />
             </div>
           </F>
         </>
       )}
       {b.type !== "hero" && b.type !== "intro" && (
-        <F label="Blok foni">
-          <Seg full value={b.bg || ""} onChange={(v) => set({ bg: (v || undefined) as Block["bg"] })} options={[{ key: "", label: "Yo‘q" }, { key: "subtle", label: "Kulrang" }, { key: "dark", label: "Qora" }]} />
+        <F label={tx("Blok foni")}>
+          <Seg full value={b.bg || ""} onChange={(v) => set({ bg: (v || undefined) as Block["bg"] })} options={[{ key: "", label: tx("Yo‘q") }, { key: "subtle", label: tx("Kulrang") }, { key: "dark", label: tx("Qora") }]} />
         </F>
       )}
-      {noHead && <p className="muted small">Bu modulning ko‘rinishi «Sozlamalar» bo‘limida sozlanadi.</p>}
+      {noHead && <p className="muted small">{tx("Bu modulning ko‘rinishi «Sozlamalar» bo‘limida sozlanadi.")}</p>}
     </>
   );
 }
 
-const defaultTitle = (t: ModuleType) => ({ fmatch: "Asosiy match", live: "Jonli", upcoming: "Matchlar", results: "So‘nggi natijalar", standings: "Turnir jadvali", scorers: "To‘purarlar", stats: "Raqamlarda", news: "Yangiliklar", video: "Video", gallery: "Foto", social: "Ijtimoiy tarmoqlar", player: "O‘yinchi", team: "Jamoa", partners: "Hamkorlar", shop: "Rasmiy do‘kon" } as Record<string, string>)[t];
+const defaultTitle = (t: ModuleType) => ({ fmatch: tx("Asosiy match"), live: tx("Jonli"), upcoming: tx("Matchlar"), results: tx("So‘nggi natijalar"), standings: tx("Turnir jadvali"), scorers: tx("To‘purarlar"), stats: tx("Raqamlarda"), news: tx("Yangiliklar"), video: "Video", gallery: tx("Foto"), social: tx("Ijtimoiy tarmoqlar"), player: tx("O‘yinchi"), team: tx("Jamoa"), partners: tx("Hamkorlar"), shop: tx("Rasmiy do‘kon") } as Record<string, string>)[t];
 
 function DevicesTab({ b, set }: { b: Block; set: (p: Partial<Block>) => void }) {
   const d = b.devices || { desktop: true, tablet: true, mobile: true };
@@ -165,17 +165,17 @@ function DevicesTab({ b, set }: { b: Block; set: (p: Partial<Block>) => void }) 
   };
   return (
     <>
-      {([["desktop", "Desktop · 1440", BI.monitor], ["tablet", "Tablet · 768", BI.tablet], ["mobile", "Mobile · 390", BI.phone]] as const).map(([k, label, Ic]) => (
+      {([["desktop", tx("Desktop · 1440"), BI.monitor], ["tablet", tx("Tablet · 768"), BI.tablet], ["mobile", tx("Mobile · 390"), BI.phone]] as const).map(([k, label, Ic]) => (
         <label key={k} className="hb-device">
           <Ic size={18} />
-          <span className="grow"><b>{label}</b><small className={d[k] ? "" : "danger"}>{d[k] ? "Ko‘rsatiladi" : "Yashirin"}</small></span>
+          <span className="grow"><b>{label}</b><small className={d[k] ? "" : "danger"}>{d[k] ? tx("Ko‘rsatiladi") : tx("Yashirin")}</small></span>
           <input type="checkbox" className="switch" checked={d[k]} onChange={(e) => put(k, e.target.checked)} />
         </label>
       ))}
-      <F label="Mobil versiyada tartib" value={b.mobileOrder ? `${b.mobileOrder}-o‘rin` : "Avtomatik"} hint="Telefonda bloklar bitta ustunga tushadi. Raqam bersangiz, blok shu o‘ringa chiqadi (1 — eng yuqori).">
+      <F label={tx("Mobil versiyada tartib")} value={b.mobileOrder ? `${b.mobileOrder}-o‘rin` : "Avtomatik"} hint={tx("Telefonda bloklar bitta ustunga tushadi. Raqam bersangiz, blok shu o‘ringa chiqadi (1 — eng yuqori).")}>
         <div className="hb-2">
-          <input className="input input-sm" type="number" min={0} max={99} value={b.mobileOrder || ""} placeholder="Avtomatik" onChange={(e) => set({ mobileOrder: Math.max(0, Math.min(99, Number(e.target.value) || 0)) || undefined })} />
-          <button className="btn btn-sm" onClick={() => set({ mobileOrder: undefined })} disabled={!b.mobileOrder}>Avtomatik</button>
+          <input className="input input-sm" type="number" min={0} max={99} value={b.mobileOrder || ""} placeholder={tx("Avtomatik")} onChange={(e) => set({ mobileOrder: Math.max(0, Math.min(99, Number(e.target.value) || 0)) || undefined })} />
+          <button className="btn btn-sm" onClick={() => set({ mobileOrder: undefined })} disabled={!b.mobileOrder}>{tx("Avtomatik")}</button>
         </div>
       </F>
     </>
@@ -186,7 +186,7 @@ function DevicesTab({ b, set }: { b: Block; set: (p: Partial<Block>) => void }) 
 
 const BEFORE = [30, 60, 180, 1440];
 const AFTER = [0, 60, 120, 1440];
-const minLabel = (m: number) => (m === 1440 ? "Kun bo‘yi" : m === 0 ? "Darhol" : m < 60 ? `${m} daq` : `${m / 60} soat`);
+const minLabel = (m: number) => (m === 1440 ? tx("Kun bo‘yi") : m === 0 ? tx("Darhol") : m < 60 ? tx("{0} daq", m) : tx("{0} soat", m / 60));
 
 function ScheduleTab({ b }: { b: Block }) {
   const { layout, commit, select, refs, now } = useBuilder();
@@ -218,32 +218,32 @@ function ScheduleTab({ b }: { b: Block }) {
 
   return (
     <>
-      <F label="Ko‘rsatish rejimi">
-        <Seg full value={s.mode} onChange={setMode} options={[{ key: "always", label: "Doim" }, { key: "range", label: "Muddat" }, { key: "weekly", label: "Takroriy" }, { key: "match", label: "Matchga" }]} />
+      <F label={tx("Ko‘rsatish rejimi")}>
+        <Seg full value={s.mode} onChange={setMode} options={[{ key: "always", label: tx("Doim") }, { key: "range", label: tx("Muddat") }, { key: "weekly", label: tx("Takroriy") }, { key: "match", label: tx("Matchga") }]} />
       </F>
-      {s.mode === "always" && <p className="muted small">Blok har doim ko‘rinadi. Muayyan sanagacha, haftaning kunlarida yoki faqat match paytida ko‘rsatish uchun rejimni tanlang.</p>}
+      {s.mode === "always" && <p className="muted small">{tx("Blok har doim ko‘rinadi. Muayyan sanagacha, haftaning kunlarida yoki faqat match paytida ko‘rsatish uchun rejimni tanlang.")}</p>}
 
       {s.mode === "range" && (
         <>
-          <F label="Boshlanishi" hint="Bo‘sh — darhol.">
+          <F label={tx("Boshlanishi")} hint={tx("Bo‘sh — darhol.")}>
             <div className="hb-2"><input className="input input-sm" type="datetime-local" value={s.start || ""} onChange={(e) => put({ start: e.target.value || undefined })} />
-              <button className="btn btn-sm" onClick={() => put({ start: undefined })} disabled={!s.start}>Hozirdan</button></div>
+              <button className="btn btn-sm" onClick={() => put({ start: undefined })} disabled={!s.start}>{tx("Hozirdan")}</button></div>
           </F>
-          <F label="Tugashi" hint="Bo‘sh — muddatsiz.">
+          <F label={tx("Tugashi")} hint={tx("Bo‘sh — muddatsiz.")}>
             <div className="hb-2"><input className="input input-sm" type="datetime-local" value={s.end || ""} onChange={(e) => put({ end: e.target.value || undefined })} />
-              <button className="btn btn-sm" onClick={() => put({ end: undefined })} disabled={!s.end}>Muddatsiz</button></div>
+              <button className="btn btn-sm" onClick={() => put({ end: undefined })} disabled={!s.end}>{tx("Muddatsiz")}</button></div>
           </F>
           <div className="hb-pills">
-            <button className="hb-pill" onClick={() => quick(86400_000)}>+1 kun</button>
-            <button className="hb-pill" onClick={() => quick(7 * 86400_000)}>+1 hafta</button>
-            {finalMatch && <button className="hb-pill" title="Oxirgi rejalashtirilgan match kuni oxirigacha" onClick={() => put({ end: toLocal(Date.parse(finalMatch.kickoff_at)).slice(0, 11) + "23:59" })}>So‘nggi match kunigacha</button>}
+            <button className="hb-pill" onClick={() => quick(86400_000)}>{tx("+1 kun")}</button>
+            <button className="hb-pill" onClick={() => quick(7 * 86400_000)}>{tx("+1 hafta")}</button>
+            {finalMatch && <button className="hb-pill" title={tx("Oxirgi rejalashtirilgan match kuni oxirigacha")} onClick={() => put({ end: toLocal(Date.parse(finalMatch.kickoff_at)).slice(0, 11) + "23:59" })}>{tx("So‘nggi match kunigacha")}</button>}
           </div>
         </>
       )}
 
       {s.mode === "weekly" && (
         <>
-          <F label="Kunlar">
+          <F label={tx("Kunlar")}>
             <div className="hb-days">
               {DAYS.map((d, i) => {
                 const on = (s.days || []).includes(i);
@@ -251,7 +251,7 @@ function ScheduleTab({ b }: { b: Block }) {
               })}
             </div>
           </F>
-          <F label="Vaqt oralig‘i" hint="Masalan, 22:00 — 02:00 kechasi ham ishlaydi.">
+          <F label={tx("Vaqt oralig‘i")} hint={tx("Masalan, 22:00 — 02:00 kechasi ham ishlaydi.")}>
             <div className="hb-2">
               <input className="input input-sm" type="time" value={s.from || ""} onChange={(e) => put({ from: e.target.value })} />
               <input className="input input-sm" type="time" value={s.to || ""} onChange={(e) => put({ to: e.target.value })} />
@@ -262,33 +262,33 @@ function ScheduleTab({ b }: { b: Block }) {
 
       {s.mode === "match" && (
         <>
-          <p className="muted small" style={{ margin: 0 }}>Blok mavsumning har bir matchi atrofida ko‘rinadi: jonli match paytida doim.</p>
-          <F label="Ko‘rsatishni boshlash" hint="match boshlanishidan oldin">
+          <p className="muted small" style={{ margin: 0 }}>{tx("Blok mavsumning har bir matchi atrofida ko‘rinadi: jonli match paytida doim.")}</p>
+          <F label={tx("Ko‘rsatishni boshlash")} hint={tx("match boshlanishidan oldin")}>
             <Seg full value={s.before ?? 60} onChange={(v) => put({ before: v })} options={BEFORE.map((m) => ({ key: m, label: minLabel(m) }))} />
           </F>
-          <F label="Yashirish" hint="hakam hushtagidan keyin">
-            <Seg full value={s.after ?? 120} onChange={(v) => put({ after: v })} options={AFTER.map((m) => ({ key: m, label: m === 0 ? "Darhol" : m === 1440 ? "Kun oxiri" : `+${m / 60} soat` }))} />
+          <F label={tx("Yashirish")} hint={tx("hakam hushtagidan keyin")}>
+            <Seg full value={s.after ?? 120} onChange={(v) => put({ after: v })} options={AFTER.map((m) => ({ key: m, label: m === 0 ? tx("Darhol") : m === 1440 ? tx("Kun oxiri") : tx("+{0} soat", m / 60) }))} />
           </F>
         </>
       )}
 
       {s.mode !== "always" && (
         <>
-          <F label="Vaqt mintaqasi"><div className="input input-sm hb-static">Toshkent (UTC+5)</div></F>
-          <F label={s.mode === "match" ? "Matchlar bo‘lmaganda" : "Ko‘rinmaydigan vaqtda"}>
-            <Seg full value={s.onEnd === "replace" ? "replace" : "hide"} onChange={(v) => setAlt(v === "replace" ? (b.alt?.type || "partners") : "")} options={[{ key: "hide", label: "Yashirish" }, { key: "replace", label: "Almashtirish" }]} />
+          <F label={tx("Vaqt mintaqasi")}><div className="input input-sm hb-static">{tx("Toshkent (UTC+5)")}</div></F>
+          <F label={s.mode === "match" ? tx("Matchlar bo‘lmaganda") : tx("Ko‘rinmaydigan vaqtda")}>
+            <Seg full value={s.onEnd === "replace" ? "replace" : "hide"} onChange={(v) => setAlt(v === "replace" ? (b.alt?.type || "partners") : "")} options={[{ key: "hide", label: tx("Yashirish") }, { key: "replace", label: tx("Almashtirish") }]} />
             {s.onEnd === "replace" && (
               <div className="hb-2" style={{ marginTop: 8 }}>
                 <select className="select input-sm" value={b.alt?.type || ""} onChange={(e) => setAlt(e.target.value as ModuleType)}>
                   {MODULES.filter((x) => x.type !== "hero" && x.type !== "intro").map((x) => <option key={x.type} value={x.type}>{x.name}</option>)}
                 </select>
-                {b.alt && <button className="btn btn-sm" onClick={() => select({ kind: "block", id: b.alt!.id })}>Sozlash</button>}
+                {b.alt && <button className="btn btn-sm" onClick={() => select({ kind: "block", id: b.alt!.id })}>{tx("Sozlash")}</button>}
               </div>
             )}
           </F>
           <div className={`hb-status ${st.active ? "on" : "off"}`}>
             <i />
-            <div><b>{st.text}</b><small>{st.active ? "Jadval o‘z-o‘zidan ishlaydi — qayta nashr qilish shart emas." : s.onEnd === "replace" && b.alt ? `Hozir o‘rnida «${blockLabel(b.alt)}» ko‘rinadi.` : "Hozir saytda ko‘rinmaydi."}</small></div>
+            <div><b>{st.text}</b><small>{st.active ? tx("Jadval o‘z-o‘zidan ishlaydi — qayta nashr qilish shart emas.") : s.onEnd === "replace" && b.alt ? tx("Hozir o‘rnida «{0}» ko‘rinadi.", blockLabel(b.alt)) : tx("Hozir saytda ko‘rinmaydi.")}</small></div>
           </div>
         </>
       )}
@@ -298,7 +298,7 @@ function ScheduleTab({ b }: { b: Block }) {
 
 // ---------------- module settings ----------------
 
-function Count({ value, onChange, min = 1, max = 12, label = "Elementlar soni" }: { value: unknown; onChange: (n: number) => void; min?: number; max?: number; label?: string }) {
+function Count({ value, onChange, min = 1, max = 12, label = tx("Elementlar soni") }: { value: unknown; onChange: (n: number) => void; min?: number; max?: number; label?: string }) {
   const n = typeof value === "number" ? value : min;
   return (
     <F label={label} value={n}>
@@ -317,19 +317,19 @@ function PropsEditor({ b, setProps, set }: { b: Block; setProps: (p: Record<stri
 
   switch (b.type) {
     case "hero":
-      return <p className="hb-note">Slaydlar «Hero-bannerlar» bo‘limida boshqariladi. <Link to="/banners">Bannerlarni ochish →</Link></p>;
+      return <p className="hb-note">{tx("Slaydlar «Hero-bannerlar» bo‘limida boshqariladi.")}{" "}<Link to="/banners">{tx("Bannerlarni ochish →")}</Link></p>;
     case "intro":
       return (
         <>
-          {text("title", "Sarlavha (H1)", "United MFL — media futbol ligasi", 120)}
-          <F label="Matn" hint="Bo‘sh — avtomatik matn (mavsum, jamoalar soni va bo‘limlarga havolalar)."><textarea className="textarea" rows={4} value={str("text")} maxLength={600} onChange={(e) => setProps({ text: e.target.value })} /></F>
+          {text("title", tx("Sarlavha (H1)"), tx("United MFL — media futbol ligasi"), 120)}
+          <F label={tx("Matn")} hint={tx("Bo‘sh — avtomatik matn (mavsum, jamoalar soni va bo‘limlarga havolalar).")}><textarea className="textarea" rows={4} value={str("text")} maxLength={600} onChange={(e) => setProps({ text: e.target.value })} /></F>
         </>
       );
     case "fmatch":
       return (
-        <F label="Match" hint="Avtomatik: jonli → keyingi → so‘nggi o‘ynalgan.">
+        <F label={tx("Match")} hint={tx("Avtomatik: jonli → keyingi → so‘nggi o‘ynalgan.")}>
           <select className="select input-sm" value={String(p.matchId || 0)} onChange={(e) => setProps({ matchId: Number(e.target.value) })}>
-            <option value="0">Avtomatik</option>
+            <option value="0">{tx("Avtomatik")}</option>
             {refs.matches.map((m) => <option key={m.id} value={m.id}>{matchName(m)}</option>)}
           </select>
         </F>
@@ -340,8 +340,8 @@ function PropsEditor({ b, setProps, set }: { b: Block; setProps: (p: Record<stri
       return (
         <>
           <Count value={p.count} onChange={(n) => setProps({ count: n })} />
-          <Switch label="Jonli matchlar boshida" checked={p.withLive !== false} onChange={(v) => setProps({ withLive: v })} />
-          <Switch label="Natijalarni ham qo‘shish" hint="Yaqin matchlar kam bo‘lsa, so‘nggi natijalar bilan to‘ldiriladi" checked={!!p.withResults} onChange={(v) => setProps({ withResults: v })} />
+          <Switch label={tx("Jonli matchlar boshida")} checked={p.withLive !== false} onChange={(v) => setProps({ withLive: v })} />
+          <Switch label={tx("Natijalarni ham qo‘shish")} hint={tx("Yaqin matchlar kam bo‘lsa, so‘nggi natijalar bilan to‘ldiriladi")} checked={!!p.withResults} onChange={(v) => setProps({ withResults: v })} />
         </>
       );
     case "results":
@@ -351,13 +351,13 @@ function PropsEditor({ b, setProps, set }: { b: Block; setProps: (p: Record<stri
     case "scorers":
       return <Count value={p.count} max={20} onChange={(n) => setProps({ count: n })} />;
     case "stats":
-      return <Count label="To‘purarlar ro‘yxati" min={0} max={10} value={p.scorers ?? 0} onChange={(n) => setProps({ scorers: n })} />;
+      return <Count label={tx("To‘purarlar ro‘yxati")} min={0} max={10} value={p.scorers ?? 0} onChange={(n) => setProps({ scorers: n })} />;
     case "standings":
       return (
-        <F label="Guruh">
+        <F label={tx("Guruh")}>
           <select className="select input-sm" value={str("group")} onChange={(e) => setProps({ group: e.target.value })}>
-            <option value="">Birinchi guruh</option>
-            <option value="all">Barcha guruhlar</option>
+            <option value="">{tx("Birinchi guruh")}</option>
+            <option value="all">{tx("Barcha guruhlar")}</option>
             {refs.groups.map((g) => <option key={g.code} value={g.code}>{g.name}</option>)}
           </select>
         </F>
@@ -373,26 +373,26 @@ function PropsEditor({ b, setProps, set }: { b: Block; setProps: (p: Record<stri
         next.rows.splice(f.ri, 0, { id: uid("r"), blocks: [fb] });
         commit(next);
         select({ kind: "block", id: fb.id });
-        toast("Yangilik alohida blokka chiqarildi", "ok");
+        toast(tx("Yangilik alohida blokka chiqarildi"), "ok");
       };
       return (
         <>
           <Count value={p.count} onChange={(n) => setProps({ count: n })} />
-          <F label="Rukn">
+          <F label={tx("Rukn")}>
             <select className="select input-sm" value={str("category")} onChange={(e) => setProps({ category: e.target.value })}>
-              <option value="">Barcha ruknlar</option>
+              <option value="">{tx("Barcha ruknlar")}</option>
               {cats.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </F>
-          <F label="Ichki elementlar" hint="↗ — yangilikni alohida katta blokka chiqarish (Featured News). Lentada u takrorlanmaydi.">
+          <F label={tx("Ichki elementlar")} hint={tx("↗ — yangilikni alohida katta blokka chiqarish (Featured News). Lentada u takrorlanmaydi.")}>
             <div className="hb-items">
               {shown.map((n) => (
                 <div key={n.slug} className="hb-item">
                   <I.news size={14} /><span className="grow">{n.title}</span>
-                  <button className="btn btn-ghost btn-sm btn-icon" title="Alohida blokka chiqarish" onClick={() => extract(n)}><BI.extract size={14} /></button>
+                  <button className="btn btn-ghost btn-sm btn-icon" title={tx("Alohida blokka chiqarish")} onClick={() => extract(n)}><BI.extract size={14} /></button>
                 </div>
               ))}
-              {!shown.length && <span className="muted small">Yangiliklar yo‘q</span>}
+              {!shown.length && <span className="muted small">{tx("Yangiliklar yo‘q")}</span>}
             </div>
           </F>
         </>
@@ -400,9 +400,9 @@ function PropsEditor({ b, setProps, set }: { b: Block; setProps: (p: Record<stri
     }
     case "fnews":
       return (
-        <F label="Yangilik" hint="Avtomatik — eng so‘nggi yangilik.">
+        <F label={tx("Yangilik")} hint={tx("Avtomatik — eng so‘nggi yangilik.")}>
           <select className="select input-sm" value={str("slug")} onChange={(e) => setProps({ slug: e.target.value })}>
-            <option value="">Avtomatik (so‘nggi)</option>
+            <option value="">{tx("Avtomatik (so‘nggi)")}</option>
             {refs.news.map((n) => <option key={n.slug} value={n.slug}>{n.title}</option>)}
           </select>
         </F>
@@ -410,29 +410,29 @@ function PropsEditor({ b, setProps, set }: { b: Block; setProps: (p: Record<stri
     case "gallery":
       return (
         <>
-          <F label="Match" hint="Avtomatik — fotolari bor so‘nggi match.">
+          <F label={tx("Match")} hint={tx("Avtomatik — fotolari bor so‘nggi match.")}>
             <select className="select input-sm" value={String(p.matchId || 0)} onChange={(e) => setProps({ matchId: Number(e.target.value) })}>
-              <option value="0">Avtomatik</option>
+              <option value="0">{tx("Avtomatik")}</option>
               {refs.matches.filter((m) => m.status === "finished").map((m) => <option key={m.id} value={m.id}>{matchName(m)}</option>)}
             </select>
           </F>
-          <Count label="Fotolar soni" value={p.count} onChange={(n) => setProps({ count: n })} />
+          <Count label={tx("Fotolar soni")} value={p.count} onChange={(n) => setProps({ count: n })} />
         </>
       );
     case "social":
       return (
         <>
-          <Count label="Instagram postlari" min={0} value={p.count ?? 6} onChange={(n) => setProps({ count: n })} />
-          <Switch label="Ijtimoiy tarmoq tugmalari" checked={p.links !== false} onChange={(v) => setProps({ links: v })} />
+          <Count label={tx("Instagram postlari")} min={0} value={p.count ?? 6} onChange={(n) => setProps({ count: n })} />
+          <Switch label={tx("Ijtimoiy tarmoq tugmalari")} checked={p.links !== false} onChange={(v) => setProps({ links: v })} />
         </>
       );
     case "player":
       return <PlayerPick value={Number(p.playerId) || 0} onChange={(id) => setProps({ playerId: id })} label={str("label")} setLabel={(v) => setProps({ label: v })} />;
     case "team":
       return (
-        <F label="Jamoa">
+        <F label={tx("Jamoa")}>
           <select className="select input-sm" value={str("slug")} onChange={(e) => setProps({ slug: e.target.value })}>
-            <option value="">Birinchi jamoa</option>
+            <option value="">{tx("Birinchi jamoa")}</option>
             {refs.teams.map((t) => <option key={t.slug} value={t.slug}>{t.name}</option>)}
           </select>
         </F>
@@ -442,21 +442,21 @@ function PropsEditor({ b, setProps, set }: { b: Block; setProps: (p: Record<stri
     case "banner":
       return (
         <>
-          {text("eyebrow", "Ustki yozuv", "REKLAMA · HAMKOR", 60)}
-          {text("title", "Sarlavha", "Finalga chiptalar sotuvda", 120)}
-          <F label="Matn"><textarea className="textarea" rows={2} value={str("text")} maxLength={300} onChange={(e) => setProps({ text: e.target.value })} /></F>
-          <F label="Rasm (desktop)"><ImageInput wide value={str("image")} onChange={(v) => setProps({ image: v })} /></F>
-          <F label="Rasm (telefon, ixtiyoriy)"><ImageInput value={str("imageMobile")} onChange={(v) => setProps({ imageMobile: v })} /></F>
-          <div className="hb-2">{text("ctaLabel", "Tugma", "Chipta olish", 40)}{text("ctaUrl", "Havola", "https://…", 500)}</div>
+          {text("eyebrow", tx("Ustki yozuv"), tx("REKLAMA · HAMKOR"), 60)}
+          {text("title", tx("Sarlavha"), tx("Finalga chiptalar sotuvda"), 120)}
+          <F label={tx("Matn")}><textarea className="textarea" rows={2} value={str("text")} maxLength={300} onChange={(e) => setProps({ text: e.target.value })} /></F>
+          <F label={tx("Rasm (desktop)")}><ImageInput wide value={str("image")} onChange={(v) => setProps({ image: v })} /></F>
+          <F label={tx("Rasm (telefon, ixtiyoriy)")}><ImageInput value={str("imageMobile")} onChange={(v) => setProps({ imageMobile: v })} /></F>
+          <div className="hb-2">{text("ctaLabel", tx("Tugma"), tx("Chipta olish"), 40)}{text("ctaUrl", tx("Havola"), "https://…", 500)}</div>
         </>
       );
     case "custom":
       return (
         <>
-          <p className="muted small" style={{ margin: 0 }}>Sarlavha — «Ko‘rinish» bo‘limida.</p>
-          <F label="Matn" hint="Bo‘sh qator — yangi xatboshi."><textarea className="textarea" rows={6} value={str("text")} maxLength={4000} onChange={(e) => setProps({ text: e.target.value })} /></F>
-          <F label="Rasm"><ImageInput wide value={str("image")} onChange={(v) => setProps({ image: v })} /></F>
-          <div className="hb-2">{text("ctaLabel", "Tugma", "Batafsil", 40)}{text("ctaUrl", "Havola", "/biz-haqimizda", 500)}</div>
+          <p className="muted small" style={{ margin: 0 }}>{tx("Sarlavha — «Ko‘rinish» bo‘limida.")}</p>
+          <F label={tx("Matn")} hint={tx("Bo‘sh qator — yangi xatboshi.")}><textarea className="textarea" rows={6} value={str("text")} maxLength={4000} onChange={(e) => setProps({ text: e.target.value })} /></F>
+          <F label={tx("Rasm")}><ImageInput wide value={str("image")} onChange={(v) => setProps({ image: v })} /></F>
+          <div className="hb-2">{text("ctaLabel", tx("Tugma"), tx("Batafsil"), 40)}{text("ctaUrl", tx("Havola"), "/biz-haqimizda", 500)}</div>
         </>
       );
   }
@@ -482,10 +482,10 @@ function PlayerPick({ value, onChange, label, setLabel }: { value: number; onCha
   }, [q]);
   return (
     <>
-      <F label="O‘yinchi" value={value ? name : "Avtomatik"} hint="Avtomatik — eng ko‘p gol urgan o‘yinchi.">
+      <F label={tx("O‘yinchi")} value={value ? name : tx("Avtomatik")} hint={tx("Avtomatik — eng ko‘p gol urgan o‘yinchi.")}>
         <div className="hb-2">
-          <input className="input input-sm" value={q} placeholder="Ism bo‘yicha qidirish" onChange={(e) => setQ(e.target.value)} />
-          <button className="btn btn-sm" disabled={!value} onClick={() => onChange(0)}>Avtomatik</button>
+          <input className="input input-sm" value={q} placeholder={tx("Ism bo‘yicha qidirish")} onChange={(e) => setQ(e.target.value)} />
+          <button className="btn btn-sm" disabled={!value} onClick={() => onChange(0)}>{tx("Avtomatik")}</button>
         </div>
         {list.length > 0 && (
           <div className="hb-items" style={{ marginTop: 6 }}>
@@ -493,7 +493,7 @@ function PlayerPick({ value, onChange, label, setLabel }: { value: number; onCha
           </div>
         )}
       </F>
-      <F label="Sarlavha ustidagi yozuv"><input className="input input-sm" value={label} placeholder="Masalan: Tur o‘yinchisi" maxLength={60} onChange={(e) => setLabel(e.target.value)} /></F>
+      <F label={tx("Sarlavha ustidagi yozuv")}><input className="input input-sm" value={label} placeholder={tx("Masalan: Tur o‘yinchisi")} maxLength={60} onChange={(e) => setLabel(e.target.value)} /></F>
     </>
   );
 }
@@ -502,10 +502,8 @@ function PlayerPick({ value, onChange, label, setLabel }: { value: number; onCha
 function PartnersEditor() {
   const { data } = usePartnersSummary();
   return (
-    <div className="hint-box">
-      Hamkorlar, ularning tartibi, logotip va videolari, blok sarlavhasi va «+ Sizning brendingiz» kartochkasi{" "}
-      <Link to="/partners"><b>Kontent → Hamkorlar</b></Link> bo‘limida boshqariladi.
-      {data && <> Hozir saytda: <b>{data.active}</b> ta hamkor{data.title ? <>, sarlavha «{data.title}»</> : null}{data.show_block ? "" : " — blok o‘chirilgan"}.</>}
+    <div className="hint-box">{tx("Hamkorlar, ularning tartibi, logotip va videolari, blok sarlavhasi va «+ Sizning brendingiz» kartochkasi")}{" "}
+      <Link to="/partners"><b>{tx("Kontent → Hamkorlar")}</b></Link>{" "}{tx("bo‘limida boshqariladi.")}{data && <>{" "}{tx("Hozir saytda:")}{" "}<b>{data.active}</b>{" "}{tx("ta hamkor")}{data.title ? <>{tx(", sarlavha «")}{data.title}»</> : null}{data.show_block ? "" : tx(" — blok o‘chirilgan")}.</>}
     </div>
   );
 }
@@ -538,11 +536,11 @@ function RowInspector({ row, index }: { row: Row; index: number }) {
     const rows: Row[] = r.blocks.map((b, i) => ({ ...(i === 0 ? r : { id: uid("r") }), blocks: [b] }));
     l.rows.splice(index, 1, ...rows);
     commit(l);
-    toast(`${rows.length} ta alohida qator`, "ok");
+    toast(tx("{0} ta alohida qator", rows.length), "ok");
   };
   const merge = () => {
     if (!next) return;
-    if (row.blocks.length + next.blocks.length > 4 || hero || next.blocks.some((b) => b.type === "hero")) return toast("Birlashtirib bo‘lmaydi: qatorda ko‘pi bilan 4 blok, Hero alohida turadi", "error");
+    if (row.blocks.length + next.blocks.length > 4 || hero || next.blocks.some((b) => b.type === "hero")) return toast(tx("Birlashtirib bo‘lmaydi: qatorda ko‘pi bilan 4 blok, Hero alohida turadi"), "error");
     const l = clone(layout);
     const merged = fitRow({ ...l.rows[index], blocks: [...l.rows[index].blocks, ...l.rows[index + 1].blocks] });
     l.rows.splice(index, 2, merged);
@@ -554,7 +552,7 @@ function RowInspector({ row, index }: { row: Row; index: number }) {
     commit(l);
   };
   const delRow = () => {
-    if (row.blocks.some((b) => b.locked)) return toast("Qatorda qulflangan blok bor", "error");
+    if (row.blocks.some((b) => b.locked)) return toast(tx("Qatorda qulflangan blok bor"), "error");
     commit({ ...layout, rows: layout.rows.filter((r) => r.id !== row.id) });
     select(null);
   };
@@ -562,11 +560,11 @@ function RowInspector({ row, index }: { row: Row; index: number }) {
   return (
     <>
       <div className="hb-insp-head">
-        <span className="overline-s">QATOR</span>
+        <span className="overline-s">{tx("QATOR")}</span>
         <h3>{index + 1} · {row.blocks.map((b) => blockLabel(b)).join(" + ")}</h3>
       </div>
       <div className="hb-insp-body">
-        <F label="Ustunlar" hint={hero ? "Hero qatori doim to‘liq kenglikda." : row.blocks.length < 4 ? "Ko‘proq ustun uchun qatorga yana blok sudrang." : undefined}>
+        <F label={tx("Ustunlar")} hint={hero ? tx("Hero qatori doim to‘liq kenglikda.") : row.blocks.length < 4 ? tx("Ko‘proq ustun uchun qatorga yana blok sudrang.") : undefined}>
           <div className="hb-presets">
             {PRESETS.map((p) => (
               <button key={p.key} type="button" aria-pressed={preset === p.key} disabled={hero || p.spans.length !== row.blocks.length} onClick={() => commit(applyPreset(layout, row.id, p.spans))} title={p.key}>
@@ -575,23 +573,23 @@ function RowInspector({ row, index }: { row: Row; index: number }) {
             ))}
           </div>
         </F>
-        <F label="Bloklar orasidagi masofa" value={`${row.gap || 24} px`}>
+        <F label={tx("Bloklar orasidagi masofa")} value={`${row.gap || 24} px`}>
           <Seg full value={row.gap || 24} onChange={(v) => set({ gap: v === 24 ? undefined : v })} options={[16, 24, 40, 64].map((g) => ({ key: g, label: g }))} />
         </F>
-        <F label="Qator foni">
-          <Seg full value={row.bg || ""} onChange={(v) => set({ bg: (v || undefined) as Row["bg"] })} options={[{ key: "", label: "Yo‘q" }, { key: "subtle", label: "Kulrang" }, { key: "dark", label: "Qora" }]} />
+        <F label={tx("Qator foni")}>
+          <Seg full value={row.bg || ""} onChange={(v) => set({ bg: (v || undefined) as Row["bg"] })} options={[{ key: "", label: tx("Yo‘q") }, { key: "subtle", label: tx("Kulrang") }, { key: "dark", label: tx("Qora") }]} />
         </F>
-        <F label="Yuqori / pastki ichki chegara" value={{ S: "32 / 32", M: "64 / 64", L: "96 / 96" }[row.pad || "M"]}>
+        <F label={tx("Yuqori / pastki ichki chegara")} value={{ S: "32 / 32", M: "64 / 64", L: "96 / 96" }[row.pad || "M"]}>
           <Seg full value={row.pad || "M"} onChange={(v) => set({ pad: v === "M" ? undefined : v })} options={[{ key: "S", label: "S" }, { key: "M", label: "M" }, { key: "L", label: "L" }]} />
         </F>
-        <Switch label="Balandlikni tenglashtirish" hint="Bloklar eng baland blok bo‘yicha cho‘ziladi" checked={!!row.equal} onChange={(v) => set({ equal: v || undefined })} />
-        <Switch label="Qatorni yashirish" hint="Saytda ko‘rinmaydi, konstruktorda qoladi" checked={!!row.hidden} onChange={(v) => set({ hidden: v || undefined })} />
+        <Switch label={tx("Balandlikni tenglashtirish")} hint={tx("Bloklar eng baland blok bo‘yicha cho‘ziladi")} checked={!!row.equal} onChange={(v) => set({ equal: v || undefined })} />
+        <Switch label={tx("Qatorni yashirish")} hint={tx("Saytda ko‘rinmaydi, konstruktorda qoladi")} checked={!!row.hidden} onChange={(v) => set({ hidden: v || undefined })} />
       </div>
       <div className="hb-insp-foot col">
-        <button className="btn btn-sm" onClick={ungroup} disabled={row.blocks.length < 2}><BI.split size={14} /> Guruhni ajratish (Ungroup)</button>
-        <button className="btn btn-sm" onClick={merge} disabled={!next}><BI.merge size={14} /> Keyingi qator bilan birlashtirish</button>
-        <button className="btn btn-sm" onClick={dupRow}><I.copy size={14} /> Qatorni nusxalash</button>
-        <button className="btn btn-sm btn-danger" onClick={delRow}><I.trash size={14} /> Qatorni o‘chirish</button>
+        <button className="btn btn-sm" onClick={ungroup} disabled={row.blocks.length < 2}><BI.split size={14} />{" "}{tx("Guruhni ajratish (Ungroup)")}</button>
+        <button className="btn btn-sm" onClick={merge} disabled={!next}><BI.merge size={14} />{" "}{tx("Keyingi qator bilan birlashtirish")}</button>
+        <button className="btn btn-sm" onClick={dupRow}><I.copy size={14} />{" "}{tx("Qatorni nusxalash")}</button>
+        <button className="btn btn-sm btn-danger" onClick={delRow}><I.trash size={14} />{" "}{tx("Qatorni o‘chirish")}</button>
       </div>
     </>
   );

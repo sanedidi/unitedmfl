@@ -1,3 +1,4 @@
+import { lang, tx } from "@/lib/i18n";
 // Homepage layout model and schedule rules. The types, DEFAULT_LAYOUT and the
 // schedule functions are a copy of web/src/lib/layout.ts (keep both in sync,
 // and backend/internal/api/homepage.go); the builder helpers follow below.
@@ -67,7 +68,7 @@ export const DEFAULT_LAYOUT: Layout = {
     { id: "r_news", blocks: [{ id: "b_news", type: "news", variant: "featured", span: 12, props: { count: 5 } }] },
     { id: "r_video", blocks: [{ id: "b_video", type: "video", variant: "featured", span: 12, props: { count: 3 } }] },
     { id: "r_shop", bg: "subtle", blocks: [{ id: "b_shop", type: "shop", variant: "featured", span: 12, props: { count: 4 } }] },
-    { id: "r_partners", blocks: [{ id: "b_partners", type: "partners", variant: "featured", span: 12, title: "Final homiylari", linkLabel: "Hamkor bo‘lish", linkHref: "/biz-haqimizda#aloqa",
+    { id: "r_partners", blocks: [{ id: "b_partners", type: "partners", variant: "featured", span: 12, title: tx("Final homiylari"), linkLabel: tx("Hamkor bo‘lish"), linkHref: "/biz-haqimizda#aloqa",
       props: { items: [{ name: "realme" }, { name: "Click" }, { name: "Wildberries" }], cta: true } }] },
   ],
 };
@@ -165,32 +166,32 @@ export type ModuleMeta = {
 
 const ALL = [3, 4, 6, 8, 9, 12];
 export const MODULES: ModuleMeta[] = [
-  { type: "hero", name: "Hero Section", desc: "Bosh e’lonlar, video-banner", group: "Asosiy", variant: "featured", span: 12, spans: [12] },
-  { type: "intro", name: "Intro (H1)", desc: "Sahifa sarlavhasi va tavsif — SEO", group: "Asosiy", variant: "featured", span: 12, spans: [6, 8, 12] },
-  { type: "fmatch", name: "Featured Match", desc: "Kun matchi, hisob va holat", group: "Matchlar", variant: "wide", span: 8, spans: [4, 6, 8, 12] },
-  { type: "live", name: "Live Matches", desc: "Jonli matchlar", group: "Matchlar", variant: "wide", span: 8, spans: ALL, props: { count: 2 } },
-  { type: "upcoming", name: "Upcoming Matches", desc: "Yaqin matchlar", group: "Matchlar", variant: "compact", span: 4, spans: ALL, props: { count: 3, withLive: true } },
-  { type: "results", name: "Recent Results", desc: "So‘nggi natijalar", group: "Matchlar", variant: "compact", span: 4, spans: ALL, props: { count: 4 } },
-  { type: "standings", name: "League Standings", desc: "Guruhlar jadvali", group: "Turnir", variant: "wide", span: 8, spans: ALL, props: { group: "" } },
-  { type: "scorers", name: "Top Scorers", desc: "To‘purarlar", group: "Turnir", variant: "compact", span: 4, spans: ALL, props: { count: 5 } },
-  { type: "stats", name: "Statistics", desc: "Raqamlar va ko‘rsatkichlar", group: "Turnir", variant: "compact", span: 4, spans: ALL, props: { scorers: 0 } },
-  { type: "news", name: "Latest News", desc: "Yangiliklar lentasi", group: "Kontent", variant: "featured", span: 12, spans: ALL, props: { count: 5 } },
-  { type: "fnews", name: "Featured News", desc: "Bitta katta yangilik", group: "Kontent", variant: "wide", span: 8, spans: [4, 6, 8, 12], props: { slug: "" } },
-  { type: "video", name: "Video Highlights", desc: "Video obzorlar", group: "Kontent", variant: "wide", span: 8, spans: ALL, props: { count: 3 } },
-  { type: "gallery", name: "Photo Gallery", desc: "Match fotoreportaji", group: "Kontent", variant: "wide", span: 8, spans: [4, 6, 8, 12], props: { count: 5 } },
-  { type: "social", name: "Social Feed", desc: "Instagram va tarmoqlar", group: "Kontent", variant: "featured", span: 12, spans: ALL, props: { count: 6, links: true } },
-  { type: "player", name: "Player Spotlight", desc: "O‘yinchi kartasi", group: "Kontent", variant: "standard", span: 6, spans: [4, 6, 8, 12], props: { playerId: 0 } },
-  { type: "team", name: "Team Spotlight", desc: "Jamoa kartasi", group: "Kontent", variant: "standard", span: 6, spans: [4, 6, 8, 12], props: { slug: "" } },
-  { type: "banner", name: "Custom Banner", desc: "Reklama yoki e’lon banneri", group: "Tijorat", variant: "featured", span: 12, spans: ALL, props: { title: "", eyebrow: "", text: "", image: "", imageMobile: "", ctaLabel: "", ctaUrl: "" } },
-  { type: "partners", name: "Partners", desc: "Hamkorlar logotiplari", group: "Tijorat", variant: "featured", span: 12, spans: ALL, props: {} },
-  { type: "shop", name: "Shop", desc: "Rasmiy do‘kon mahsulotlari", group: "Tijorat", variant: "featured", span: 12, spans: ALL, props: { count: 4 } },
-  { type: "custom", name: "Custom Content", desc: "Matn, rasm va tugma", group: "Tijorat", variant: "standard", span: 6, spans: ALL, props: { text: "", image: "", ctaLabel: "", ctaUrl: "" } },
+  { type: "hero", name: "Hero Section", desc: tx("Bosh e’lonlar, video-banner"), group: tx("Asosiy"), variant: "featured", span: 12, spans: [12] },
+  { type: "intro", name: "Intro (H1)", desc: tx("Sahifa sarlavhasi va tavsif — SEO"), group: tx("Asosiy"), variant: "featured", span: 12, spans: [6, 8, 12] },
+  { type: "fmatch", name: "Featured Match", desc: tx("Kun matchi, hisob va holat"), group: tx("Matchlar"), variant: "wide", span: 8, spans: [4, 6, 8, 12] },
+  { type: "live", name: "Live Matches", desc: tx("Jonli matchlar"), group: tx("Matchlar"), variant: "wide", span: 8, spans: ALL, props: { count: 2 } },
+  { type: "upcoming", name: "Upcoming Matches", desc: tx("Yaqin matchlar"), group: tx("Matchlar"), variant: "compact", span: 4, spans: ALL, props: { count: 3, withLive: true } },
+  { type: "results", name: "Recent Results", desc: tx("So‘nggi natijalar"), group: tx("Matchlar"), variant: "compact", span: 4, spans: ALL, props: { count: 4 } },
+  { type: "standings", name: "League Standings", desc: tx("Guruhlar jadvali"), group: tx("Turnir"), variant: "wide", span: 8, spans: ALL, props: { group: "" } },
+  { type: "scorers", name: "Top Scorers", desc: tx("To‘purarlar"), group: tx("Turnir"), variant: "compact", span: 4, spans: ALL, props: { count: 5 } },
+  { type: "stats", name: "Statistics", desc: tx("Raqamlar va ko‘rsatkichlar"), group: tx("Turnir"), variant: "compact", span: 4, spans: ALL, props: { scorers: 0 } },
+  { type: "news", name: "Latest News", desc: tx("Yangiliklar lentasi"), group: tx("Kontent"), variant: "featured", span: 12, spans: ALL, props: { count: 5 } },
+  { type: "fnews", name: "Featured News", desc: tx("Bitta katta yangilik"), group: tx("Kontent"), variant: "wide", span: 8, spans: [4, 6, 8, 12], props: { slug: "" } },
+  { type: "video", name: "Video Highlights", desc: tx("Video obzorlar"), group: tx("Kontent"), variant: "wide", span: 8, spans: ALL, props: { count: 3 } },
+  { type: "gallery", name: "Photo Gallery", desc: tx("Match fotoreportaji"), group: tx("Kontent"), variant: "wide", span: 8, spans: [4, 6, 8, 12], props: { count: 5 } },
+  { type: "social", name: "Social Feed", desc: tx("Instagram va tarmoqlar"), group: tx("Kontent"), variant: "featured", span: 12, spans: ALL, props: { count: 6, links: true } },
+  { type: "player", name: "Player Spotlight", desc: tx("O‘yinchi kartasi"), group: tx("Kontent"), variant: "standard", span: 6, spans: [4, 6, 8, 12], props: { playerId: 0 } },
+  { type: "team", name: "Team Spotlight", desc: tx("Jamoa kartasi"), group: tx("Kontent"), variant: "standard", span: 6, spans: [4, 6, 8, 12], props: { slug: "" } },
+  { type: "banner", name: "Custom Banner", desc: tx("Reklama yoki e’lon banneri"), group: tx("Tijorat"), variant: "featured", span: 12, spans: ALL, props: { title: "", eyebrow: "", text: "", image: "", imageMobile: "", ctaLabel: "", ctaUrl: "" } },
+  { type: "partners", name: "Partners", desc: tx("Hamkorlar logotiplari"), group: tx("Tijorat"), variant: "featured", span: 12, spans: ALL, props: {} },
+  { type: "shop", name: "Shop", desc: tx("Rasmiy do‘kon mahsulotlari"), group: tx("Tijorat"), variant: "featured", span: 12, spans: ALL, props: { count: 4 } },
+  { type: "custom", name: "Custom Content", desc: tx("Matn, rasm va tugma"), group: tx("Tijorat"), variant: "standard", span: 6, spans: ALL, props: { text: "", image: "", ctaLabel: "", ctaUrl: "" } },
 ];
-export const MODULE_GROUPS = ["Asosiy", "Matchlar", "Turnir", "Kontent", "Tijorat"];
+export const MODULE_GROUPS = [tx("Asosiy"), tx("Matchlar"), tx("Turnir"), tx("Kontent"), tx("Tijorat")];
 export const meta = (t: ModuleType) => MODULES.find((m) => m.type === t) || MODULES[0];
 
 export const VARIANTS: { key: Variant; label: string }[] = [
-  { key: "compact", label: "Compact" }, { key: "standard", label: "Standard" }, { key: "wide", label: "Wide" }, { key: "featured", label: "Featured" },
+  { key: "compact", label: tx("Compact") }, { key: "standard", label: tx("Standard") }, { key: "wide", label: tx("Wide") }, { key: "featured", label: tx("Featured") },
 ];
 export const variantForSpan = (s: number): Variant => (s <= 4 ? "compact" : s <= 6 ? "standard" : s <= 9 ? "wide" : "featured");
 
@@ -329,8 +330,8 @@ export function blockLabel(b: Block) {
 
 // ---------- time ----------
 
-const MON = ["yan", "fev", "mar", "apr", "may", "iyun", "iyul", "avg", "sen", "okt", "noy", "dek"];
-export const DAYS = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
+const MON = lang === "ru" ? ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"] : ["yan", "fev", "mar", "apr", "may", "iyun", "iyul", "avg", "sen", "okt", "noy", "dek"];
+export const DAYS = [tx("Du"), tx("Se"), tx("Ch"), tx("Pa"), tx("Ju"), tx("Sh"), tx("Ya")];
 
 /** epoch ms → Tashkent "2026-11-30T23:59" (for <input type=datetime-local>). */
 export function toLocal(ms: number) {
@@ -346,42 +347,42 @@ export function shortLocal(local: string) {
 export function fmtDur(ms: number) {
   const min = Math.max(1, Math.round(ms / 60_000));
   const d = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
-  if (d) return h ? `${d} kun ${h} soat` : `${d} kun`;
-  if (h) return m ? `${h} soat ${m} daq` : `${h} soat`;
-  return `${m} daq`;
+  if (d) return h ? tx("{0} kun {1} soat", d, h) : tx("{0} kun", d);
+  if (h) return m ? tx("{0} soat {1} daq", h, m) : tx("{0} soat", h);
+  return tx("{0} daq", m);
 }
 
 /** Short description of a schedule for badges. */
 export function scheduleText(s?: Schedule): string {
-  if (!s || s.mode === "always") return "Doim";
+  if (!s || s.mode === "always") return tx("Doim");
   if (s.mode === "range") {
     if (s.start && s.end) return `${shortLocal(s.start)} – ${shortLocal(s.end)}`;
-    if (s.end) return `${shortLocal(s.end)} gacha`;
-    return `${shortLocal(s.start || "")} dan`;
+    if (s.end) return tx("{0} gacha", shortLocal(s.end));
+    return tx("{0} dan", shortLocal(s.start || ""));
   }
   if (s.mode === "weekly") return `${(s.days || []).slice().sort().map((d) => DAYS[d]).join(", ")} · ${s.from}–${s.to}`;
-  return "Match kunlari";
+  return tx("Match kunlari");
 }
 
 /** Whether the block is on at `now`, and for how long (range mode). */
 export function scheduleState(s: Schedule | undefined, now: number, matches: MatchTime[]): { active: boolean; text: string } {
   const active = scheduleActive(s, now, matches);
-  if (!s || s.mode === "always") return { active, text: "Doim ko‘rinadi" };
+  if (!s || s.mode === "always") return { active, text: tx("Doim ko‘rinadi") };
   if (s.mode === "range") {
     const st = s.start ? tashkentMs(s.start) : null, en = s.end ? tashkentMs(s.end) : null;
-    if (st && now < st) return { active, text: `${fmtDur(st - now)}dan keyin boshlanadi` };
-    if (en && now >= en) return { active, text: "Muddati tugagan" };
-    if (en) return { active, text: `Faol · ${fmtDur(en - now)} qoldi` };
-    return { active, text: "Faol" };
+    if (st && now < st) return { active, text: tx("{0}dan keyin boshlanadi", fmtDur(st - now)) };
+    if (en && now >= en) return { active, text: tx("Muddati tugagan") };
+    if (en) return { active, text: tx("Faol · {0} qoldi", fmtDur(en - now)) };
+    return { active, text: tx("Faol") };
   }
   if (s.mode === "match") {
-    if (active) return { active, text: "Faol · match vaqti" };
+    if (active) return { active, text: tx("Faol · match vaqti") };
     const next = matches.filter((m) => m.status === "scheduled" && Date.parse(m.kickoff_at) > now).sort((a, b) => Date.parse(a.kickoff_at) - Date.parse(b.kickoff_at))[0];
-    if (!next) return { active, text: "Rejalashtirilgan match yo‘q" };
+    if (!next) return { active, text: tx("Rejalashtirilgan match yo‘q") };
     const at = Date.parse(next.kickoff_at) - (s.before ?? 60) * 60_000;
-    return { active, text: `Keyingi ko‘rinish: ${shortLocal(toLocal(at))}` };
+    return { active, text: tx("Keyingi ko‘rinish: {0}", shortLocal(toLocal(at))) };
   }
-  return { active, text: active ? "Faol · hozir ko‘rinadi" : "Hozir yashirin" };
+  return { active, text: active ? tx("Faol · hozir ko‘rinadi") : tx("Hozir yashirin") };
 }
 
 // ---------- change list for the publish dialog ----------
@@ -406,21 +407,21 @@ export function diffLayouts(prev: Layout, next: Layout): string[] {
   for (const [id, x] of b) {
     const old = a.get(id);
     const name = blockLabel(x.b);
-    if (!old) { out.push(`${name} qo‘shildi`); continue; }
-    if (old.row !== x.row) out.push(`${name} boshqa qatorga ko‘chirildi`);
-    else if (old.bi !== x.bi) out.push(`${name}: ustun o‘zgardi`);
+    if (!old) { out.push(tx("{0} qo‘shildi", name)); continue; }
+    if (old.row !== x.row) out.push(tx("{0} boshqa qatorga ko‘chirildi", name));
+    else if (old.bi !== x.bi) out.push(tx("{0}: ustun o‘zgardi", name));
     const o = old.b, n = x.b;
     if (o.span !== n.span || o.variant !== n.variant) out.push(`${name}: ${o.span}/12 ${o.variant} → ${n.span}/12 ${n.variant}`);
-    if (stable(o.schedule || null) !== stable(n.schedule || null) || stable(o.alt || null) !== stable(n.alt || null)) out.push(`${name}: vaqt jadvali — ${scheduleText(n.schedule)}`);
+    if (stable(o.schedule || null) !== stable(n.schedule || null) || stable(o.alt || null) !== stable(n.alt || null)) out.push(tx("{0}: vaqt jadvali — {1}", name, scheduleText(n.schedule)));
     if (stable(o.devices || null) !== stable(n.devices || null) || (o.mobileOrder || 0) !== (n.mobileOrder || 0)) {
       const d = n.devices;
-      out.push(d && !d.mobile && (!o.devices || o.devices.mobile) ? `${name} mobilda yashirildi` : `${name}: qurilmalar`);
+      out.push(d && !d.mobile && (!o.devices || o.devices.mobile) ? tx("{0} mobilda yashirildi", name) : tx("{0}: qurilmalar", name));
     }
-    if (!!o.hidden !== !!n.hidden) out.push(`${name} ${n.hidden ? "yashirildi" : "ko‘rsatildi"}`);
+    if (!!o.hidden !== !!n.hidden) out.push(`${name} ${n.hidden ? tx("yashirildi") : tx("ko‘rsatildi")}`);
     const rest = (z: Block) => stable({ ...z, span: 0, variant: "", schedule: 0, alt: 0, devices: 0, mobileOrder: 0, hidden: 0, locked: 0 });
-    if (rest(o) !== rest(n)) out.push(`${name}: sozlamalar`);
+    if (rest(o) !== rest(n)) out.push(tx("{0}: sozlamalar", name));
   }
-  for (const [id, x] of a) if (!b.has(id)) out.push(`${blockLabel(x.b)} o‘chirildi`);
+  for (const [id, x] of a) if (!b.has(id)) out.push(tx("{0} o‘chirildi", blockLabel(x.b)));
   // rows that changed place among the rows both versions have
   const common = (l: Layout, other: Layout) => l.rows.filter((r) => other.rows.some((o) => o.id === r.id)).map((r) => r.id);
   const ca = common(prev, next), cb = common(next, prev);
@@ -433,14 +434,14 @@ export function diffLayouts(prev: Layout, next: Layout): string[] {
   cb.forEach((id, i) => {
     if (keep.has(i)) return;
     const r = next.rows.find((z) => z.id === id)!;
-    out.push(`${r.blocks.map(blockLabel).join(" + ")} qatori ${idx[i] > i ? "yuqoriga" : "pastga"} ko‘chirildi`);
+    out.push(tx("{0} qatori {1} ko‘chirildi", r.blocks.map(blockLabel).join(" + "), idx[i] > i ? "yuqoriga" : "pastga"));
   });
   const rowsA = new Map(prev.rows.map((r) => [r.id, r]));
   next.rows.forEach((r, i) => {
     const o = rowsA.get(r.id);
     if (!o) return;
     const shape = (z: Row) => stable({ gap: z.gap || 0, bg: z.bg || "", pad: z.pad || "", equal: !!z.equal, hidden: !!z.hidden });
-    if (shape(o) !== shape(r)) out.push(`${i + 1}-qator: sozlamalar`);
+    if (shape(o) !== shape(r)) out.push(tx("{0}-qator: sozlamalar", i + 1));
   });
   return [...new Set(out)];
 }

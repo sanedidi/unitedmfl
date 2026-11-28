@@ -6,9 +6,14 @@ import { groupName, type Team } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { Crest } from "@/components/Crest";
 
-export const metadata: Metadata = pageMeta({ title: "Jamoalar — United MFL ishtirokchilari", description: "United MFL 2026 ishtirokchi jamoalari guruhlar bo‘yicha: tarkiblar, matchlar va natijalar.", path: "/jamoalar" });
+import { getT } from "@/lib/i18n/server";
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getT();
+  return pageMeta({ title: tx("Jamoalar — United MFL ishtirokchilari"), description: tx("United MFL 2026 ishtirokchi jamoalari guruhlar bo‘yicha: tarkiblar, matchlar va natijalar."), path: "/jamoalar" });
+}
 
 export default async function TeamsPage() {
+  const tx = await getT();
   const teams = await safe(api<Team[]>("/teams"), []);
   const league = teams.filter((t) => t.group_label);
   // API order = the admin's group order, then position inside the group
@@ -18,8 +23,8 @@ export default async function TeamsPage() {
   const provisional = league.some((t) => t.group_is_provisional);
   return (
     <>
-      <PageTitle overline="United MFL 2026" title="Jamoalar" lead={`${league.length} jamoa ${groups.length} guruhda.`}>
-        {provisional && <div className="note" style={{ marginTop: 16 }}><span className="badge badge-outline">Taxminiy</span> Guruhlarga bo‘linish rasman e’lon qilinmagan.</div>}
+      <PageTitle overline={tx("United MFL 2026")} title={tx("Jamoalar")} lead={tx("{0} jamoa {1} guruhda.", league.length, groups.length)}>
+        {provisional && <div className="note" style={{ marginTop: 16 }}><span className="badge badge-outline">{tx("Taxminiy")}</span>{" "}{tx("Guruhlarga bo‘linish rasman e’lon qilinmagan.")}</div>}
       </PageTitle>
       <div className="container">
         {groups.map((g) => (
@@ -38,7 +43,7 @@ export default async function TeamsPage() {
         ))}
         {others.length > 0 && (
           <section style={{ marginTop: 40 }}>
-            <h2 className="h3" style={{ marginBottom: 16 }}>Boshqa jamoalar</h2>
+            <h2 className="h3" style={{ marginBottom: 16 }}>{tx("Boshqa jamoalar")}</h2>
             <div className="grid grid-4">
               {others.map((t) => (
                 <Link key={t.id} href={`/jamoalar/${t.slug}`} className="card card-hover team-tile"><Crest team={t} size={64} /><b>{t.name}</b></Link>

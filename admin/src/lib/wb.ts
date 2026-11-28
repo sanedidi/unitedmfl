@@ -1,5 +1,6 @@
 import { ApiError } from "./api";
 
+import { tx } from "@/lib/i18n";
 /* Wildberries store: shared types and labels (Merch, product page, Tizim → Wildberries). */
 
 export type WBLog = { at: string; level: "ok" | "warn" | "error"; product_id: number | null; text: string };
@@ -28,22 +29,22 @@ export type WBCharc = { id: number; name: string; required: boolean; unit: strin
 export type WBChar = { id: number; name: string; value: unknown };
 export type WBImportItem = { nm_id: number; vendor_code: string; title: string; subject_name: string; photo: string; sizes: number };
 
-export const errText = (e: unknown) => (e instanceof ApiError ? (Object.values(e.fields)[0] as string) || e.message : e instanceof Error ? e.message : "Xato");
+export const errText = (e: unknown) => (e instanceof ApiError ? (Object.values(e.fields)[0] as string) || e.message : e instanceof Error ? e.message : tx("Xato"));
 
 export type WBStatus = { key: string; dot: "ready" | "queued" | "error" | "no_logo" | "waiting"; label: string; sub: string };
 
 /** The WB column of a product: label, dot colour and the line under it. */
 export function wbStatus(p: WBProduct, fmt: (iso?: string | null) => string): WBStatus {
-  if (!p.wb_enabled) return { key: "site", dot: "no_logo", label: "Faqat saytda", sub: "WB’da sotish o‘chirilgan" };
+  if (!p.wb_enabled) return { key: "site", dot: "no_logo", label: tx("Faqat saytda"), sub: tx("WB’da sotish o‘chirilgan") };
   switch (p.wb_state) {
-    case "incomplete": return { key: "error", dot: "error", label: "To‘ldirilmagan", sub: p.wb_error.replace(/^To‘ldirilmagan: /, "") };
-    case "queued": return { key: "pending", dot: "queued", label: "Navbatda", sub: p.wb_attempts > 0 ? `${p.wb_attempts}-urinish: ${p.wb_error}` : "WB’ga yuborilmoqda" };
-    case "pending": return { key: "pending", dot: "queued", label: "Moderatsiyada", sub: `Yuborildi: ${fmt(p.wb_pending_since || p.wb_sent_at)}` };
-    case "error": return { key: "error", dot: "error", label: "Xato", sub: p.wb_error };
+    case "incomplete": return { key: "error", dot: "error", label: tx("To‘ldirilmagan"), sub: p.wb_error.replace(/^To‘ldirilmagan: /, "") };
+    case "queued": return { key: "pending", dot: "queued", label: tx("Navbatda"), sub: p.wb_attempts > 0 ? tx("{0}-urinish: {1}", p.wb_attempts, p.wb_error) : tx("WB’ga yuborilmoqda") };
+    case "pending": return { key: "pending", dot: "queued", label: tx("Moderatsiyada"), sub: tx("Yuborildi: {0}", fmt(p.wb_pending_since || p.wb_sent_at)) };
+    case "error": return { key: "error", dot: "error", label: tx("Xato"), sub: p.wb_error };
     case "ready":
-      if (p.status === "out_of_stock" || p.wb_stock === 0) return { key: "ready", dot: "queued", label: "Tugagan", sub: "WB omborida qoldiq 0" };
-      return { key: "ready", dot: "ready", label: "Sotuvda", sub: p.wb_nm_id ? `nm ${p.wb_nm_id}` : "" };
-    default: return { key: "pending", dot: "waiting", label: "Yuborilmagan", sub: "Saqlang yoki «WB’ga yuborish»ni bosing" };
+      if (p.status === "out_of_stock" || p.wb_stock === 0) return { key: "ready", dot: "queued", label: tx("Tugagan"), sub: tx("WB omborida qoldiq 0") };
+      return { key: "ready", dot: "ready", label: tx("Sotuvda"), sub: p.wb_nm_id ? `nm ${p.wb_nm_id}` : "" };
+    default: return { key: "pending", dot: "waiting", label: tx("Yuborilmagan"), sub: tx("Saqlang yoki «WB’ga yuborish»ni bosing") };
   }
 }
 

@@ -1,14 +1,19 @@
+import type { Metadata } from "next";
 import { api } from "@/lib/api";
 import { DEFAULT_LAYOUT, type Layout } from "@/lib/layout";
 import { pageMeta } from "@/lib/seo";
+import { getT } from "@/lib/i18n/server";
 import { HomeLayout } from "@/components/home/HomeLayout";
 
-export const metadata = pageMeta({
-  title: "United MFL — media futbol ligasi: matchlar va natijalar",
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getT();
+  return pageMeta({
+  title: tx("United MFL — media futbol ligasi: matchlar va natijalar"),
   absoluteTitle: true,
-  description: "United MFL — blogerlar, sportchilar va san’at yulduzlari jamoalari ligasi: matchlar taqvimi, jonli hisob, natijalar, turnir jadvali va yangiliklar.",
+  description: tx("United MFL — blogerlar, sportchilar va san’at yulduzlari jamoalari ligasi: matchlar taqvimi, jonli hisob, natijalar, turnir jadvali va yangiliklar."),
   path: "/",
 });
+}
 
 /** The published layout from the admin's builder; the built-in default if the API is down. */
 async function publishedLayout(): Promise<Layout> {

@@ -4,6 +4,7 @@ import { KIT_SIZES, ROLE_LABEL, STAFF_ROLES, emptyPlayer, fmtBirth, fullName, in
 import { CheckLine, Field, Modal, Spinner, useToast } from "./ui";
 import { I } from "./Icons";
 
+import { tx } from "@/lib/i18n";
 /* ---------- jersey preview ---------- */
 function isLight(hex: string) {
   const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
@@ -14,9 +15,9 @@ function isLight(hex: string) {
 export function Jersey({ color, name, number }: { color: string; name: string; number: string | null }) {
   const c = color || "#1D4ED8";
   return (
-    <div className={`jersey${isLight(c) ? " light" : ""}`} aria-label="Futbolka orqa tomoni">
+    <div className={`jersey${isLight(c) ? " light" : ""}`} aria-label={tx("Futbolka orqa tomoni")}>
       <svg width="168" height="176" viewBox="0 0 168 176" aria-hidden><path d="M44 6 L66 0 Q84 14 102 0 L124 6 L164 38 L142 70 L126 60 L126 172 Q126 176 122 176 L46 176 Q42 176 42 172 L42 60 L26 70 L4 38 Z" fill={c} stroke="rgba(0,0,0,.12)" /></svg>
-      <div className="jn">{name || "FAMILIYA"}</div>
+      <div className="jn">{name || tx("FAMILIYA")}</div>
       <div className={`jnum${(number?.length ?? 0) > 2 ? " long" : ""}`}>{number ?? "00"}</div>
     </div>
   );
@@ -51,13 +52,13 @@ export function PlayerModal<T extends Player>({ up, initial, color, taken, onSav
     setP((x) => ({ ...x, last_name: v, jersey_name: jerseyTouched ? x.jersey_name : v.toUpperCase().slice(0, 12) }));
   }
   const errs: Record<string, string> = {};
-  if (!p.first_name.trim()) errs.first_name = "Ismni yozing";
-  if (!p.last_name.trim()) errs.last_name = "Familiyani yozing";
-  if (!p.birth_date) errs.birth_date = "Sanani kiriting";
-  if (p.number == null) errs.number = "Raqam";
-  else if (taken.includes(p.number)) errs.number = "Band";
-  if (!p.jersey_name.trim()) errs.jersey_name = "Futbolkadagi yozuvni kiriting";
-  if (!p.kit_size) errs.kit_size = "O‘lchamni tanlang";
+  if (!p.first_name.trim()) errs.first_name = tx("Ismni yozing");
+  if (!p.last_name.trim()) errs.last_name = tx("Familiyani yozing");
+  if (!p.birth_date) errs.birth_date = tx("Sanani kiriting");
+  if (p.number == null) errs.number = tx("Raqam");
+  else if (taken.includes(p.number)) errs.number = tx("Band");
+  if (!p.jersey_name.trim()) errs.jersey_name = tx("Futbolkadagi yozuvni kiriting");
+  if (!p.kit_size) errs.kit_size = tx("O‘lchamni tanlang");
   const ok = Object.keys(errs).length === 0;
 
   async function pickPhoto(f?: File) {
@@ -66,7 +67,7 @@ export function PlayerModal<T extends Player>({ up, initial, color, taken, onSav
     try {
       set("photo_url", (await up.photo(f)).url);
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Yuklashda xato", "error");
+      toast(e instanceof Error ? e.message : tx("Yuklashda xato"), "error");
     } finally {
       setBusy("");
     }
@@ -77,7 +78,7 @@ export function PlayerModal<T extends Player>({ up, initial, color, taken, onSav
     try {
       set("medical", await up.medical(f));
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Yuklashda xato", "error");
+      toast(e instanceof Error ? e.message : tx("Yuklashda xato"), "error");
     } finally {
       setBusy("");
     }
@@ -96,62 +97,62 @@ export function PlayerModal<T extends Player>({ up, initial, color, taken, onSav
   const isNew = !initial.first_name && !initial.last_name;
 
   return (
-    <Modal title={isNew ? (p.role === "media" ? "Media shaxs qo‘shish" : "O‘yinchi qo‘shish") : fullName(initial)} onClose={onClose}
+    <Modal title={isNew ? (p.role === "media" ? tx("Media shaxs qo‘shish") : tx("O‘yinchi qo‘shish")) : fullName(initial)} onClose={onClose}
       footer={<>
-        <button type="button" className="btn btn-ghost" onClick={onClose}>Bekor qilish</button>
-        {isNew && <button type="button" className="btn" onClick={() => save(true)} disabled={!!busy}>Saqlash va yana qo‘shish</button>}
-        <button type="button" className="btn btn-primary" onClick={() => save(false)} disabled={!!busy}>Saqlash</button>
+        <button type="button" className="btn btn-ghost" onClick={onClose}>{tx("Bekor qilish")}</button>
+        {isNew && <button type="button" className="btn" onClick={() => save(true)} disabled={!!busy}>{tx("Saqlash va yana qo‘shish")}</button>}
+        <button type="button" className="btn btn-primary" onClick={() => save(false)} disabled={!!busy}>{tx("Saqlash")}</button>
       </>}>
       <div className="row top" style={{ gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
         <div className="stack grow" style={{ minWidth: 280 }}>
           <div className="g2">
-            <Field label="Ism" error={e("first_name")}><input className="input" value={p.first_name} onChange={(ev) => set("first_name", ev.target.value)} autoFocus aria-invalid={!!e("first_name")} /></Field>
-            <Field label="Familiya" error={e("last_name")}><input className="input" value={p.last_name} onChange={(ev) => setLast(ev.target.value)} aria-invalid={!!e("last_name")} /></Field>
+            <Field label={tx("Ism")} error={e("first_name")}><input className="input" value={p.first_name} onChange={(ev) => set("first_name", ev.target.value)} autoFocus aria-invalid={!!e("first_name")} /></Field>
+            <Field label={tx("Familiya")} error={e("last_name")}><input className="input" value={p.last_name} onChange={(ev) => setLast(ev.target.value)} aria-invalid={!!e("last_name")} /></Field>
           </div>
           <div className="g-code">
-            <Field label="Tug‘ilgan sana" error={e("birth_date")}><input className="input" type="date" value={p.birth_date} max={new Date().toISOString().slice(0, 10)} onChange={(ev) => set("birth_date", ev.target.value)} aria-invalid={!!e("birth_date")} /></Field>
-            <Field label="Raqam" error={e("number")}><input className="input" autoCapitalize="characters" autoComplete="off" maxLength={8} placeholder="10 yoki Z10" value={p.number ?? ""} onChange={(ev) => { const d = jerseyInput(ev.target.value); set("number", d === "" ? null : d); }} aria-invalid={!!e("number")} /></Field>
+            <Field label={tx("Tug‘ilgan sana")} error={e("birth_date")}><input className="input" type="date" value={p.birth_date} max={new Date().toISOString().slice(0, 10)} onChange={(ev) => set("birth_date", ev.target.value)} aria-invalid={!!e("birth_date")} /></Field>
+            <Field label={tx("Raqam")} error={e("number")}><input className="input" autoCapitalize="characters" autoComplete="off" maxLength={8} placeholder={tx("10 yoki Z10")} value={p.number ?? ""} onChange={(ev) => { const d = jerseyInput(ev.target.value); set("number", d === "" ? null : d); }} aria-invalid={!!e("number")} /></Field>
           </div>
-          <Field label="Futbolkada yozilishi" error={e("jersey_name")} hint={`Lotin bosma harflar, 12 belgigacha · ${p.jersey_name.length}/12`}>
+          <Field label={tx("Futbolkada yozilishi")} error={e("jersey_name")} hint={tx("Lotin bosma harflar, 12 belgigacha · {0}/12", p.jersey_name.length)}>
             <input className="input" value={p.jersey_name} maxLength={15} onChange={(ev) => { setJerseyTouched(true); set("jersey_name", ev.target.value.toUpperCase()); }} aria-invalid={!!e("jersey_name")} />
           </Field>
           <div className="field">
-            <span className="lbl">Roli</span>
+            <span className="lbl">{tx("Roli")}</span>
             <div className="seg" role="radiogroup">
-              {(["player", "goalkeeper", "media"] as Role[]).map((r) => <button type="button" key={r} className={p.role === r ? "on" : ""} onClick={() => set("role", r)} aria-pressed={p.role === r}>{r === "player" ? "Maydon o‘yinchisi" : ROLE_LABEL[r]}</button>)}
+              {(["player", "goalkeeper", "media"] as Role[]).map((r) => <button type="button" key={r} className={p.role === r ? "on" : ""} onClick={() => set("role", r)} aria-pressed={p.role === r}>{r === "player" ? tx("Maydon o‘yinchisi") : ROLE_LABEL[r]}</button>)}
             </div>
           </div>
           <div className="field">
-            <span className="lbl">Forma o‘lchami</span>
+            <span className="lbl">{tx("Forma o‘lchami")}</span>
             <div className="sizes">{KIT_SIZES.map((s) => <button type="button" key={s} className={p.kit_size === s ? "on" : ""} onClick={() => set("kit_size", s)}>{s}</button>)}</div>
             {e("kit_size") && <span className="err">{e("kit_size")}</span>}
           </div>
-          <Field label="Ish joyi / faoliyati" opt="ixtiyoriy"><input className="input" value={p.workplace} onChange={(ev) => set("workplace", ev.target.value)} /></Field>
+          <Field label={tx("Ish joyi / faoliyati")} opt={tx("ixtiyoriy")}><input className="input" value={p.workplace} onChange={(ev) => set("workplace", ev.target.value)} /></Field>
           <div className="g2">
             <div className="field">
-              <span className="lbl">Foto <span className="opt">ixtiyoriy</span></span>
+              <span className="lbl">{tx("Foto")}{" "}<span className="opt">{tx("ixtiyoriy")}</span></span>
               <div className={`file-row${p.photo_url ? " has" : ""}`} onClick={() => photoRef.current?.click()} role="button" tabIndex={0}>
                 {p.photo_url ? <span className="avatar"><img src={p.photo_url} alt="" /></span> : <I.camera size={18} />}
-                <div className="grow"><b className="small">{busy === "photo" ? "Yuklanmoqda…" : p.photo_url ? "Almashtirish" : "Yuklash"}</b><div className="small muted">Kvadrat, kamida 600×600</div></div>
-                {p.photo_url && <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Fotoni olib tashlash" onClick={(ev) => { ev.stopPropagation(); set("photo_url", ""); }}><I.x size={14} /></button>}
+                <div className="grow"><b className="small">{busy === "photo" ? tx("Yuklanmoqda…") : p.photo_url ? tx("Almashtirish") : tx("Yuklash")}</b><div className="small muted">{tx("Kvadrat, kamida 600×600")}</div></div>
+                {p.photo_url && <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={tx("Fotoni olib tashlash")} onClick={(ev) => { ev.stopPropagation(); set("photo_url", ""); }}><I.x size={14} /></button>}
               </div>
               <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(ev) => { pickPhoto(ev.target.files?.[0]); ev.target.value = ""; }} />
             </div>
             <div className="field">
-              <span className="lbl">Tibbiy ruxsatnoma</span>
+              <span className="lbl">{tx("Tibbiy ruxsatnoma")}</span>
               <div className={`file-row${p.medical ? " has" : ""}`} onClick={() => medRef.current?.click()} role="button" tabIndex={0}>
                 <I.doc size={18} />
-                <div className="grow" style={{ minWidth: 0 }}><b className="small ellipsis" style={{ display: "block" }}>{busy === "medical" ? "Yuklanmoqda…" : p.medical ? p.medical.name || "Yuklangan" : "Yuklash"}</b><div className="small muted">PDF yoki rasm · birinchi matchgacha</div></div>
-                {p.medical && <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Faylni olib tashlash" onClick={(ev) => { ev.stopPropagation(); set("medical", null); }}><I.x size={14} /></button>}
+                <div className="grow" style={{ minWidth: 0 }}><b className="small ellipsis" style={{ display: "block" }}>{busy === "medical" ? tx("Yuklanmoqda…") : p.medical ? p.medical.name || tx("Yuklangan") : tx("Yuklash")}</b><div className="small muted">{tx("PDF yoki rasm · birinchi matchgacha")}</div></div>
+                {p.medical && <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={tx("Faylni olib tashlash")} onClick={(ev) => { ev.stopPropagation(); set("medical", null); }}><I.x size={14} /></button>}
               </div>
               <input ref={medRef} type="file" accept="application/pdf,image/jpeg,image/png" hidden onChange={(ev) => { pickMedical(ev.target.files?.[0]); ev.target.value = ""; }} />
             </div>
           </div>
         </div>
         <div className="stack" style={{ width: 200, gap: 10, margin: "0 auto" }}>
-          <span className="over-label" style={{ textAlign: "center" }}>Futbolka — orqa tomoni</span>
+          <span className="over-label" style={{ textAlign: "center" }}>{tx("Futbolka — orqa tomoni")}</span>
           <div style={{ background: "var(--subtle)", borderRadius: 6, padding: "20px 0" }}><Jersey color={color} name={p.jersey_name} number={p.number} /></div>
-          <span className="small muted" style={{ textAlign: "center" }}>Jamoaning asosiy forma rangi bilan</span>
+          <span className="small muted" style={{ textAlign: "center" }}>{tx("Jamoaning asosiy forma rangi bilan")}</span>
         </div>
       </div>
     </Modal>
@@ -165,24 +166,24 @@ export function StaffModal<T extends Staff>({ initial, onSave, onClose, phone = 
   const set = <K extends keyof Staff>(k: K, v: Staff[K]) => setS((x) => ({ ...x, [k]: v }));
   const ok = s.first_name.trim() && s.last_name.trim();
   return (
-    <Modal small title={initial.first_name ? fullName(initial) : "Murabbiy qo‘shish"} onClose={onClose}
+    <Modal small title={initial.first_name ? fullName(initial) : tx("Murabbiy qo‘shish")} onClose={onClose}
       footer={<>
-        <button type="button" className="btn btn-ghost" onClick={onClose}>Bekor qilish</button>
-        <button type="button" className="btn btn-primary" onClick={() => { setTried(true); if (ok) onSave(s); }}>Saqlash</button>
+        <button type="button" className="btn btn-ghost" onClick={onClose}>{tx("Bekor qilish")}</button>
+        <button type="button" className="btn btn-primary" onClick={() => { setTried(true); if (ok) onSave(s); }}>{tx("Saqlash")}</button>
       </>}>
       <div className="g2">
-        <Field label="Ism" error={tried && !s.first_name.trim() ? "Ismni yozing" : undefined}><input className="input" value={s.first_name} onChange={(e) => set("first_name", e.target.value)} autoFocus /></Field>
-        <Field label="Familiya" error={tried && !s.last_name.trim() ? "Familiyani yozing" : undefined}><input className="input" value={s.last_name} onChange={(e) => set("last_name", e.target.value)} /></Field>
+        <Field label={tx("Ism")} error={tried && !s.first_name.trim() ? tx("Ismni yozing") : undefined}><input className="input" value={s.first_name} onChange={(e) => set("first_name", e.target.value)} autoFocus /></Field>
+        <Field label={tx("Familiya")} error={tried && !s.last_name.trim() ? tx("Familiyani yozing") : undefined}><input className="input" value={s.last_name} onChange={(e) => set("last_name", e.target.value)} /></Field>
       </div>
       <div className="g2">
-        <Field label="Lavozimi"><select className="select" value={s.role} onChange={(e) => set("role", e.target.value)}>{Object.entries(STAFF_ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-        <Field label="Tug‘ilgan sana" opt="ixtiyoriy"><input className="input" type="date" value={s.birth_date} onChange={(e) => set("birth_date", e.target.value)} /></Field>
+        <Field label={tx("Lavozimi")}><select className="select" value={s.role} onChange={(e) => set("role", e.target.value)}>{Object.entries(STAFF_ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+        <Field label={tx("Tug‘ilgan sana")} opt={tx("ixtiyoriy")}><input className="input" type="date" value={s.birth_date} onChange={(e) => set("birth_date", e.target.value)} /></Field>
       </div>
       <div className="field">
-        <span className="lbl">Forma o‘lchami <span className="opt">ixtiyoriy</span></span>
+        <span className="lbl">{tx("Forma o‘lchami")}{" "}<span className="opt">{tx("ixtiyoriy")}</span></span>
         <div className="sizes">{KIT_SIZES.map((x) => <button type="button" key={x} className={s.kit_size === x ? "on" : ""} onClick={() => set("kit_size", s.kit_size === x ? "" : x)}>{x}</button>)}</div>
       </div>
-      {phone && <Field label="Telefon" opt="ixtiyoriy"><input className="input" type="tel" value={s.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+998" /></Field>}
+      {phone && <Field label={tx("Telefon")} opt={tx("ixtiyoriy")}><input className="input" type="tel" value={s.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+998" /></Field>}
     </Modal>
   );
 }
@@ -195,27 +196,27 @@ export function ImportModal({ file, result, hasRoster, canLogo, onApply, onClose
   const imp = result.import;
   const [useLogo, setUseLogo] = useState(canLogo && !!result.logo);
   const media = imp.players.filter((p) => p.role === "media").length;
-  const stats: [number, string][] = [[imp.players.length - media, "o‘yinchi"], [media, "media shaxs"], [imp.staff.length, "murabbiy"], [imp.players.length + imp.staff.length, "forma komplekti"]];
+  const stats: [number, string][] = [[imp.players.length - media, tx("o‘yinchi")], [media, tx("media shaxs")], [imp.staff.length, "murabbiy"], [imp.players.length + imp.staff.length, tx("forma komplekti")]];
   return (
-    <Modal title="Exceldan import" onClose={onClose}
+    <Modal title={tx("Exceldan import")} onClose={onClose}
       footer={<>
-        <button type="button" className="btn btn-ghost" onClick={onClose}>Bekor qilish</button>
-        {hasRoster && <button type="button" className="btn" onClick={() => onApply("append", useLogo)}>Mavjudlariga qo‘shish</button>}
-        <button type="button" className="btn btn-primary" onClick={() => onApply("replace", useLogo)}>{hasRoster ? "Tarkibni almashtirish" : `${imp.rows} ta qatorni import qilish`}</button>
+        <button type="button" className="btn btn-ghost" onClick={onClose}>{tx("Bekor qilish")}</button>
+        {hasRoster && <button type="button" className="btn" onClick={() => onApply("append", useLogo)}>{tx("Mavjudlariga qo‘shish")}</button>}
+        <button type="button" className="btn btn-primary" onClick={() => onApply("replace", useLogo)}>{hasRoster ? tx("Tarkibni almashtirish") : tx("{0} ta qatorni import qilish", imp.rows)}</button>
       </>}>
-      <div className="note"><I.doc size={18} /><div className="grow"><b style={{ color: "var(--text)" }}>{file}</b><div>{imp.rows} qator topildi</div></div></div>
+      <div className="note"><I.doc size={18} /><div className="grow"><b style={{ color: "var(--text)" }}>{file}</b><div>{imp.rows}{" "}{tx("qator topildi")}</div></div></div>
       <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
         {stats.map(([n, t]) => <div key={t} className="box sub" style={{ flex: 1, minWidth: 110, gap: 0 }}><b style={{ fontFamily: "var(--display)", fontSize: 24 }}>{n}</b><span className="small sec">{t}</span></div>)}
       </div>
       {!!imp.fixes.length && (
         <div className="stack" style={{ gap: 6 }}>
-          <b className="small">Avtomatik tuzatildi</b>
+          <b className="small">{tx("Avtomatik tuzatildi")}</b>
           <span className="small sec">{imp.fixes.join(" · ")}</span>
         </div>
       )}
       {!!imp.issues.length && (
         <div className="box warn">
-          <b className="small">Tekshirish kerak — importdan keyin tuzatasiz</b>
+          <b className="small">{tx("Tekshirish kerak — importdan keyin tuzatasiz")}</b>
           {imp.issues.map((t) => <CheckLine key={t} level="warn">{t}</CheckLine>)}
         </div>
       )}
@@ -223,10 +224,10 @@ export function ImportModal({ file, result, hasRoster, canLogo, onApply, onClose
         <label className="check box sub" style={{ flexDirection: "row", alignItems: "center" }}>
           <input type="checkbox" checked={useLogo} onChange={(e) => setUseLogo(e.target.checked)} />
           <img src={result.logo.url} alt="" style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 4, background: "#fff" }} />
-          <span className="grow">Faylda rasm topildi — jamoa logotipi sifatida ishlatish</span>
+          <span className="grow">{tx("Faylda rasm topildi — jamoa logotipi sifatida ishlatish")}</span>
         </label>
       )}
-      {hasRoster && <span className="small muted">Tarkibda allaqachon odamlar bor: almashtirsangiz, ular o‘chadi.</span>}
+      {hasRoster && <span className="small muted">{tx("Tarkibda allaqachon odamlar bor: almashtirsangiz, ular o‘chadi.")}</span>}
     </Modal>
   );
 }
@@ -251,7 +252,7 @@ export function PlayersTable({ token, rows, flags, notes, locked, onEdit, onDele
   if (!rows.length) return null;
   return (
     <div className="tbl">
-      <div className="tr head"><span>№</span><span>Ism familiya · ish joyi</span><span className="c-jersey">Futbolkada</span><span className="c-birth">Tug‘ilgan</span><span>O‘lcham</span><span className="c-med">Tibbiy</span><span /></div>
+      <div className="tr head"><span>№</span><span>{tx("Ism familiya · ish joyi")}</span><span className="c-jersey">{tx("Futbolkada")}</span><span className="c-birth">{tx("Tug‘ilgan")}</span><span>{tx("O‘lcham")}</span><span className="c-med">{tx("Tibbiy")}</span><span /></div>
       {rows.map(({ p, i }) => {
         const note = notes[i];
         return (
@@ -260,18 +261,18 @@ export function PlayersTable({ token, rows, flags, notes, locked, onEdit, onDele
             <div className="who">
               <span className="avatar">{p.photo_url ? <img src={p.photo_url} alt="" /> : initials(fullName(p))}</span>
               <div style={{ minWidth: 0 }}>
-                <b><span className="ellipsis">{fullName(p) || "Ismsiz"}</span>{p.role === "goalkeeper" && <span className="tag">GK</span>}{p.role === "media" && <span className="tag dark">Media</span>}</b>
-                <small className={note ? (note.level === "error" ? "danger-text" : "warn-text") : ""}>{note ? note.text : p.workplace || "Ish joyi ko‘rsatilmagan"}</small>
+                <b><span className="ellipsis">{fullName(p) || tx("Ismsiz")}</span>{p.role === "goalkeeper" && <span className="tag">{tx("GK")}</span>}{p.role === "media" && <span className="tag dark">{tx("Media")}</span>}</b>
+                <small className={note ? (note.level === "error" ? "danger-text" : "warn-text") : ""}>{note ? note.text : p.workplace || tx("Ish joyi ko‘rsatilmagan")}</small>
               </div>
             </div>
             <b className="c-jersey small ellipsis">{p.jersey_name || <span className="muted">—</span>}</b>
             <span className="c-birth tnum">{fmtBirth(p.birth_date)}</span>
             <span>{p.kit_size ? <span className="size-tag">{p.kit_size}</span> : <span className="muted">—</span>}</span>
-            <span className="c-med small">{p.medical ? <a className="accent-text" href={api.fileUrl(token, p.medical.file)} target="_blank" rel="noopener noreferrer">✓ Yuklangan</a> : <span className="muted">Yuklanmagan</span>}</span>
+            <span className="c-med small">{p.medical ? <a className="accent-text" href={api.fileUrl(token, p.medical.file)} target="_blank" rel="noopener noreferrer">{tx("✓ Yuklangan")}</a> : <span className="muted">{tx("Yuklanmagan")}</span>}</span>
             <span className="acts">
               {!locked && <>
-                <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Tahrirlash" onClick={() => onEdit(i)}><I.edit size={16} /></button>
-                <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="O‘chirish" onClick={() => onDelete(i)}><I.trash size={16} /></button>
+                <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={tx("Tahrirlash")} onClick={() => onEdit(i)}><I.edit size={16} /></button>
+                <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={tx("O‘chirish")} onClick={() => onDelete(i)}><I.trash size={16} /></button>
               </>}
             </span>
           </div>
@@ -289,14 +290,14 @@ export function StaffTable({ rows, flags, locked, onEdit, onDelete }: { rows: St
         <div key={i} className={`tr ${flags[i] || ""}`} style={{ gridTemplateColumns: "minmax(0,1fr) 96px 64px 64px" }}>
           <div className="who">
             <span className="avatar">{initials(fullName(s))}</span>
-            <div style={{ minWidth: 0 }}><b className="ellipsis">{fullName(s) || "Ismsiz"}</b><small>{STAFF_ROLES[s.role] || s.role}</small></div>
+            <div style={{ minWidth: 0 }}><b className="ellipsis">{fullName(s) || tx("Ismsiz")}</b><small>{STAFF_ROLES[s.role] || s.role}</small></div>
           </div>
           <span className="tnum small">{fmtBirth(s.birth_date)}</span>
           <span>{s.kit_size ? <span className="size-tag">{s.kit_size}</span> : <span className="muted">—</span>}</span>
           <span className="acts">
             {!locked && <>
-              <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="Tahrirlash" onClick={() => onEdit(i)}><I.edit size={16} /></button>
-              <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label="O‘chirish" onClick={() => onDelete(i)}><I.trash size={16} /></button>
+              <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={tx("Tahrirlash")} onClick={() => onEdit(i)}><I.edit size={16} /></button>
+              <button type="button" className="btn btn-ghost btn-icon btn-sm" aria-label={tx("O‘chirish")} onClick={() => onDelete(i)}><I.trash size={16} /></button>
             </>}
           </span>
         </div>
@@ -315,14 +316,14 @@ export function ImportButton({ up, onResult, disabled }: { up: Uploader; onResul
     try {
       onResult(f.name, await up.importRoster(f));
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Faylni o‘qib bo‘lmadi", "error");
+      toast(e instanceof Error ? e.message : tx("Faylni o‘qib bo‘lmadi"), "error");
     } finally {
       setBusy(false);
     }
   }
   return (
     <>
-      <button type="button" className="btn" onClick={() => ref.current?.click()} disabled={disabled || busy}>{busy ? <Spinner /> : <I.upload size={16} />} Exceldan yuklash</button>
+      <button type="button" className="btn" onClick={() => ref.current?.click()} disabled={disabled || busy}>{busy ? <Spinner /> : <I.upload size={16} />}{" "}{tx("Exceldan yuklash")}</button>
       <input ref={ref} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
     </>
   );

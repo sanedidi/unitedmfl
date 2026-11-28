@@ -25,6 +25,7 @@ import { TicketsSection } from "@/pages/Tickets";
 import { StadiumsSection } from "@/pages/Stadiums";
 import { ScanPage } from "@/pages/Scan";
 
+import { tx } from "@/lib/i18n";
 function Guard({ perm, children }: { perm: string; children: React.ReactNode }) {
   const { can } = useAuth();
   if (!can(perm)) return <NoAccess />;
@@ -42,8 +43,8 @@ function ReadOnlyNote() {
   return (
     <div className="ro-note">
       <I.lock size={16} />
-      <div><b>Sizda {label ? `«${label}» sahifasida` : "bu sahifada"} faqat ko‘rish huquqi bor</b>
-        <span>Yaratish, tahrirlash va o‘chirish yopiq. Kerak bo‘lsa, administratorga murojaat qiling.</span></div>
+      <div><b>{tx("Sizda")}{" "}{label ? tx("«{0}» sahifasida", label) : tx("bu sahifada")}{" "}{tx("faqat ko‘rish huquqi bor")}</b>
+        <span>{tx("Yaratish, tahrirlash va o‘chirish yopiq. Kerak bo‘lsa, administratorga murojaat qiling.")}</span></div>
     </div>
   );
 }
@@ -57,9 +58,9 @@ function NoAccess() {
   return (
     <div className="card no-access">
       <span className="no-access-ico"><I.lock size={24} /></span>
-      <h2>Bu sahifa sizga yopiq</h2>
-      <p>{page ? `«${page.label}» bo‘limi` : "Bu bo‘lim"} «{user?.role_name || user?.role}» roliga kirmaydi. Kirish kerak bo‘lsa, administratorga murojaat qiling.</p>
-      {home && <Link className="btn btn-primary" to={home.to}>{home.label === "Dashboard" ? "Bosh sahifaga" : `${home.label}ga o‘tish`}</Link>}
+      <h2>{tx("Bu sahifa sizga yopiq")}</h2>
+      <p>{page ? tx("«{0}» bo‘limi", page.label) : tx("Bu bo‘lim")} «{user?.role_name || user?.role}{tx("» roliga kirmaydi. Kirish kerak bo‘lsa, administratorga murojaat qiling.")}</p>
+      {home && <Link className="btn btn-primary" to={home.to}>{home.label === "Dashboard" ? tx("Bosh sahifaga") : tx("{0}ga o‘tish", home.label)}</Link>}
     </div>
   );
 }
@@ -70,7 +71,7 @@ function Home() {
   if (can("dashboard")) return <DashboardPage />;
   const first = firstPage(can);
   if (first) return <Navigate to={first.to} replace />;
-  return <Empty title="Xush kelibsiz" text="Rolingizga hali birorta sahifa berilmagan. Administratorga murojaat qiling." />;
+  return <Empty title={tx("Xush kelibsiz")} text={tx("Rolingizga hali birorta sahifa berilmagan. Administratorga murojaat qiling.")} />;
 }
 
 export default function App() {
@@ -111,7 +112,7 @@ export default function App() {
         <Route path="roles" element={<Guard perm="roles"><RolesPage /></Guard>} />
         <Route path="roles/:id" element={<Guard perm="roles"><RoleEditPage /></Guard>} />
         <Route path="audit" element={<Guard perm="audit"><AuditPage /></Guard>} />
-        <Route path="*" element={<Empty title="Sahifa topilmadi" />} />
+        <Route path="*" element={<Empty title={tx("Sahifa topilmadi")} />} />
       </Route>
     </Routes>
   );

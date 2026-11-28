@@ -13,15 +13,16 @@ import { Badge, Crest, ErrorBox, Loading, Modal, useConfirm, useToast } from "@/
 import { I } from "@/components/Icons";
 import { SITE_URL } from "@/components/Layout";
 
+import { tx } from "@/lib/i18n";
 type Staff = { id: number; team_id: number; full_name: string; role: string; show_on_site: boolean };
 type Draft = { formation: string; coach: string; assistant: string; players: LPlayer[]; version: number; status: "draft" | "published"; updated_at: string; dirty: boolean };
 type Sel = { kind: "slot"; slot: number } | { kind: "player"; key: string } | null;
 type Filter = "all" | "pitch" | "bench" | "free";
 
-const keyOf = (p: { player_id: number | null; player_name: string }) => (p.player_id != null ? `id${p.player_id}` : `nm${p.player_name}`);
+const keyOf = (p: { player_id: number | null; player_name: string }) => (p.player_id != null ? tx("id{0}", p.player_id) : tx("nm{0}", p.player_name));
 const fromSquad = (p: Player): LPlayer => ({ player_id: p.id, player_name: p.full_name, number: p.number, position: p.position, role: "", slot: null, is_starter: false, is_captain: false });
 const POS_ORDER: Record<string, number> = { GK: 0, DF: 1, MF: 2, FW: 3, "": 4 };
-const GROUP_LABEL: Record<string, string> = { GK: "DARVOZABONLAR", DF: "HIMOYACHILAR", MF: "YARIM HIMOYACHILAR", FW: "HUJUMCHILAR", "": "BOSHQALAR" };
+const GROUP_LABEL: Record<string, string> = { GK: tx("DARVOZABONLAR"), DF: tx("HIMOYACHILAR"), MF: tx("YARIM HIMOYACHILAR"), FW: tx("HUJUMCHILAR"), "": tx("BOSHQALAR") };
 
 export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved: () => void }) {
   const m = detail.match;
@@ -153,7 +154,7 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
     update((x) => ({ ...x, formation: f.code, players: autoPlace(f, ps) }));
   }
   async function clearPitch() {
-    if (!(await confirm({ title: "Maydonni tozalash", text: "Barcha asosiy o‘yinchilar maydondan olinadi (zaxira saqlanadi).", danger: true, ok: "Tozalash" }))) return;
+    if (!(await confirm({ title: tx("Maydonni tozalash"), text: tx("Barcha asosiy o‘yinchilar maydondan olinadi (zaxira saqlanadi)."), danger: true, ok: tx("Tozalash") }))) return;
     setPlayers((ps) => ps.filter((p) => !p.is_starter));
     setSel(null);
   }
@@ -176,11 +177,11 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
     try {
       const p = await api.post<Player>("/admin/players", { team_id: team.id, full_name: v.name.trim(), number: v.number || null, position: v.position || null, is_active: true });
       setAdded((a) => ({ ...a, [side]: [...a[side], p] }));
-      placeAt(slot, `id${p.id}`, fromSquad(p));
+      placeAt(slot, tx("id{0}", p.id), fromSquad(p));
       setPicker(null);
-      toast(`${p.full_name} jamoa ro‘yxatiga qo‘shildi`);
+      toast(tx("{0} jamoa ro‘yxatiga qo‘shildi", p.full_name));
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     }
   }
   function clickRow(key: string) {
@@ -202,12 +203,12 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
     setBusy(true);
     try {
       for (const s of ["home", "away"] as Side[]) if (drafts[s].dirty) await saveSide(s);
-      if (!silent) toast("Tarkib saqlandi");
+      if (!silent) toast(tx("Tarkib saqlandi"));
       return true;
     } catch (e) {
       const checks = e instanceof ApiError ? (e.data as { checks?: Check[] })?.checks : undefined;
       if (checks) setServerChecks((c) => ({ ...c, [side]: checks }));
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
       return false;
     } finally {
       setBusy(false);
@@ -232,30 +233,30 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
       await api.post(`/admin/matches/${m.id}/lineups/publish`, { sides });
       setDrafts((all) => all && { home: sides.includes("home") ? { ...all.home, status: "published" } : all.home, away: sides.includes("away") ? { ...all.away, status: "published" } : all.away });
       setPublishOpen(false);
-      toast("Tarkiblar saytda e’lon qilindi");
+      toast(tx("Tarkiblar saytda e’lon qilindi"));
       onSaved();
     } catch (e) {
       const c = e instanceof ApiError ? (e.data as { checks?: Partial<Record<Side, Check[]>> })?.checks : undefined;
       if (c) setServerChecks(c);
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     } finally {
       setBusy(false);
     }
   }
   async function unpublish() {
-    if (!(await confirm({ title: "Saytdan yashirish", text: "Tarkiblar saytda «e’lon qilinmagan» holatiga qaytadi.", ok: "Yashirish" }))) return;
+    if (!(await confirm({ title: tx("Saytdan yashirish"), text: tx("Tarkiblar saytda «e’lon qilinmagan» holatiga qaytadi."), ok: tx("Yashirish") }))) return;
     await api.del(`/admin/matches/${m.id}/lineups/publish`);
     setDrafts((all) => all && { home: { ...all.home, status: "draft" }, away: { ...all.away, status: "draft" } });
-    toast("Tarkiblar saytdan yashirildi");
+    toast(tx("Tarkiblar saytdan yashirildi"));
   }
   async function copyLast() {
-    if (d?.players.length && !(await confirm({ title: "O‘tgan matchdan nusxa", text: "Joriy qoralama almashtiriladi.", ok: "Nusxa olish" }))) return;
+    if (d?.players.length && !(await confirm({ title: tx("O‘tgan matchdan nusxa"), text: tx("Joriy qoralama almashtiriladi."), ok: tx("Nusxa olish") }))) return;
     try {
       const r = await api.post<{ from: string }>(`/admin/matches/${m.id}/lineups/${side}/copy-last`);
-      toast(`Nusxa olindi: ${r.from}`);
+      toast(tx("Nusxa olindi: {0}", r.from));
       load.reload();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     }
   }
 
@@ -286,13 +287,13 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
     <div className="stack lineup-editor">
       <div className="card lineup-status">
         <div className="row wrap" style={{ gap: 10 }}>
-          {published ? <Badge tone="ok">E’lon qilingan</Badge> : <Badge>Qoralama</Badge>}
+          {published ? <Badge tone="ok">{tx("E’lon qilingan")}</Badge> : <Badge>{tx("Qoralama")}</Badge>}
           <span className="muted small">
-            {published ? "Saytda ko‘rinadi" : "Saytda ko‘rinmaydi"} · {anyDirty ? "saqlanmagan o‘zgarishlar bor" : `oxirgi saqlash ${ago(d.updated_at)}`}
+            {published ? tx("Saytda ko‘rinadi") : tx("Saytda ko‘rinmaydi")} · {anyDirty ? tx("saqlanmagan o‘zgarishlar bor") : `oxirgi saqlash ${ago(d.updated_at)}`}
           </span>
         </div>
         <div className="grow" />
-        <div className="team-switch" role="tablist" aria-label="Jamoa">
+        <div className="team-switch" role="tablist" aria-label={tx("Jamoa")}>
           {(["home", "away"] as Side[]).map((s) => {
             const c = sideCount(s);
             const t = s === "home" ? m.home : m.away;
@@ -304,29 +305,29 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
           })}
         </div>
         <div className="row wrap" style={{ gap: 6 }}>
-          <Link className="btn btn-ghost btn-sm" to="/protocols"><I.upload size={15} /> Protokoldan</Link>
-          <button className="btn btn-ghost btn-sm" onClick={copyLast} disabled={d.status === "published"}><I.refresh size={15} /> O‘tgan matchdan</button>
+          <Link className="btn btn-ghost btn-sm" to="/protocols"><I.upload size={15} />{" "}{tx("Protokoldan")}</Link>
+          <button className="btn btn-ghost btn-sm" onClick={copyLast} disabled={d.status === "published"}><I.refresh size={15} />{" "}{tx("O‘tgan matchdan")}</button>
         </div>
       </div>
 
       {serverChecks[side] && hasErrors(serverChecks[side]!) && !d.dirty && (
-        <div className="alert danger"><I.alert size={16} /> E’lon qilish uchun xatolarni tuzating — qoralama saqlangan.</div>
+        <div className="alert danger"><I.alert size={16} />{" "}{tx("E’lon qilish uchun xatolarni tuzating — qoralama saqlangan.")}</div>
       )}
 
       <div className="lineup-grid">
         {/* squad */}
         <section className="card squad" onDragOver={(e) => e.preventDefault()} onDrop={onDropList}>
           <div className="card-head" style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}>
-            <div className="row" style={{ justifyContent: "space-between" }}><h3>Jamoa ro‘yxati</h3><span className="muted small">{team?.name} · {rows.length} o‘yinchi</span></div>
-            <div className="search"><I.search size={16} /><input className="input input-sm" placeholder="Ism yoki raqam" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+            <div className="row" style={{ justifyContent: "space-between" }}><h3>{tx("Jamoa ro‘yxati")}</h3><span className="muted small">{team?.name}{" "}{tx("· {0} o‘yinchi", rows.length)}</span></div>
+            <div className="search"><I.search size={16} /><input className="input input-sm" placeholder={tx("Ism yoki raqam")} value={q} onChange={(e) => setQ(e.target.value)} /></div>
             <div className="chips">
-              {([["all", "Hammasi"], ["pitch", "Maydonda"], ["bench", "Zaxira"], ["free", "Bo‘sh"]] as [Filter, string][]).map(([k, l]) => (
+              {([["all", tx("Hammasi")], ["pitch", tx("Maydonda")], ["bench", tx("Zaxira")], ["free", tx("Bo‘sh")]] as [Filter, string][]).map(([k, l]) => (
                 <button key={k} className="chip" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l} {counts[k]}</button>
               ))}
             </div>
           </div>
           {!rows.length ? (
-            <div className="empty"><b>Jamoa ro‘yxati bo‘sh</b>Avval «O‘yinchilar» bo‘limida {team?.name} o‘yinchilarini qo‘shing.<div style={{ marginTop: 12 }}><Link className="btn btn-sm" to="/players">O‘yinchilar</Link></div></div>
+            <div className="empty"><b>{tx("Jamoa ro‘yxati bo‘sh")}</b>{tx("Avval «O‘yinchilar» bo‘limida {0} o‘yinchilarini qo‘shing.", team?.name)}<div style={{ marginTop: 12 }}><Link className="btn btn-sm" to="/players">{tx("O‘yinchilar")}</Link></div></div>
           ) : (
             <div className="squad-list">
               {Object.keys(GROUP_LABEL).map((g) => {
@@ -341,8 +342,8 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
                         <div key={r.key} className={`squad-row${selKey === r.key ? " selected" : ""}${r.status === "free" ? " free" : ""}`} draggable onDragStart={(e) => startDrag(r.key, e)} onClick={() => clickRow(r.key)} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && clickRow(r.key)}>
                           <span className="handle" aria-hidden>⋮⋮</span>
                           <b className="num tnum">{r.p.number ?? "–"}</b>
-                          <span className="grow"><b className="ellipsis" style={{ display: "block" }}>{r.p.player_name}</b><small className={susp ? "danger-text" : "muted"}>{susp ? "Oldingi matchda chetlatilgan" : POSITIONS[r.p.position] || "—"}{r.p.is_captain ? " · kapitan" : ""}</small></span>
-                          <span className={`pill pill-${r.status}`}>{r.status === "pitch" ? r.p.role || "✓" : r.status === "bench" ? "Zaxira" : susp ? "Diskv.?" : "—"}</span>
+                          <span className="grow"><b className="ellipsis" style={{ display: "block" }}>{r.p.player_name}</b><small className={susp ? "danger-text" : "muted"}>{susp ? tx("Oldingi matchda chetlatilgan") : POSITIONS[r.p.position] || "—"}{r.p.is_captain ? tx(" · kapitan") : ""}</small></span>
+                          <span className={`pill pill-${r.status}`}>{r.status === "pitch" ? r.p.role || "✓" : r.status === "bench" ? tx("Zaxira") : susp ? tx("Diskv.?") : "—"}</span>
                         </div>
                       );
                     })}
@@ -351,23 +352,23 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
               })}
             </div>
           )}
-          <div className="card-foot muted small">Tortib maydonga yoki zaxiraga qo‘ying. Ro‘yxatga qaytarish — shu yerga tashlang.</div>
+          <div className="card-foot muted small">{tx("Tortib maydonga yoki zaxiraga qo‘ying. Ro‘yxatga qaytarish — shu yerga tashlang.")}</div>
         </section>
 
         {/* pitch */}
         <section className="card pitch-card">
           <div className="card-head" style={{ gap: 8, flexWrap: "wrap" }}>
             <label className="field" style={{ minWidth: 150 }}>
-              <span className="label">Sxema</span>
-              <select className="select" value={d.formation} onChange={(e) => setFormation(e.target.value)} aria-label="Sxema">
-                {!d.formation && <option value="">Tanlang…</option>}
+              <span className="label">{tx("Sxema")}</span>
+              <select className="select" value={d.formation} onChange={(e) => setFormation(e.target.value)} aria-label={tx("Sxema")}>
+                {!d.formation && <option value="">{tx("Tanlang…")}</option>}
                 {load.data.formations.map((f) => <option key={f.code} value={f.code}>{f.code} · {f.size}</option>)}
                 {d.formation && !load.data.formations.some((f) => f.code === d.formation) && <option value={d.formation}>{d.formation}</option>}
               </select>
             </label>
             <div className="grow" />
-            <button className="btn btn-ghost btn-sm" onClick={autoFill} title="Bo‘sh o‘rinlarni amplua bo‘yicha to‘ldirish">Avtojoylash</button>
-            <button className="btn btn-ghost btn-sm" onClick={clearPitch} disabled={!d.players.some((p) => p.is_starter)}>Tozalash</button>
+            <button className="btn btn-ghost btn-sm" onClick={autoFill} title={tx("Bo‘sh o‘rinlarni amplua bo‘yicha to‘ldirish")}>{tx("Avtojoylash")}</button>
+            <button className="btn btn-ghost btn-sm" onClick={clearPitch} disabled={!d.players.some((p) => p.is_starter)}>{tx("Tozalash")}</button>
           </div>
           <div className="pitch-wrap">
             {formation ? (
@@ -375,19 +376,19 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
                 onSlot={clickSlot} onDragStartSlot={(i, e) => { const p = d.players.find((x) => x.is_starter && x.slot === i); if (p) startDrag(keyOf(p), e); }}
                 onDragOverSlot={setDropSlot} onDropSlot={onDropSlot} />
             ) : (
-              <div className="empty" style={{ color: "#fff" }}><b style={{ color: "#fff" }}>Sxemani tanlang</b>Yoki «Avtojoylash» — 4-3-3 bilan boshlanadi.</div>
+              <div className="empty" style={{ color: "#fff" }}><b style={{ color: "#fff" }}>{tx("Sxemani tanlang")}</b>{tx("Yoki «Avtojoylash» — 4-3-3 bilan boshlanadi.")}</div>
             )}
           </div>
           <div className={`bench-zone${dropBench ? " drop" : ""}`} onDragOver={(e) => { e.preventDefault(); setDropBench(true); }} onDragLeave={() => setDropBench(false)} onDrop={onDropBench}>
-            <div className="row" style={{ justifyContent: "space-between" }}><span className="overline">Zaxira · {bench.length}{benchMax ? ` / ${benchMax}` : ""}</span><span className="muted small">Tortib o‘tkazing yoki tanlang</span></div>
+            <div className="row" style={{ justifyContent: "space-between" }}><span className="overline">{tx("Zaxira ·")}{" "}{bench.length}{benchMax ? ` / ${benchMax}` : ""}</span><span className="muted small">{tx("Tortib o‘tkazing yoki tanlang")}</span></div>
             <div className="chips">
               {bench.map((p) => (
                 <span key={keyOf(p)} className={`bench-chip${selKey === keyOf(p) ? " selected" : ""}`} draggable onDragStart={(e) => startDrag(keyOf(p), e)} onClick={() => setSel({ kind: "player", key: keyOf(p) })}>
                   <b className="tnum">{p.number ?? "–"}</b> {p.player_name.split(" ").pop()}
-                  <button className="x" aria-label="Zaxiradan olish" onClick={(e) => { e.stopPropagation(); removeP(keyOf(p)); }}><I.x size={13} /></button>
+                  <button className="x" aria-label={tx("Zaxiradan olish")} onClick={(e) => { e.stopPropagation(); removeP(keyOf(p)); }}><I.x size={13} /></button>
                 </span>
               ))}
-              {!bench.length && <span className="muted small">Zaxira bo‘sh</span>}
+              {!bench.length && <span className="muted small">{tx("Zaxira bo‘sh")}</span>}
             </div>
           </div>
         </section>
@@ -398,14 +399,14 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
             {selP ? (
               <>
                 <div className="card-head">
-                  <div className="row"><span className="avatar">{selP.photo ? <img src={selP.photo} alt="" /> : (selP.p.number ?? "–")}</span><div><b>{selP.p.number != null ? `${selP.p.number} · ` : ""}{selP.p.player_name}</b><div className="muted small">{POSITIONS[selP.p.position] || "—"} · {selP.status === "pitch" ? "maydonda" : selP.status === "bench" ? "zaxirada" : "tarkibda emas"}</div></div></div>
-                  <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSel(null)} aria-label="Yopish"><I.x size={16} /></button>
+                  <div className="row"><span className="avatar">{selP.photo ? <img src={selP.photo} alt="" /> : (selP.p.number ?? "–")}</span><div><b>{selP.p.number != null ? `${selP.p.number} · ` : ""}{selP.p.player_name}</b><div className="muted small">{POSITIONS[selP.p.position] || "—"} · {selP.status === "pitch" ? tx("maydonda") : selP.status === "bench" ? tx("zaxirada") : tx("tarkibda emas")}</div></div></div>
+                  <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSel(null)} aria-label={tx("Yopish")}><I.x size={16} /></button>
                 </div>
                 <div className="card-pad stack" style={{ gap: 14 }}>
                   {formation && (
-                    <label className="field"><span className="label">Maydondagi o‘rni</span>
+                    <label className="field"><span className="label">{tx("Maydondagi o‘rni")}</span>
                       <select className="select" value={selP.p.is_starter && selP.p.slot != null ? selP.p.slot : ""} onChange={(e) => e.target.value !== "" && placeAt(Number(e.target.value), selP.key)}>
-                        <option value="">— maydonda emas —</option>
+                        <option value="">{tx("— maydonda emas —")}</option>
                         {formation.slots.map((s, i) => {
                           const occ = d.players.find((p) => p.is_starter && p.slot === i);
                           return <option key={i} value={i}>{s.role} · {ROLE_LABEL[s.role] || s.role}{occ && keyOf(occ) !== selP.key ? ` (${occ.number ?? ""} ${occ.player_name.split(" ").pop()})` : ""}</option>;
@@ -415,54 +416,54 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
                   )}
                   {selP.status !== "free" && (
                     <>
-                      <label className="field"><span className="label">Raqam (shu match uchun)</span>
-                        <input className="input" type="text" autoCapitalize="characters" autoComplete="off" maxLength={8} placeholder="10 yoki Z10" value={selP.p.number ?? ""} onChange={(e) => patchP(selP.key, { number: jerseyInput(e.target.value) || null })} />
+                      <label className="field"><span className="label">{tx("Raqam (shu match uchun)")}</span>
+                        <input className="input" type="text" autoCapitalize="characters" autoComplete="off" maxLength={8} placeholder={tx("10 yoki Z10")} value={selP.p.number ?? ""} onChange={(e) => patchP(selP.key, { number: jerseyInput(e.target.value) || null })} />
                       </label>
                       {selP.status === "pitch" && (
-                        <label className="check"><input type="checkbox" checked={selP.p.is_captain} onChange={(e) => patchP(selP.key, { is_captain: e.target.checked })} /> Kapitan</label>
+                        <label className="check"><input type="checkbox" checked={selP.p.is_captain} onChange={(e) => patchP(selP.key, { is_captain: e.target.checked })} />{" "}{tx("Kapitan")}</label>
                       )}
                     </>
                   )}
                   <div className="row wrap">
-                    {selP.status !== "bench" && <button className="btn btn-sm" onClick={() => toBench(selP.key)}>Zaxiraga</button>}
-                    {selP.status === "free" && sel?.kind !== "slot" && <span className="muted small">Bo‘sh o‘ringa bosing yoki torting</span>}
-                    {selP.status !== "free" && <button className="btn btn-ghost btn-sm" onClick={() => removeP(selP.key)}>Tarkibdan olish</button>}
+                    {selP.status !== "bench" && <button className="btn btn-sm" onClick={() => toBench(selP.key)}>{tx("Zaxiraga")}</button>}
+                    {selP.status === "free" && sel?.kind !== "slot" && <span className="muted small">{tx("Bo‘sh o‘ringa bosing yoki torting")}</span>}
+                    {selP.status !== "free" && <button className="btn btn-ghost btn-sm" onClick={() => removeP(selP.key)}>{tx("Tarkibdan olish")}</button>}
                   </div>
                 </div>
               </>
             ) : sel?.kind === "slot" && formation ? (
-              <div className="card-pad"><b>{formation.slots[sel.slot].role} · {ROLE_LABEL[formation.slots[sel.slot].role]}</b><p className="muted small" style={{ margin: "6px 0 0" }}>O‘rin bo‘sh — ro‘yxatdan o‘yinchini bosing yoki tortib qo‘ying.</p></div>
+              <div className="card-pad"><b>{formation.slots[sel.slot].role} · {ROLE_LABEL[formation.slots[sel.slot].role]}</b><p className="muted small" style={{ margin: "6px 0 0" }}>{tx("O‘rin bo‘sh — ro‘yxatdan o‘yinchini bosing yoki tortib qo‘ying.")}</p></div>
             ) : (
-              <div className="card-pad muted small">O‘yinchini yoki maydondagi o‘rinni tanlang. Klaviatura: Tab bilan o‘ting, Enter — tanlash.</div>
+              <div className="card-pad muted small">{tx("O‘yinchini yoki maydondagi o‘rinni tanlang. Klaviatura: Tab bilan o‘ting, Enter — tanlash.")}</div>
             )}
           </section>
 
           <section className="card">
-            <div className="card-head"><h3>Tekshiruv</h3>{errCount ? <Badge tone="danger">{errCount} ta xato</Badge> : <Badge tone="ok">Tayyor</Badge>}</div>
+            <div className="card-head"><h3>{tx("Tekshiruv")}</h3>{errCount ? <Badge tone="danger">{errCount}{" "}{tx("ta xato")}</Badge> : <Badge tone="ok">{tx("Tayyor")}</Badge>}</div>
             <ul className="checklist">
-              {shownChecks.length === 0 && <li className="ok"><I.check size={16} /> Hammasi joyida</li>}
+              {shownChecks.length === 0 && <li className="ok"><I.check size={16} />{" "}{tx("Hammasi joyida")}</li>}
               {shownChecks.map((c, i) => <li key={i} className={c.level}>{c.level === "error" ? <I.x size={16} /> : <I.alert size={16} />} {c.text}</li>)}
             </ul>
           </section>
 
           <section className="card">
-            <div className="card-head"><h3>Murabbiylar</h3></div>
+            <div className="card-head"><h3>{tx("Murabbiylar")}</h3></div>
             <div className="card-pad stack" style={{ gap: 12 }}>
               <datalist id={`staff-${side}`}>{coachOpts.map((s) => <option key={s.id} value={s.full_name} />)}</datalist>
-              <label className="field"><span className="label">Bosh murabbiy</span><input className="input" list={`staff-${side}`} value={d.coach} onChange={(e) => update((x) => ({ ...x, coach: e.target.value }))} placeholder="Ism familiya" /></label>
-              <label className="field"><span className="label">Yordamchi</span><input className="input" list={`staff-${side}`} value={d.assistant} onChange={(e) => update((x) => ({ ...x, assistant: e.target.value }))} placeholder="Ixtiyoriy" /></label>
-              <span className="muted small">Tavsiyalar «Jamoalar → {team?.name} → Murabbiylar»dan.</span>
+              <label className="field"><span className="label">{tx("Bosh murabbiy")}</span><input className="input" list={`staff-${side}`} value={d.coach} onChange={(e) => update((x) => ({ ...x, coach: e.target.value }))} placeholder={tx("Ism familiya")} /></label>
+              <label className="field"><span className="label">{tx("Yordamchi")}</span><input className="input" list={`staff-${side}`} value={d.assistant} onChange={(e) => update((x) => ({ ...x, assistant: e.target.value }))} placeholder={tx("Ixtiyoriy")} /></label>
+              <span className="muted small">{tx("Tavsiyalar «Jamoalar → {0} → Murabbiylar»dan.", team?.name)}</span>
             </div>
           </section>
         </div>
       </div>
 
       <div className="lineup-actions">
-        <a className="btn btn-ghost" href={`${SITE_URL}/matchlar/${m.id}`} target="_blank" rel="noreferrer"><I.globe size={16} /> Saytda ko‘rish</a>
+        <a className="btn btn-ghost" href={`${SITE_URL}/matchlar/${m.id}`} target="_blank" rel="noreferrer"><I.globe size={16} />{" "}{tx("Saytda ko‘rish")}</a>
         <div className="grow" />
-        {published && <button className="btn btn-ghost" onClick={unpublish} disabled={busy}>Saytdan yashirish</button>}
-        <button className="btn" onClick={() => saveAll()} disabled={busy || !anyDirty}>{busy ? "Saqlanmoqda…" : published ? "O‘zgarishlarni saqlash" : "Qoralamani saqlash"}</button>
-        {!published && <button className="btn btn-primary" onClick={() => setPublishOpen(true)} disabled={busy || hasErrors(checksFor("home")) && hasErrors(checksFor("away"))}>E’lon qilish</button>}
+        {published && <button className="btn btn-ghost" onClick={unpublish} disabled={busy}>{tx("Saytdan yashirish")}</button>}
+        <button className="btn" onClick={() => saveAll()} disabled={busy || !anyDirty}>{busy ? tx("Saqlanmoqda…") : published ? tx("O‘zgarishlarni saqlash") : tx("Qoralamani saqlash")}</button>
+        {!published && <button className="btn btn-primary" onClick={() => setPublishOpen(true)} disabled={busy || hasErrors(checksFor("home")) && hasErrors(checksFor("away"))}>{tx("E’lon qilish")}</button>}
       </div>
 
       {picker != null && formation && formation.slots[picker] && (
@@ -471,9 +472,9 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
       )}
 
       {publishOpen && (
-        <Modal title="Tarkiblarni e’lon qilish" onClose={() => setPublishOpen(false)}
-          footer={<><button className="btn btn-ghost" onClick={() => setPublishOpen(false)}>Bekor qilish</button><button className="btn btn-primary" onClick={publish} disabled={busy || (["home", "away"] as Side[]).some((s) => drafts[s].players.length && hasErrors(checksFor(s)))}>E’lon qilish</button></>}>
-          <p className="muted" style={{ marginTop: 0 }}>Saytdagi «Tarkiblar» bo‘limida darhol ko‘rinadi. Keyingi o‘zgarishlar (almashtirishlar, Live-pult) ham avtomatik yangilanadi.</p>
+        <Modal title={tx("Tarkiblarni e’lon qilish")} onClose={() => setPublishOpen(false)}
+          footer={<><button className="btn btn-ghost" onClick={() => setPublishOpen(false)}>{tx("Bekor qilish")}</button><button className="btn btn-primary" onClick={publish} disabled={busy || (["home", "away"] as Side[]).some((s) => drafts[s].players.length && hasErrors(checksFor(s)))}>{tx("E’lon qilish")}</button></>}>
+          <p className="muted" style={{ marginTop: 0 }}>{tx("Saytdagi «Tarkiblar» bo‘limida darhol ko‘rinadi. Keyingi o‘zgarishlar (almashtirishlar, Live-pult) ham avtomatik yangilanadi.")}</p>
           <div className="stack" style={{ gap: 10 }}>
             {(["home", "away"] as Side[]).map((s) => {
               const x = drafts[s];
@@ -483,7 +484,7 @@ export function LineupEditor({ detail, onSaved }: { detail: MatchDetail; onSaved
               return (
                 <div key={s} className="publish-row">
                   <Crest team={t} size={32} />
-                  <div className="grow"><b>{t?.name || "—"}</b><div className="muted small">{x.players.length ? `${x.formation || "sxemasiz"} · ${starters} asosiy + ${x.players.length - starters} zaxira${x.players.some((p) => p.is_captain) ? " · kapitan belgilangan" : ""}` : "Tarkib kiritilmagan — e’lon qilinmaydi"}</div>
+                  <div className="grow"><b>{t?.name || "—"}</b><div className="muted small">{x.players.length ? tx("{0} · {1} asosiy + {2} zaxira{3}", x.formation || "sxemasiz", starters, x.players.length - starters, x.players.some((p) => p.is_captain) ? " · kapitan belgilangan" : "") : tx("Tarkib kiritilmagan — e’lon qilinmaydi")}</div>
                     {hasErrors(cs) && <div className="danger-text small">{cs.filter((c) => c.level === "error").map((c) => c.text).join("; ")}</div>}</div>
                   {x.players.length ? (hasErrors(cs) ? <I.x size={18} /> : <I.check size={18} />) : null}
                 </div>
@@ -516,30 +517,30 @@ function SlotPicker({ slot, role, team, rows, onPick, onCreate, onClose }: {
       <div className="stack" key={slot}>
         {rows.length > 0 && (
           <>
-            <div className="search"><I.search size={16} /><input className="input input-sm" autoFocus placeholder="Ism yoki raqam" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+            <div className="search"><I.search size={16} /><input className="input input-sm" autoFocus placeholder={tx("Ism yoki raqam")} value={q} onChange={(e) => setQ(e.target.value)} /></div>
             <div className="picker-list">
               {list.map((r) => (
                 <button key={r.key} type="button" className="squad-row" onClick={() => onPick(r.key)}>
                   <b className="num tnum">{r.p.number ?? "–"}</b>
                   <span className="grow" style={{ textAlign: "left" }}><b className="ellipsis" style={{ display: "block" }}>{r.p.player_name}</b><small className="muted">{POSITIONS[r.p.position] || "—"}</small></span>
-                  {r.status === "bench" ? <span className="pill pill-bench">Zaxira</span> : r.p.position === want ? <span className="pill pill-pitch">{role}</span> : null}
+                  {r.status === "bench" ? <span className="pill pill-bench">{tx("Zaxira")}</span> : r.p.position === want ? <span className="pill pill-pitch">{role}</span> : null}
                 </button>
               ))}
-              {list.length === 0 && <div className="muted small" style={{ padding: 8 }}>Topilmadi</div>}
+              {list.length === 0 && <div className="muted small" style={{ padding: 8 }}>{tx("Topilmadi")}</div>}
             </div>
           </>
         )}
         <form className="stack" style={{ gap: 8, borderTop: rows.length ? "1px solid var(--border)" : 0, paddingTop: rows.length ? 12 : 0 }}
           onSubmit={async (e) => { e.preventDefault(); if (!nf.name.trim()) return; setBusy(true); await onCreate(nf); setBusy(false); }}>
-          <b className="small">{rows.length ? "Ro‘yxatda yo‘qmi? Yangi o‘yinchi qo‘shing" : `${team} ro‘yxati bo‘sh — o‘yinchini shu yerda qo‘shing`}</b>
+          <b className="small">{rows.length ? tx("Ro‘yxatda yo‘qmi? Yangi o‘yinchi qo‘shing") : tx("{0} ro‘yxati bo‘sh — o‘yinchini shu yerda qo‘shing", team)}</b>
           <div className="row" style={{ gap: 8 }}>
             <input className="input input-sm" style={{ width: 70 }} autoCapitalize="characters" autoComplete="off" maxLength={8} placeholder="№" value={nf.number} onChange={(e) => setNf({ ...nf, number: jerseyInput(e.target.value) })} />
-            <input className="input input-sm grow" placeholder="Ism familiya" value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} autoFocus={!rows.length} />
+            <input className="input input-sm grow" placeholder={tx("Ism familiya")} value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} autoFocus={!rows.length} />
             <select className="select input-sm" style={{ width: "auto" }} value={nf.position} onChange={(e) => setNf({ ...nf, position: e.target.value })}>
               {Object.entries(POSITIONS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </div>
-          <button className="btn btn-primary btn-sm" style={{ alignSelf: "flex-end" }} disabled={busy || !nf.name.trim()}><I.plus size={15} /> Qo‘shish va joylash</button>
+          <button className="btn btn-primary btn-sm" style={{ alignSelf: "flex-end" }} disabled={busy || !nf.name.trim()}><I.plus size={15} />{" "}{tx("Qo‘shish va joylash")}</button>
         </form>
       </div>
     </Modal>

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Emblem } from "./Emblem";
 
+import { useT } from "@/lib/i18n";
 const KEY = "mfl:intro";
 
 /**
@@ -24,6 +25,7 @@ const DOCK_MS = 500;
  * know: the exact header position (docking), skip on interaction, and cleanup.
  */
 export function Intro() {
+  const tx = useT();
   const root = useRef<HTMLDivElement>(null);
   const [gone, setGone] = useState(false);
 
@@ -134,8 +136,8 @@ export function Intro() {
         <div className="kick-lockup">
           <span className="kick-text">
             <span className="kick-text-in">
-              <b>United MFL</b>
-              <small>Media Football League</small>
+              <b>{tx("United MFL")}</b>
+              <small>{tx("Media Football League")}</small>
             </span>
           </span>
           <span className="kick-badge">

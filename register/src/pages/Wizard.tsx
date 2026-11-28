@@ -6,14 +6,15 @@ import { CheckLine, Field, Spinner, useToast } from "@/components/ui";
 import { ImportButton, ImportModal, PlayerModal, PlayersTable, StaffModal, StaffTable, appUploader, rowFlags } from "@/components/Roster";
 import { I } from "@/components/Icons";
 
+import { tx } from "@/lib/i18n";
 type Doc = Pick<Application, "team" | "rep" | "players" | "staff" | "consents">;
 const pick = (a: Application): Doc => ({ team: a.team, rep: a.rep, players: a.players, staff: a.staff, consents: a.consents });
 
 const STEPS: { key: Section | "submit"; title: string; sub: string }[] = [
-  { key: "team", title: "Jamoa", sub: "Nomi, logotip, forma" },
-  { key: "rep", title: "Vakil", sub: "Telefon va aloqa" },
-  { key: "roster", title: "Tarkib", sub: "O‘yinchilar, media, murabbiy" },
-  { key: "submit", title: "Tekshirish", sub: "Yuborishdan oldin" },
+  { key: "team", title: tx("Jamoa"), sub: tx("Nomi, logotip, forma") },
+  { key: "rep", title: tx("Vakil"), sub: tx("Telefon va aloqa") },
+  { key: "roster", title: tx("Tarkib"), sub: tx("O‘yinchilar, media, murabbiy") },
+  { key: "submit", title: tx("Tekshirish"), sub: tx("Yuborishdan oldin") },
 ];
 
 /** The application form: four steps, saved automatically to the server. */
@@ -54,7 +55,7 @@ export function Wizard({ initial, onDone }: { initial: Application; onDone: (a: 
         }
       } catch (e) {
         setSaveState("error");
-        toast(e instanceof Error ? e.message : "Saqlanmadi", "error");
+        toast(e instanceof Error ? e.message : tx("Saqlanmadi"), "error");
         if (e instanceof ApiError && e.status === 409) {
           api.get(token).then(onDone).catch(() => {});
         }
@@ -97,12 +98,12 @@ export function Wizard({ initial, onDone }: { initial: Application; onDone: (a: 
   const locked = (s: Section) => !app.editable[s];
   const changes = app.status === "changes";
 
-  const saved = saveState === "saving" ? "Saqlanmoqda…" : saveState === "dirty" ? "O‘zgarishlar saqlanadi…" : saveState === "error" ? "Saqlanmadi — internetni tekshiring" : `Saqlandi · ${fmtDeadline(savedAt).split(", ")[1] || ""}`;
+  const saved = saveState === "saving" ? tx("Saqlanmoqda…") : saveState === "dirty" ? tx("O‘zgarishlar saqlanadi…") : saveState === "error" ? tx("Saqlanmadi — internetni tekshiring") : tx("Saqlandi · {0}", fmtDeadline(savedAt).split(", ")[1] || "");
   const footer = (next?: ReactNode) => (
     <div className="form-foot">
       <span className="grow">{saveState === "error" ? <I.alert size={14} /> : <I.check size={14} />}{saved}</span>
-      {step > 0 && <button type="button" className="btn btn-ghost" onClick={() => go(step - 1)}>Orqaga</button>}
-      {next ?? <button type="button" className="btn btn-primary" onClick={() => go(step + 1)}>Davom etish</button>}
+      {step > 0 && <button type="button" className="btn btn-ghost" onClick={() => go(step - 1)}>{tx("Orqaga")}</button>}
+      {next ?? <button type="button" className="btn btn-primary" onClick={() => go(step + 1)}>{tx("Davom etish")}</button>}
     </div>
   );
 
@@ -118,13 +119,13 @@ export function Wizard({ initial, onDone }: { initial: Application; onDone: (a: 
             <button type="button" key={s.key} className={`step${i === step ? " cur" : done ? " done" : ""}${lockedStep ? " locked" : ""}`} onClick={() => go(i)} role="tab" aria-selected={i === step}>
               <span className="step-dot">{done ? <I.check size={16} /> : lockedStep ? <I.lock size={14} /> : i + 1}</span>
               <span><b>{s.title}</b><small>{s.sub}</small></span>
-              {errs > 0 && visited.has(i) && i !== step ? <span className="flag danger-text">{errs} xato</span> : done ? <span className="flag accent-text">Tayyor</span> : null}
+              {errs > 0 && visited.has(i) && i !== step ? <span className="flag danger-text">{errs}{" "}{tx("xato")}</span> : done ? <span className="flag accent-text">{tx("Tayyor")}</span> : null}
             </button>
           );
         })}
       </div>
       <div className="progress">
-        <div className="row" style={{ justifyContent: "space-between" }}><b className="small">{step + 1}-qadam / 4 · {STEPS[step].title}</b><span className="small muted">{STEPS[step + 1] ? `Keyingi: ${STEPS[step + 1].title}` : "Oxirgi qadam"}</span></div>
+        <div className="row" style={{ justifyContent: "space-between" }}><b className="small">{step + 1}{tx("-qadam / 4 ·")}{" "}{STEPS[step].title}</b><span className="small muted">{STEPS[step + 1] ? tx("Keyingi: {0}", STEPS[step + 1].title) : tx("Oxirgi qadam")}</span></div>
         <div className="bars">{STEPS.map((_, i) => <i key={i} className={i < step ? "done" : i === step ? "cur" : ""} />)}</div>
       </div>
     </>
@@ -132,13 +133,13 @@ export function Wizard({ initial, onDone }: { initial: Application; onDone: (a: 
 
   return (
     <Page>
-      {step === 0 && bigHero ? <Hero link={app.link} /> : <CompactHero link={app.link} title={doc.team.name ? `${doc.team.name} — ariza` : "Jamoa arizasi"} />}
+      {step === 0 && bigHero ? <Hero link={app.link} /> : <CompactHero link={app.link} title={doc.team.name ? tx("{0} — ariza", doc.team.name) : tx("Jamoa arizasi")} />}
       <div className="wrap">
         <div className={`cols${step === 2 ? " wide" : ""}`}>
           <div className="stack">
             {steps}
             {step === 2 && <SizesCard players={doc.players} staff={doc.staff} />}
-            <div className="note"><I.refresh size={16} /><div>Ariza avtomatik saqlanadi. Sahifa havolasini saqlab qo‘ying — u orqali istalgan qurilmadan davom etasiz va holatni kuzatasiz.</div></div>
+            <div className="note"><I.refresh size={16} /><div>{tx("Ariza avtomatik saqlanadi. Sahifa havolasini saqlab qo‘ying — u orqali istalgan qurilmadan davom etasiz va holatni kuzatasiz.")}</div></div>
           </div>
           <div className="stack">
             {changes && <ChangesBanner app={app} />}
@@ -159,12 +160,12 @@ function FormCard({ n, title, sub, children, footer, locked }: { n: number; titl
   return (
     <div className="card">
       <div className="form-head">
-        <div className="over">{n}-qadam / 4</div>
+        <div className="over">{n}{tx("-qadam / 4")}</div>
         <h2>{title}</h2>
         {sub && <p>{sub}</p>}
       </div>
       <div className="form-body">
-        {locked && <div className="note"><I.lock size={16} /><div>Bu bo‘lim qulflangan — admin faqat izoh qoldirilgan bo‘limlarni tuzatishga ochgan.</div></div>}
+        {locked && <div className="note"><I.lock size={16} /><div>{tx("Bu bo‘lim qulflangan — admin faqat izoh qoldirilgan bo‘limlarni tuzatishga ochgan.")}</div></div>}
         {children}
       </div>
       {footer}
@@ -175,12 +176,12 @@ function FormCard({ n, title, sub, children, footer, locked }: { n: number; titl
 const errFor = (checks: Check[], code: string) => checks.find((c) => c.code === code && c.level === "error")?.text;
 
 function ChangesBanner({ app }: { app: Application }) {
-  const names: Record<string, string> = { team: "Jamoa", rep: "Vakil", roster: "Tarkib" };
+  const names: Record<string, string> = { team: tx("Jamoa"), rep: tx("Vakil"), roster: tx("Tarkib") };
   return (
     <div className="card">
       <div className="card-head" style={{ background: "var(--warn-subtle)" }}>
-        <h3 className="row"><I.alert size={18} /> Admin tuzatish so‘radi</h3>
-        {app.changes_deadline && <span className="small warn-text"><b>Muddat: {fmtDeadline(app.changes_deadline)}</b></span>}
+        <h3 className="row"><I.alert size={18} />{" "}{tx("Admin tuzatish so‘radi")}</h3>
+        {app.changes_deadline && <span className="small warn-text"><b>{tx("Muddat:")}{" "}{fmtDeadline(app.changes_deadline)}</b></span>}
       </div>
       {app.comments.map((c, i) => (
         <div key={i} className="comment">
@@ -194,16 +195,16 @@ function ChangesBanner({ app }: { app: Application }) {
 function Aside({ step, app }: { step: number; app: Application }) {
   const r = app.link?.requirements;
   const items = step === 1
-    ? ["Liga ariza holati va o‘yinlar jadvali bo‘yicha shu odam bilan bog‘lanadi", "Raqam saytda ko‘rinmaydi — faqat liga ma’muriyati uchun", ...(app.otp_required ? ["Raqam SMS-kod bilan tasdiqlanadi"] : [])]
+    ? [tx("Liga ariza holati va o‘yinlar jadvali bo‘yicha shu odam bilan bog‘lanadi"), tx("Raqam saytda ko‘rinmaydi — faqat liga ma’muriyati uchun"), ...(app.otp_required ? [tx("Raqam SMS-kod bilan tasdiqlanadi")] : [])]
     : step === 3
-      ? ["Ariza yuboriladi va raqam beriladi", "Liga ma’muriyati arizani ko‘rib chiqadi", "Tasdiqlansa — jamoa saytda paydo bo‘ladi; tuzatish kerak bo‘lsa — izoh shu sahifada chiqadi"]
+      ? [tx("Ariza yuboriladi va raqam beriladi"), tx("Liga ma’muriyati arizani ko‘rib chiqadi"), tx("Tasdiqlansa — jamoa saytda paydo bo‘ladi; tuzatish kerak bo‘lsa — izoh shu sahifada chiqadi")]
       : [
-        r ? `${r.min_players} dan ${r.max_players} gacha kishi` : "",
-        "Har bir o‘yinchi: ism, familiya, tug‘ilgan sana, raqam",
-        r?.logo ? "Logotip PNG yoki JPG, kamida 512×512" : "",
-        "Bitta o‘yinchi faqat bitta jamoada o‘ynaydi",
+        r ? tx("{0} dan {1} gacha kishi", r.min_players, r.max_players) : "",
+        tx("Har bir o‘yinchi: ism, familiya, tug‘ilgan sana, raqam"),
+        r?.logo ? tx("Logotip PNG yoki JPG, kamida 512×512") : "",
+        tx("Bitta o‘yinchi faqat bitta jamoada o‘ynaydi"),
       ].filter(Boolean);
-  const title = step === 1 ? "Nega telefon kerak?" : step === 3 ? "Keyin nima bo‘ladi?" : "Talablar";
+  const title = step === 1 ? tx("Nega telefon kerak?") : step === 3 ? tx("Keyin nima bo‘ladi?") : tx("Talablar");
   return (
     <div className="stack aside">
       <div className="card">
@@ -211,9 +212,9 @@ function Aside({ step, app }: { step: number; app: Application }) {
         <div className="card-pad stack" style={{ gap: 12 }}>{items.map((t) => <CheckLine key={t} level="ok"><span className="sec">{t}</span></CheckLine>)}</div>
       </div>
       <div className="card"><div className="card-pad stack" style={{ gap: 10 }}>
-        <b style={{ fontSize: 16 }}>Savol bormi?</b>
-        <span className="sec">Liga menejeriga Telegram orqali yozing.</span>
-        <a className="btn" href={HELP_URL} target="_blank" rel="noopener noreferrer"><I.telegram size={16} /> Menejerga yozish</a>
+        <b style={{ fontSize: 16 }}>{tx("Savol bormi?")}</b>
+        <span className="sec">{tx("Liga menejeriga Telegram orqali yozing.")}</span>
+        <a className="btn" href={HELP_URL} target="_blank" rel="noopener noreferrer"><I.telegram size={16} />{" "}{tx("Menejerga yozish")}</a>
       </div></div>
     </div>
   );
@@ -225,12 +226,12 @@ function SizesCard({ players, staff }: { players: Player[]; staff: Staff[] }) {
   const maxN = Math.max(1, ...list.map((x) => x.n));
   return (
     <div className="card sizes-card">
-      <div className="card-head"><h3 style={{ fontSize: 16 }}>Forma o‘lchamlari</h3><span className="small sec"><b>{total} komplekt</b></span></div>
+      <div className="card-head"><h3 style={{ fontSize: 16 }}>{tx("Forma o‘lchamlari")}</h3><span className="small sec"><b>{total}{" "}{tx("komplekt")}</b></span></div>
       <div className="card-pad stack" style={{ gap: 8 }}>
         {list.length ? list.map((x) => (
           <div key={x.size} className="row" style={{ gap: 10 }}><b style={{ width: 36 }} className="small">{x.size}</b><span className="bar"><i style={{ width: `${(x.n / maxN) * 100}%` }} /></span><b className="small tnum sec">{x.n}</b></div>
-        )) : <span className="small muted">O‘lchamlar hali kiritilmagan</span>}
-        <span className="small sec" style={{ marginTop: 4 }}>O‘yinchilar, media shaxslar va murabbiylar — liga formani shu ro‘yxat bo‘yicha buyurtma qiladi.</span>
+        )) : <span className="small muted">{tx("O‘lchamlar hali kiritilmagan")}</span>}
+        <span className="small sec" style={{ marginTop: 4 }}>{tx("O‘yinchilar, media shaxslar va murabbiylar — liga formani shu ro‘yxat bo‘yicha buyurtma qiladi.")}</span>
       </div>
     </div>
   );
@@ -251,24 +252,24 @@ function TeamStep({ token, doc, update, locked, checks, footer }: { token: strin
       const r = await api.uploadImage(token, "logo", f);
       update((d) => ({ ...d, team: { ...d.team, crest_url: r.url, crest_w: r.width, crest_h: r.height } }));
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Yuklashda xato", "error");
+      toast(e instanceof Error ? e.message : tx("Yuklashda xato"), "error");
     } finally {
       setBusy(false);
     }
   }
   const logoWarn = checks.find((c) => c.code === "team.crest_url");
   return (
-    <FormCard n={1} title="Jamoa ma’lumotlari" sub="Bu ma’lumotlar saytdagi jamoa sahifasida, jadvalda va match kartochkalarida ko‘rinadi." footer={footer} locked={locked}>
+    <FormCard n={1} title={tx("Jamoa ma’lumotlari")} sub={tx("Bu ma’lumotlar saytdagi jamoa sahifasida, jadvalda va match kartochkalarida ko‘rinadi.")} footer={footer} locked={locked}>
       <div className="g-code">
-        <Field label="Jamoa nomi" error={errFor(checks, "team.name")} hint={checks.find((c) => c.code === "team.name" && c.level === "warn")?.text || "Saytda shunday ko‘rinadi"}>
+        <Field label={tx("Jamoa nomi")} error={errFor(checks, "team.name")} hint={checks.find((c) => c.code === "team.name" && c.level === "warn")?.text || tx("Saytda shunday ko‘rinadi")}>
           <input className="input" value={t.name} onChange={(e) => set("name", e.target.value)} maxLength={80} disabled={locked} aria-invalid={!!errFor(checks, "team.name")} />
         </Field>
-        <Field label="Qisqa kod" opt="ixtiyoriy" error={errFor(checks, "team.short_name")} hint="2–4 lotin harfi">
+        <Field label={tx("Qisqa kod")} opt={tx("ixtiyoriy")} error={errFor(checks, "team.short_name")} hint={tx("2–4 lotin harfi")}>
           <input className="input" value={t.short_name} onChange={(e) => set("short_name", e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))} disabled={locked} aria-invalid={!!errFor(checks, "team.short_name")} />
         </Field>
       </div>
       <div className="field">
-        <span className="lbl">Logotip{!errFor(checks, "team.crest_url") && !t.crest_url && <span className="opt">ixtiyoriy</span>}</span>
+        <span className="lbl">{tx("Logotip")}{!errFor(checks, "team.crest_url") && !t.crest_url && <span className="opt">{tx("ixtiyoriy")}</span>}</span>
         <div className="logo-row">
           <div className="logo-prev">{t.crest_url ? <img src={t.crest_url} alt="" /> : t.short_name || "?"}</div>
           <div className={`drop${over ? " over" : ""}`} role="button" tabIndex={0} aria-disabled={locked}
@@ -277,18 +278,18 @@ function TeamStep({ token, doc, update, locked, checks, footer }: { token: strin
             onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)}
             onDrop={(e) => { e.preventDefault(); setOver(false); pickLogo(e.dataTransfer.files?.[0]); }}>
             {busy ? <Spinner /> : <I.upload size={22} />}
-            <b>{t.crest_url ? "Boshqa fayl tanlash" : "Faylni shu yerga tashlang yoki tanlang"}</b>
-            <span className="small sec">PNG yoki JPG · kamida 512×512 · shaffof fon</span>
+            <b>{t.crest_url ? tx("Boshqa fayl tanlash") : tx("Faylni shu yerga tashlang yoki tanlang")}</b>
+            <span className="small sec">{tx("PNG yoki JPG · kamida 512×512 · shaffof fon")}</span>
           </div>
           <input ref={ref} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => { pickLogo(e.target.files?.[0]); e.target.value = ""; }} />
         </div>
         {logoWarn && <span className={logoWarn.level === "error" ? "err" : "hint warn-text"}>{logoWarn.text}</span>}
       </div>
-      <Field label="Shahar / tuman" opt="ixtiyoriy"><input className="input" value={t.city} onChange={(e) => set("city", e.target.value)} maxLength={80} placeholder="Toshkent sh., Chilonzor tumani" disabled={locked} /></Field>
-      <Field label="Jamoa haqida" opt="ixtiyoriy" hint={`${t.about.length} / 500`}>
+      <Field label={tx("Shahar / tuman")} opt={tx("ixtiyoriy")}><input className="input" value={t.city} onChange={(e) => set("city", e.target.value)} maxLength={80} placeholder={tx("Toshkent sh., Chilonzor tumani")} disabled={locked} /></Field>
+      <Field label={tx("Jamoa haqida")} opt={tx("ixtiyoriy")} hint={`${t.about.length} / 500`}>
         <textarea className="textarea" value={t.about} onChange={(e) => set("about", e.target.value)} maxLength={500} disabled={locked} />
       </Field>
-      <Field label="Instagram" error={errFor(checks, "team.instagram")} hint="Jamoa sahifasida havola sifatida chiqadi"><input className="input" value={t.instagram} onChange={(e) => set("instagram", e.target.value)} maxLength={100} placeholder="@jamoa" disabled={locked} aria-invalid={!!errFor(checks, "team.instagram")} /></Field>
+      <Field label="Instagram" error={errFor(checks, "team.instagram")} hint={tx("Jamoa sahifasida havola sifatida chiqadi")}><input className="input" value={t.instagram} onChange={(e) => set("instagram", e.target.value)} maxLength={100} placeholder="@jamoa" disabled={locked} aria-invalid={!!errFor(checks, "team.instagram")} /></Field>
     </FormCard>
   );
 }
@@ -323,7 +324,7 @@ function RepStep({ app, setApp, doc, update, flush, locked, checks, footer }: {
       setCode("");
     } catch (e) {
       if (e instanceof ApiError && e.body?.retry_after) setWait(e.body.retry_after);
-      toast(e instanceof Error ? e.message : "SMS yuborilmadi", "error");
+      toast(e instanceof Error ? e.message : tx("SMS yuborilmadi"), "error");
     } finally {
       setBusy(false);
     }
@@ -334,9 +335,9 @@ function RepStep({ app, setApp, doc, update, flush, locked, checks, footer }: {
       const res = await api.verifyCode(app.token, c);
       setApp(res);
       setSent(null);
-      toast("Telefon raqami tasdiqlandi");
+      toast(tx("Telefon raqami tasdiqlandi"));
     } catch (e) {
-      setCodeErr(e instanceof ApiError ? e.fields.code || e.message : "Xato");
+      setCodeErr(e instanceof ApiError ? e.fields.code || e.message : tx("Xato"));
       setCode("");
     } finally {
       setBusy(false);
@@ -344,35 +345,35 @@ function RepStep({ app, setApp, doc, update, flush, locked, checks, footer }: {
   }
   const phoneErr = errFor(checks, "rep.phone");
   return (
-    <FormCard n={2} title="Jamoa vakili" sub="Liga shu odam bilan bog‘lanadi: ariza holati, match jadvali, protokollar." footer={footer} locked={locked}>
+    <FormCard n={2} title={tx("Jamoa vakili")} sub={tx("Liga shu odam bilan bog‘lanadi: ariza holati, match jadvali, protokollar.")} footer={footer} locked={locked}>
       <div className="g2">
-        <Field label="Ism va familiya" error={errFor(checks, "rep.name")}><input className="input" value={r.name} onChange={(e) => set("name", e.target.value)} maxLength={120} disabled={locked} autoComplete="name" /></Field>
-        <Field label="Jamoadagi roli"><select className="select" value={r.role || "captain"} onChange={(e) => set("role", e.target.value)} disabled={locked}>{Object.entries(REP_ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
+        <Field label={tx("Ism va familiya")} error={errFor(checks, "rep.name")}><input className="input" value={r.name} onChange={(e) => set("name", e.target.value)} maxLength={120} disabled={locked} autoComplete="name" /></Field>
+        <Field label={tx("Jamoadagi roli")}><select className="select" value={r.role || "captain"} onChange={(e) => set("role", e.target.value)} disabled={locked}>{Object.entries(REP_ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
       </div>
       <div className="field">
-        <label htmlFor="phone">Telefon raqami</label>
+        <label htmlFor="phone">{tx("Telefon raqami")}</label>
         <div className="row end">
           <input id="phone" className="input grow" type="tel" inputMode="tel" autoComplete="tel" value={r.phone} placeholder="+998 90 123 45 67" disabled={locked}
             onChange={(e) => set("phone", e.target.value)} aria-invalid={!!phoneErr && !app.otp_required} />
           {app.otp_required && !app.phone_verified && !locked && (
-            <button type="button" className="btn btn-dark" onClick={send} disabled={busy || wait > 0 || r.phone.replace(/\D/g, "").length < 9}>{wait > 0 ? `Qayta yuborish ${wait}s` : sent ? "Qayta yuborish" : "Kod yuborish"}</button>
+            <button type="button" className="btn btn-dark" onClick={send} disabled={busy || wait > 0 || r.phone.replace(/\D/g, "").length < 9}>{wait > 0 ? tx("Qayta yuborish {0}s", wait) : sent ? tx("Qayta yuborish") : tx("Kod yuborish")}</button>
           )}
         </div>
-        {app.phone_verified ? <span className="verified"><I.check size={14} /> Tasdiqlangan — raqamni o‘zgartirsangiz, qayta tasdiqlanadi</span>
+        {app.phone_verified ? <span className="verified"><I.check size={14} />{" "}{tx("Tasdiqlangan — raqamni o‘zgartirsangiz, qayta tasdiqlanadi")}</span>
           : phoneErr ? <span className={app.otp_required && r.phone ? "hint" : "err"}>{phoneErr}</span> : null}
       </div>
       {sent && !app.phone_verified && (
         <div className="box sub">
-          <b className="small">SMS-kodni kiriting</b>
+          <b className="small">{tx("SMS-kodni kiriting")}</b>
           <OtpInput value={code} onChange={(v) => { setCode(v); setCodeErr(""); if (v.length === 6) verify(v); }} disabled={busy} />
-          <span className="small sec row" style={{ gap: 6 }}><I.clock size={14} /> Kod {sent.to} raqamiga yuborildi</span>
-          {sent.dev && <span className="small warn-text">Sinov rejimi: SMS yuborilmaydi, kod — <b>{sent.dev}</b></span>}
+          <span className="small sec row" style={{ gap: 6 }}><I.clock size={14} />{" "}{tx("Kod {0} raqamiga yuborildi", sent.to)}</span>
+          {sent.dev && <span className="small warn-text">{tx("Sinov rejimi: SMS yuborilmaydi, kod —")}{" "}<b>{sent.dev}</b></span>}
           {codeErr && <span className="err">{codeErr}</span>}
         </div>
       )}
-      <Field label="Telegram" error={errFor(checks, "rep.telegram")} hint="Liga savollari shu yerga keladi"><input className="input" value={r.telegram} onChange={(e) => set("telegram", e.target.value)} maxLength={64} placeholder="@username" disabled={locked} aria-invalid={!!errFor(checks, "rep.telegram")} /></Field>
-      <Field label="Email" opt="ixtiyoriy" error={errFor(checks, "rep.email")}><input className="input" type="email" value={r.email} onChange={(e) => set("email", e.target.value)} maxLength={120} disabled={locked} autoComplete="email" /></Field>
-      <label className="check"><input type="checkbox" checked={r.authorized} onChange={(e) => set("authorized", e.target.checked)} disabled={locked} /><span>Men jamoa nomidan ariza berishga vakolatliman</span></label>
+      <Field label="Telegram" error={errFor(checks, "rep.telegram")} hint={tx("Liga savollari shu yerga keladi")}><input className="input" value={r.telegram} onChange={(e) => set("telegram", e.target.value)} maxLength={64} placeholder="@username" disabled={locked} aria-invalid={!!errFor(checks, "rep.telegram")} /></Field>
+      <Field label={tx("Email")} opt={tx("ixtiyoriy")} error={errFor(checks, "rep.email")}><input className="input" type="email" value={r.email} onChange={(e) => set("email", e.target.value)} maxLength={120} disabled={locked} autoComplete="email" /></Field>
+      <label className="check"><input type="checkbox" checked={r.authorized} onChange={(e) => set("authorized", e.target.checked)} disabled={locked} /><span>{tx("Men jamoa nomidan ariza berishga vakolatliman")}</span></label>
     </FormCard>
   );
 }
@@ -420,7 +421,7 @@ function RosterStep({ token, app, doc, update, locked, canLogo, color, checks, f
     else setEdit({ i: -1, p: emptyPlayer(p.role === "goalkeeper" ? "player" : p.role) });
   }
   function del(i: number) {
-    if (!window.confirm(`${fullName(doc.players[i]) || "O‘yinchi"} o‘chirilsinmi?`)) return;
+    if (!window.confirm(tx("{0} o‘chirilsinmi?", fullName(doc.players[i]) || "O‘yinchi"))) return;
     update((d) => ({ ...d, players: d.players.filter((_, j) => j !== i) }));
   }
   function swap(i: number) {
@@ -435,51 +436,51 @@ function RosterStep({ token, app, doc, update, locked, canLogo, color, checks, f
       players: mode === "replace" ? r2.import.players : [...d.players, ...r2.import.players],
       staff: mode === "replace" ? (r2.import.staff.length ? r2.import.staff : d.staff) : [...d.staff, ...r2.import.staff],
     }));
-    toast(`${r2.import.players.length + r2.import.staff.length} kishi qo‘shildi`);
+    toast(tx("{0} kishi qo‘shildi", r2.import.players.length + r2.import.staff.length));
     setImp(null);
   }
   const taken = (i: number) => doc.players.filter((_, j) => j !== i).map((p) => p.number).filter((n): n is string => n != null);
   const swaps = checks.filter((c) => c.code === "player.swapped" && c.index != null);
 
   return (
-    <FormCard n={3} title="Tarkib" sub="O‘yinchilar, media shaxslar va murabbiy. Futbolkadagi yozuv va o‘lcham forma tayyorlash uchun kerak." footer={footer} locked={locked}>
+    <FormCard n={3} title={tx("Tarkib")} sub={tx("O‘yinchilar, media shaxslar va murabbiy. Futbolkadagi yozuv va o‘lcham forma tayyorlash uchun kerak.")} footer={footer} locked={locked}>
       <div className="row wrapx" style={{ justifyContent: "space-between" }}>
         <div>
-          <b style={{ fontSize: 18 }}>{doc.players.length + doc.staff.length}{r ? ` / ${r.max_players}` : ""} kishi</b>
-          <div className="small sec">{field.length} o‘yinchi · {media.length} media shaxs · {doc.staff.length} murabbiy{r ? ` · kamida ${r.min_players} kishi` : ""}</div>
+          <b style={{ fontSize: 18 }}>{doc.players.length + doc.staff.length}{r ? ` / ${r.max_players}` : ""}{" "}{tx("kishi")}</b>
+          <div className="small sec">{field.length}{" "}{tx("o‘yinchi · {0} media shaxs · {1} murabbiy", media.length, doc.staff.length)}{r ? tx(" · kamida {0} kishi", r.min_players) : ""}</div>
         </div>
         <div className="row">
-          <a className="btn btn-ghost" href={api.templateUrl}><I.download size={16} /> Shablon (.xlsx)</a>
+          <a className="btn btn-ghost" href={api.templateUrl}><I.download size={16} />{" "}{tx("Shablon (.xlsx)")}</a>
           {!locked && <ImportButton up={appUploader(token)} onResult={(file, r2) => setImp({ file, r: r2 })} />}
         </div>
       </div>
       {(general.length > 0 || rowErrors > 0) && (
         <div className={`box ${checks.some((c) => c.level === "error") ? "err" : "warn"}`}>
           {general.map((c) => <CheckLine key={c.code + c.text} level={c.level}>{c.text}</CheckLine>)}
-          {rowErrors > 0 && <CheckLine level={checks.some((c) => c.index != null && c.level === "error") ? "error" : "warn"}>Qatorlarda {rowErrors} ta izoh — quyida belgilangan</CheckLine>}
+          {rowErrors > 0 && <CheckLine level={checks.some((c) => c.index != null && c.level === "error") ? "error" : "warn"}>{tx("Qatorlarda {0} ta izoh — quyida belgilangan", rowErrors)}</CheckLine>}
           {!locked && swaps.map((c) => (
             <div key={c.index} className="row" style={{ gap: 8, paddingLeft: 26 }}>
               <span className="small grow">{c.text}</span>
-              <button type="button" className="btn btn-sm" onClick={() => swap(c.index!)}><I.swap size={14} /> Almashtirish</button>
+              <button type="button" className="btn btn-sm" onClick={() => swap(c.index!)}><I.swap size={14} />{" "}{tx("Almashtirish")}</button>
             </div>
           ))}
         </div>
       )}
       {!doc.players.length && !doc.staff.length && (
         <div className="box sub" style={{ alignItems: "center", textAlign: "center", padding: 32 }}>
-          <b>Tarkib hali bo‘sh</b>
-          <span className="small sec">TARKIB.xlsx faylini yuklang yoki o‘yinchilarni birma-bir qo‘shing.</span>
+          <b>{tx("Tarkib hali bo‘sh")}</b>
+          <span className="small sec">{tx("TARKIB.xlsx faylini yuklang yoki o‘yinchilarni birma-bir qo‘shing.")}</span>
         </div>
       )}
-      <RosterSection title="O‘yinchilar" count={`${field.length}`} add={locked ? undefined : () => setEdit({ i: -1, p: emptyPlayer() })} addLabel="O‘yinchi qo‘shish">
+      <RosterSection title={tx("O‘yinchilar")} count={`${field.length}`} add={locked ? undefined : () => setEdit({ i: -1, p: emptyPlayer() })} addLabel={tx("O‘yinchi qo‘shish")}>
         <PlayersTable token={token} rows={field} flags={flags} notes={notes} locked={locked} onEdit={(i) => setEdit({ i, p: doc.players[i] })} onDelete={del} />
       </RosterSection>
-      <RosterSection title="Media shaxslar" count={`${media.length}`} add={locked ? undefined : () => setEdit({ i: -1, p: emptyPlayer("media") })} addLabel="Media shaxs qo‘shish">
+      <RosterSection title={tx("Media shaxslar")} count={`${media.length}`} add={locked ? undefined : () => setEdit({ i: -1, p: emptyPlayer("media") })} addLabel={tx("Media shaxs qo‘shish")}>
         <PlayersTable token={token} rows={media} flags={flags} notes={notes} locked={locked} onEdit={(i) => setEdit({ i, p: doc.players[i] })} onDelete={del} />
       </RosterSection>
-      <RosterSection title="Murabbiylar shtabi" count={`${doc.staff.length}`} add={locked ? undefined : () => setEditStaff({ i: -1, s: { first_name: "", last_name: "", birth_date: "", kit_size: "", role: doc.staff.length ? "assistant" : "head_coach", phone: "" } })} addLabel="Murabbiy qo‘shish">
+      <RosterSection title={tx("Murabbiylar shtabi")} count={`${doc.staff.length}`} add={locked ? undefined : () => setEditStaff({ i: -1, s: { first_name: "", last_name: "", birth_date: "", kit_size: "", role: doc.staff.length ? "assistant" : "head_coach", phone: "" } })} addLabel={tx("Murabbiy qo‘shish")}>
         <StaffTable rows={doc.staff} flags={rowFlags(checks, true)} locked={locked} onEdit={(i) => setEditStaff({ i, s: doc.staff[i] })}
-          onDelete={(i) => window.confirm("O‘chirilsinmi?") && update((d) => ({ ...d, staff: d.staff.filter((_, j) => j !== i) }))} />
+          onDelete={(i) => window.confirm(tx("O‘chirilsinmi?")) && update((d) => ({ ...d, staff: d.staff.filter((_, j) => j !== i) }))} />
       </RosterSection>
       {edit && <PlayerModal key={edit.i + ":" + doc.players.length} up={appUploader(token)} initial={edit.p} color={color} taken={taken(edit.i)} onSave={savePlayer} onClose={() => setEdit(null)} />}
       {editStaff && <StaffModal initial={editStaff.s} onClose={() => setEditStaff(null)}
@@ -503,7 +504,7 @@ export function Summary({ doc, onEdit }: { doc: Doc; onEdit?: (step: number) => 
   const t = doc.team;
   const block = (title: string, step: number, body: ReactNode) => (
     <div className="sum">
-      <div className="sum-head"><span className="grow">{title}</span>{onEdit && <button type="button" className="link-btn sec" onClick={() => onEdit(step)}><I.edit size={14} /> Tahrirlash</button>}</div>
+      <div className="sum-head"><span className="grow">{title}</span>{onEdit && <button type="button" className="link-btn sec" onClick={() => onEdit(step)}><I.edit size={14} />{" "}{tx("Tahrirlash")}</button>}</div>
       {body}
     </div>
   );
@@ -513,26 +514,26 @@ export function Summary({ doc, onEdit }: { doc: Doc; onEdit?: (step: number) => 
   const med = doc.players.filter((p) => p.medical).length;
   return (
     <>
-      {block("Jamoa", 0, <>
+      {block(tx("Jamoa"), 0, <>
         <div className="row" style={{ padding: 16, gap: 14 }}>
           <div className="logo-prev" style={{ width: 56, height: 56, fontSize: 14 }}>{t.crest_url ? <img src={t.crest_url} alt="" /> : t.short_name || "?"}</div>
-          <div className="grow"><b style={{ fontSize: 18 }}>{t.name || "Nomsiz"}</b><div className="small sec">{[t.short_name, t.city].filter(Boolean).join(" · ")}</div></div>
+          <div className="grow"><b style={{ fontSize: 18 }}>{t.name || tx("Nomsiz")}</b><div className="small sec">{[t.short_name, t.city].filter(Boolean).join(" · ")}</div></div>
         </div>
-        {t.instagram && <div className="kv"><span>Instagram</span><span>{t.instagram}</span></div>}
+        {t.instagram && <div className="kv"><span>{tx("Instagram")}</span><span>{t.instagram}</span></div>}
       </>)}
-      {block("Vakil", 1, <>
-        <div className="kv"><span>Ism</span><span>{doc.rep.name || "—"} · {REP_ROLES[doc.rep.role] || ""}</span></div>
-        <div className="kv"><span>Telefon</span><span>{doc.rep.phone || "—"}</span></div>
-        {doc.rep.telegram && <div className="kv"><span>Telegram</span><span>{doc.rep.telegram}</span></div>}
-        {doc.rep.email && <div className="kv"><span>Email</span><span>{doc.rep.email}</span></div>}
+      {block(tx("Vakil"), 1, <>
+        <div className="kv"><span>{tx("Ism")}</span><span>{doc.rep.name || "—"} · {REP_ROLES[doc.rep.role] || ""}</span></div>
+        <div className="kv"><span>{tx("Telefon")}</span><span>{doc.rep.phone || "—"}</span></div>
+        {doc.rep.telegram && <div className="kv"><span>{tx("Telegram")}</span><span>{doc.rep.telegram}</span></div>}
+        {doc.rep.email && <div className="kv"><span>{tx("Email")}</span><span>{doc.rep.email}</span></div>}
       </>)}
-      {block(`Tarkib · ${doc.players.filter((p) => p.role !== "media").length} o‘yinchi, ${doc.players.filter((p) => p.role === "media").length} media, ${doc.staff.length} murabbiy`, 2, <>
+      {block(tx("Tarkib · {0} o‘yinchi, {1} media, {2} murabbiy", doc.players.filter((p) => p.role !== "media").length, doc.players.filter((p) => p.role === "media").length, doc.staff.length), 2, <>
         <div className="pchips">{doc.players.map((p, i) => <span key={i} className="pchip"><i>{p.number ?? "—"}</i>{fullName(p)}</span>)}</div>
-        {gks && <div className="kv"><span>Darvozabonlar</span><span>{gks}</span></div>}
-        {media && <div className="kv"><span>Media shaxslar</span><span>{media}</span></div>}
-        {doc.staff.map((s, i) => <div key={i} className="kv"><span>{STAFF_ROLES[s.role] || "Murabbiy"}</span><span>{fullName(s)}{s.birth_date ? ` · ${fmtBirth(s.birth_date)}` : ""}</span></div>)}
-        {sizes && <div className="kv"><span>Forma o‘lchamlari</span><span>{sizes}</span></div>}
-        <div className="kv"><span>Tibbiy ruxsatnoma</span><span>{med} / {doc.players.length}</span></div>
+        {gks && <div className="kv"><span>{tx("Darvozabonlar")}</span><span>{gks}</span></div>}
+        {media && <div className="kv"><span>{tx("Media shaxslar")}</span><span>{media}</span></div>}
+        {doc.staff.map((s, i) => <div key={i} className="kv"><span>{STAFF_ROLES[s.role] || tx("Murabbiy")}</span><span>{fullName(s)}{s.birth_date ? ` · ${fmtBirth(s.birth_date)}` : ""}</span></div>)}
+        {sizes && <div className="kv"><span>{tx("Forma o‘lchamlari")}</span><span>{sizes}</span></div>}
+        <div className="kv"><span>{tx("Tibbiy ruxsatnoma")}</span><span>{med} / {doc.players.length}</span></div>
       </>)}
     </>
   );
@@ -554,39 +555,39 @@ function ReviewStep({ app, setApp, doc, update, flush, go, onDone, footer }: {
     try {
       await flush(true);
       const res = await api.submit(app.token);
-      toast("Ariza yuborildi");
+      toast(tx("Ariza yuborildi"));
       onDone(res);
     } catch (e) {
       if (e instanceof ApiError && e.body?.checks) setApp({ ...app, checks: e.body.checks });
-      toast(e instanceof Error ? e.message : "Yuborilmadi", "error");
+      toast(e instanceof Error ? e.message : tx("Yuborilmadi"), "error");
     } finally {
       setBusy(false);
     }
   }
   const rules = app.link?.rules_url;
   return (
-    <FormCard n={4} title="Tekshirish va yuborish" sub="Ma’lumotlarni tekshiring. Yuborilgandan keyin ariza ko‘rib chiqilguncha tahrirlab bo‘lmaydi."
-      footer={footer(<button type="button" className="btn btn-primary" onClick={submit} disabled={busy || errors.length > 0 || !(c.rules && c.players && c.personal)}>{busy ? <Spinner /> : app.status === "changes" ? "Qayta yuborish" : "Arizani yuborish"}</button>)}>
+    <FormCard n={4} title={tx("Tekshirish va yuborish")} sub={tx("Ma’lumotlarni tekshiring. Yuborilgandan keyin ariza ko‘rib chiqilguncha tahrirlab bo‘lmaydi.")}
+      footer={footer(<button type="button" className="btn btn-primary" onClick={submit} disabled={busy || errors.length > 0 || !(c.rules && c.players && c.personal)}>{busy ? <Spinner /> : app.status === "changes" ? tx("Qayta yuborish") : tx("Arizani yuborish")}</button>)}>
       {errors.length > 0 && (
         <div className="box err">
-          <b>Yuborishdan oldin tuzating ({errors.length})</b>
+          <b>{tx("Yuborishdan oldin tuzating ({0})", errors.length)}</b>
           {errors.slice(0, 8).map((x, i) => (
             <div key={i} className="row" style={{ gap: 8 }}>
               <div className="grow"><CheckLine level="error">{x.text}</CheckLine></div>
-              {x.section in sections && <button type="button" className="btn btn-sm" onClick={() => go(sections[x.section])}>Tuzatish</button>}
+              {x.section in sections && <button type="button" className="btn btn-sm" onClick={() => go(sections[x.section])}>{tx("Tuzatish")}</button>}
             </div>
           ))}
-          {errors.length > 8 && <span className="small">va yana {errors.length - 8} ta</span>}
+          {errors.length > 8 && <span className="small">{tx("va yana {0} ta", errors.length - 8)}</span>}
         </div>
       )}
       {warns.length > 0 && errors.length === 0 && (
-        <div className="box warn">{warns.map((x, i) => <CheckLine key={i} level="warn">{x.text}</CheckLine>)}<span className="small sec">Ogohlantirishlar yuborishga to‘sqinlik qilmaydi — admin ko‘rib chiqadi.</span></div>
+        <div className="box warn">{warns.map((x, i) => <CheckLine key={i} level="warn">{x.text}</CheckLine>)}<span className="small sec">{tx("Ogohlantirishlar yuborishga to‘sqinlik qilmaydi — admin ko‘rib chiqadi.")}</span></div>
       )}
       <Summary doc={doc} onEdit={go} />
       <div className="stack" style={{ gap: 12 }}>
-        <label className="check"><input type="checkbox" checked={c.rules} onChange={(e) => set("rules", e.target.checked)} /><span>{rules ? <><a href={rules} target="_blank" rel="noopener noreferrer">Liga reglamenti</a> bilan tanishdim va unga roziman</> : "Liga reglamenti bilan tanishdim va unga roziman"}</span></label>
-        <label className="check"><input type="checkbox" checked={c.players} onChange={(e) => set("players", e.target.checked)} /><span>O‘yinchilar va murabbiylar o‘z ma’lumotlarini yuborishga rozi</span></label>
-        <label className="check"><input type="checkbox" checked={c.personal} onChange={(e) => set("personal", e.target.checked)} /><span>Shaxsiy ma’lumotlarni qayta ishlashga roziman</span></label>
+        <label className="check"><input type="checkbox" checked={c.rules} onChange={(e) => set("rules", e.target.checked)} /><span>{rules ? <><a href={rules} target="_blank" rel="noopener noreferrer">{tx("Liga reglamenti")}</a>{" "}{tx("bilan tanishdim va unga roziman")}</> : tx("Liga reglamenti bilan tanishdim va unga roziman")}</span></label>
+        <label className="check"><input type="checkbox" checked={c.players} onChange={(e) => set("players", e.target.checked)} /><span>{tx("O‘yinchilar va murabbiylar o‘z ma’lumotlarini yuborishga rozi")}</span></label>
+        <label className="check"><input type="checkbox" checked={c.personal} onChange={(e) => set("personal", e.target.checked)} /><span>{tx("Shaxsiy ma’lumotlarni qayta ishlashga roziman")}</span></label>
       </div>
     </FormCard>
   );

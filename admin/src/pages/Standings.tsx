@@ -6,6 +6,7 @@ import { CrudEditPage, CrudPage, type CrudProps, type Rec } from "@/components/C
 import { PageHead } from "@/components/Layout";
 import { Badge, Crest, ErrorBox, Loading } from "@/components/ui";
 
+import { tx } from "@/lib/i18n";
 type Row = { position: number; team_id: number; team: string; played: number; won: number; drawn: number; lost: number; goals_for: number; goals_against: number; goal_diff: number; adjustment: number; points: number; form: string[] };
 type GInfo = { name: string; ord: number; confirmed: boolean };
 type St = { groups: Record<string, Row[]>; groups_provisional: boolean; group_info?: Record<string, GInfo>; rules: { win: number; draw: number; loss: number } };
@@ -25,20 +26,20 @@ function useAdjustmentProps(onChanged?: () => void): CrudProps<Rec> & { base: st
   const byId = new Map(teams.map((t) => [t.id, t]));
   const season = activeSeason(seasons);
   return {
-    title: "Ochko tuzatishlari", sub: "Texnik mag‘lubiyat, jarima va boshqa qarorlar", resource: "/admin/standing-adjustments", singular: "Tuzatish",
+    title: tx("Ochko tuzatishlari"), sub: tx("Texnik mag‘lubiyat, jarima va boshqa qarorlar"), resource: "/admin/standing-adjustments", singular: tx("Tuzatish"),
     base: "/standings/adjustments", listPath: "/standings", titleField: "reason", reloadKey: teams.length,
     defaults: { season_id: String(season?.id || "") },
     onChanged,
     fields: [
-      { name: "season_id", label: "Mavsum", type: "select", numeric: true, required: true, options: seasons.map((s) => ({ value: String(s.id), label: s.name })) },
-      { name: "team_id", label: "Jamoa", type: "select", numeric: true, required: true, options: teams.map((t) => ({ value: String(t.id), label: t.name })) },
-      { name: "points", label: "Ochko (+/−)", type: "number", required: true, hint: "Manfiy — jarima, musbat — qaytarish" },
-      { name: "reason", label: "Sabab (saytdagi izohda ko‘rinadi)", type: "textarea", required: true },
+      { name: "season_id", label: tx("Mavsum"), type: "select", numeric: true, required: true, options: seasons.map((s) => ({ value: String(s.id), label: s.name })) },
+      { name: "team_id", label: tx("Jamoa"), type: "select", numeric: true, required: true, options: teams.map((t) => ({ value: String(t.id), label: t.name })) },
+      { name: "points", label: tx("Ochko (+/−)"), type: "number", required: true, hint: tx("Manfiy — jarima, musbat — qaytarish") },
+      { name: "reason", label: tx("Sabab (saytdagi izohda ko‘rinadi)"), type: "textarea", required: true },
     ],
     columns: [
-      { label: "Jamoa", render: (a) => byId.get(a.team_id)?.name || a.team_id },
-      { label: "Ochko", render: (a) => <b>{a.points > 0 ? `+${a.points}` : a.points}</b> },
-      { label: "Sabab", render: (a) => a.reason },
+      { label: tx("Jamoa"), render: (a) => byId.get(a.team_id)?.name || a.team_id },
+      { label: tx("Ochko"), render: (a) => <b>{a.points > 0 ? `+${a.points}` : a.points}</b> },
+      { label: tx("Sabab"), render: (a) => a.reason },
     ],
   };
 }
@@ -56,15 +57,15 @@ function StandingsOverview() {
   return (
     <div className="stack" style={{ gap: 32 }}>
       <div>
-        <PageHead title="Turnir jadvali" sub={data ? `Avtomatik hisoblanadi: g‘alaba ${data.rules.win}, durang ${data.rules.draw}, mag‘lubiyat ${data.rules.loss}. Faqat e’lon qilingan, yakunlangan guruh matchlari.` : undefined} />
-        {data?.groups_provisional && <div className="alert warn" style={{ marginBottom: 16 }}>Guruhlar tarkibi taxminiy deb belgilangan. «Guruhlar» bo‘limida tarkibni tasdiqlang.</div>}
+        <PageHead title={tx("Turnir jadvali")} sub={data ? tx("Avtomatik hisoblanadi: g‘alaba {0}, durang {1}, mag‘lubiyat {2}. Faqat e’lon qilingan, yakunlangan guruh matchlari.", data.rules.win, data.rules.draw, data.rules.loss) : undefined} />
+        {data?.groups_provisional && <div className="alert warn" style={{ marginBottom: 16 }}>{tx("Guruhlar tarkibi taxminiy deb belgilangan. «Guruhlar» bo‘limida tarkibni tasdiqlang.")}</div>}
         {error ? <ErrorBox error={error} retry={reload} /> : loading || !data ? <Loading /> : (
           <div className="grid g2" data-split>
             {Object.keys(data.groups).sort((a, b) => (data.group_info?.[a]?.ord ?? 99) - (data.group_info?.[b]?.ord ?? 99) || a.localeCompare(b)).map((g) => (
               <div key={g} className="card">
-                <div className="card-head"><h3>{g ? data.group_info?.[g]?.name || `Guruh ${g}` : "Guruhsiz"}</h3>{g && data.group_info?.[g] && !data.group_info[g].confirmed && <Badge tone="warn">Taxminiy</Badge>}</div>
+                <div className="card-head"><h3>{g ? data.group_info?.[g]?.name || `Guruh ${g}` : tx("Guruhsiz")}</h3>{g && data.group_info?.[g] && !data.group_info[g].confirmed && <Badge tone="warn">{tx("Taxminiy")}</Badge>}</div>
                 <div className="table-wrap"><table className="table">
-                  <thead><tr><th>#</th><th>Jamoa</th><th>O</th><th>G</th><th>D</th><th>M</th><th>Gollar</th><th>±</th><th>Ochko</th></tr></thead>
+                  <thead><tr><th>#</th><th>{tx("Jamoa")}</th><th>O</th><th>G</th><th>D</th><th>M</th><th>{tx("Gollar")}</th><th>±</th><th>{tx("Ochko")}</th></tr></thead>
                   <tbody>{data.groups[g].map((r) => (
                     <tr key={r.team_id}>
                       <td>{r.position}</td>

@@ -12,6 +12,7 @@ import { Inspector } from "./Inspector";
 import { HistoryDrawer, PreviewModal, PublishModal, TimelinePanel, type HpState } from "./Panels";
 import { BI, BuilderCtx, Seg, useBuilder, type BuilderApi, type Device, type MatchLite, type NewsLite, type Refs, type Sel, type TeamLite } from "./shared";
 
+import { tx } from "@/lib/i18n";
 type Drag = { kind: "new"; type: ModuleType } | { kind: "block"; id: string } | { kind: "row"; id: string };
 type Drop = { kind: "gap"; index: number } | { kind: "in"; rowId: string; index: number; x: number; ok: boolean };
 type SaveState = "idle" | "saving" | "saved" | "error" | "conflict";
@@ -107,7 +108,7 @@ export function HomepageBuilder() {
         toast(e.message, "error");
       } else {
         setSave("error");
-        toast(e instanceof Error ? e.message : "Saqlanmadi", "error");
+        toast(e instanceof Error ? e.message : tx("Saqlanmadi"), "error");
       }
     }
   }, [toast]);
@@ -197,7 +198,7 @@ export function HomepageBuilder() {
       if (!f) return;
       if ((e.key === "Delete" || e.key === "Backspace") && !f.alt) {
         e.preventDefault();
-        if (f.block.locked) return toast("Blok qulflangan", "error");
+        if (f.block.locked) return toast(tx("Blok qulflangan"), "error");
         commit(removeBlock(layout, f.block.id));
         setSel(null);
       }
@@ -270,7 +271,7 @@ export function HomepageBuilder() {
     const d = drag.current, t = dropRef.current;
     endDrag();
     if (!d || !t || !layout) return;
-    if (t.kind === "in" && !t.ok) return toast("Qatorda joy yo‘q: ko‘pi bilan 4 blok, Hero alohida qatorda", "error");
+    if (t.kind === "in" && !t.ok) return toast(tx("Qatorda joy yo‘q: ko‘pi bilan 4 blok, Hero alohida qatorda"), "error");
     if (d.kind === "row") {
       if (t.kind === "gap") commit(moveRow(layout, d.id, t.index));
       return;
@@ -285,12 +286,12 @@ export function HomepageBuilder() {
         if (fit) Object.assign(b, { span: fit, variant: variantForSpan(fit) });
       }
       const r = insertAt(layout, b, target);
-      if (!r.ok) return toast("Bu yerga qo‘yib bo‘lmaydi", "error");
+      if (!r.ok) return toast(tx("Bu yerga qo‘yib bo‘lmaydi"), "error");
       commit(r.layout);
       setSel({ kind: "block", id: b.id });
     } else {
       const r = moveBlock(layout, d.id, target);
-      if (!r.ok) return toast("Bu yerga ko‘chirib bo‘lmaydi", "error");
+      if (!r.ok) return toast(tx("Bu yerga ko‘chirib bo‘lmaydi"), "error");
       commit(r.layout);
       setSel({ kind: "block", id: d.id });
     }
@@ -334,11 +335,11 @@ export function HomepageBuilder() {
   if (!hp || !layout || !apiValue) return <div className="hb-fail"><Loading /></div>;
 
   const openPreview = async () => {
-    if (!(await flush())) return toast("Avval qoralamani saqlang", "error");
+    if (!(await flush())) return toast(tx("Avval qoralamani saqlang"), "error");
     try {
       setPreview((await api.post<{ token: string }>("/admin/homepage/preview")).token);
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     }
   };
   const publish = async (summary: string, publishAt: string | null) => {
@@ -348,19 +349,19 @@ export function HomepageBuilder() {
       const r = await api.post<{ version: number; publish_at: string }>("/admin/homepage/publish", { summary, changes, publish_at: publishAt, updated_at: stamp.current });
       applyState(await api.get<HpState>("/admin/homepage"));
       setPublishing("");
-      toast(publishAt ? `v${r.version} rejalashtirildi · ${shortLocal(toLocal(Date.parse(r.publish_at)))}` : `Nashr qilindi · v${r.version}`, "ok");
+      toast(publishAt ? tx("v{0} rejalashtirildi · {1}", r.version, shortLocal(toLocal(Date.parse(r.publish_at)))) : tx("Nashr qilindi · v{0}", r.version), "ok");
     } catch (e) {
       setPublishing("open");
-      toast(e instanceof Error ? e.message : "Nashr qilinmadi", "error");
+      toast(e instanceof Error ? e.message : tx("Nashr qilinmadi"), "error");
     }
   };
 
   const saveChip = (() => {
-    if (save === "conflict") return <button className="hb-save err" onClick={async () => { if (window.confirm("Boshqa foydalanuvchining o‘zgarishlari ustidan yozilsinmi? «Bekor qilish» — sahifani qayta yuklash.")) { await doSave(true); } else { await load(); } }}>Qoralama boshqa joyda o‘zgardi — hal qilish</button>;
-    if (save === "error") return <button className="hb-save err" onClick={() => doSave()}>Saqlanmadi — qayta urinish</button>;
-    if (save === "saving") return <span className="hb-save"><i className="spin" /> Saqlanmoqda…</span>;
-    if (changes.length) return <span className="hb-save warn" title={savedAt ? `Qoralama saqlandi ${new Date(savedAt).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" })}` : "Qoralama saqlangan"}><i /> Nashr qilinmagan o‘zgarishlar · {changes.length}</span>;
-    return <span className="hb-save ok"><i /> {hp.published ? `Nashr qilingan · v${hp.published.version}` : "Saytdagi tartib"}</span>;
+    if (save === "conflict") return <button className="hb-save err" onClick={async () => { if (window.confirm(tx("Boshqa foydalanuvchining o‘zgarishlari ustidan yozilsinmi? «Bekor qilish» — sahifani qayta yuklash."))) { await doSave(true); } else { await load(); } }}>{tx("Qoralama boshqa joyda o‘zgardi — hal qilish")}</button>;
+    if (save === "error") return <button className="hb-save err" onClick={() => doSave()}>{tx("Saqlanmadi — qayta urinish")}</button>;
+    if (save === "saving") return <span className="hb-save"><i className="spin" />{" "}{tx("Saqlanmoqda…")}</span>;
+    if (changes.length) return <span className="hb-save warn" title={savedAt ? tx("Qoralama saqlandi {0}", new Date(savedAt).toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" })) : tx("Qoralama saqlangan")}><i />{" "}{tx("Nashr qilinmagan o‘zgarishlar ·")}{" "}{changes.length}</span>;
+    return <span className="hb-save ok"><i /> {hp.published ? tx("Nashr qilingan · v{0}", hp.published.version) : tx("Saytdagi tartib")}</span>;
   })();
 
   const lib = MODULES.filter((m) => !q.trim() || `${m.name} ${m.desc}`.toLowerCase().includes(q.trim().toLowerCase()));
@@ -371,54 +372,54 @@ export function HomepageBuilder() {
       <div className={`hb${dragging ? " dragging" : ""}`}>
         {/* ---------- top bar ---------- */}
         <header className="hb-top">
-          <button className="btn btn-ghost btn-icon" onClick={() => navigate("/")} aria-label="Orqaga"><I.back /></button>
-          <h1>Bosh sahifa konstruktori</h1>
+          <button className="btn btn-ghost btn-icon" onClick={() => navigate("/")} aria-label={tx("Orqaga")}><I.back /></button>
+          <h1>{tx("Bosh sahifa konstruktori")}</h1>
           {saveChip}
           <span className="hb-undo">
-            <button className="btn btn-ghost btn-icon btn-sm" onClick={undo} disabled={!past.current.length} title="Bekor qilish (Ctrl+Z)" aria-label="Bekor qilish"><BI.undo /></button>
-            <button className="btn btn-ghost btn-icon btn-sm" onClick={redo} disabled={!future.current.length} title="Qaytarish (Ctrl+Shift+Z)" aria-label="Qaytarish"><BI.redo /></button>
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={undo} disabled={!past.current.length} title={tx("Bekor qilish (Ctrl+Z)")} aria-label={tx("Bekor qilish")}><BI.undo /></button>
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={redo} disabled={!future.current.length} title={tx("Qaytarish (Ctrl+Shift+Z)")} aria-label={tx("Qaytarish")}><BI.redo /></button>
           </span>
           <span className="grow" />
           <Seg value={device} onChange={setDevice} options={[
-            { key: "desktop", label: <><BI.monitor size={14} /> Desktop <small>1440</small></> },
-            { key: "tablet", label: <><BI.tablet size={14} /> Tablet <small>768</small></> },
-            { key: "mobile", label: <><BI.phone size={14} /> Mobile <small>390</small></> },
+            { key: "desktop", label: <><BI.monitor size={14} />{" "}{tx("Desktop")}{" "}<small>1440</small></> },
+            { key: "tablet", label: <><BI.tablet size={14} />{" "}{tx("Tablet")}{" "}<small>768</small></> },
+            { key: "mobile", label: <><BI.phone size={14} />{" "}{tx("Mobile")}{" "}<small>390</small></> },
           ]} />
           <span className="hb-tt-wrap">
             {at ? (
-              <span className="hb-tt on"><button onClick={() => setTtOpen((v) => !v)}><BI.clock size={14} /> {shortLocal(toLocal(at))}</button><button onClick={() => setAt(null)} aria-label="Hozirgi vaqtga qaytish"><I.x size={14} /></button></span>
+              <span className="hb-tt on"><button onClick={() => setTtOpen((v) => !v)}><BI.clock size={14} /> {shortLocal(toLocal(at))}</button><button onClick={() => setAt(null)} aria-label={tx("Hozirgi vaqtga qaytish")}><I.x size={14} /></button></span>
             ) : (
-              <button className="btn btn-ghost btn-sm" onClick={() => setTtOpen((v) => !v)} title="Sahifani boshqa vaqtda ko‘rish"><BI.clock size={16} /> <span className="hide-sm">Vaqt</span></button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setTtOpen((v) => !v)} title={tx("Sahifani boshqa vaqtda ko‘rish")}><BI.clock size={16} /> <span className="hide-sm">{tx("Vaqt")}</span></button>
             )}
             {ttOpen && (
               <div className="hb-pop" onMouseLeave={() => setTtOpen(false)}>
-                <b>Sahifani boshqa vaqtda ko‘rish</b>
+                <b>{tx("Sahifani boshqa vaqtda ko‘rish")}</b>
                 <input className="input input-sm" type="datetime-local" value={toLocal(at ?? realNow)} onChange={(e) => e.target.value && setAt(tashkentMs(e.target.value))} />
                 <div className="hb-pills">
-                  <button className="hb-pill" onClick={() => setAt((at ?? realNow) + 86400_000)}>+1 kun</button>
-                  <button className="hb-pill" onClick={() => setAt((at ?? realNow) + 7 * 86400_000)}>+1 hafta</button>
-                  <button className="hb-pill" onClick={() => { setAt(null); setTtOpen(false); }}>Hozir</button>
+                  <button className="hb-pill" onClick={() => setAt((at ?? realNow) + 86400_000)}>{tx("+1 kun")}</button>
+                  <button className="hb-pill" onClick={() => setAt((at ?? realNow) + 7 * 86400_000)}>{tx("+1 hafta")}</button>
+                  <button className="hb-pill" onClick={() => { setAt(null); setTtOpen(false); }}>{tx("Hozir")}</button>
                 </div>
-                <small className="muted">Vaqtga bog‘liq bloklar tanlangan payt bo‘yicha ko‘rsatiladi. Toshkent vaqti.</small>
+                <small className="muted">{tx("Vaqtga bog‘liq bloklar tanlangan payt bo‘yicha ko‘rsatiladi. Toshkent vaqti.")}</small>
               </div>
             )}
           </span>
-          <button className={`btn btn-ghost btn-sm${timeline ? " on" : ""}`} onClick={() => setTimeline((v) => !v)}><BI.layers size={16} /> <span className="hide-sm">Jadval</span></button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setHistory(true)}><I.refresh size={16} /> <span className="hide-sm">Tarix</span></button>
-          <button className="btn btn-dark btn-sm" onClick={openPreview}>Ko‘rish</button>
-          <button className="btn btn-primary btn-sm" onClick={() => setPublishing("open")} disabled={!changes.length}>Nashr qilish</button>
+          <button className={`btn btn-ghost btn-sm${timeline ? " on" : ""}`} onClick={() => setTimeline((v) => !v)}><BI.layers size={16} /> <span className="hide-sm">{tx("Jadval")}</span></button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setHistory(true)}><I.refresh size={16} /> <span className="hide-sm">{tx("Tarix")}</span></button>
+          <button className="btn btn-dark btn-sm" onClick={openPreview}>{tx("Ko‘rish")}</button>
+          <button className="btn btn-primary btn-sm" onClick={() => setPublishing("open")} disabled={!changes.length}>{tx("Nashr qilish")}</button>
         </header>
 
         <div className="hb-body">
           {/* ---------- left: modules / layers ---------- */}
           <aside className="hb-left">
             <div className="tabs hb-tabs" role="tablist">
-              <button role="tab" aria-selected={left === "modules"} onClick={() => setLeft("modules")}>Modullar</button>
-              <button role="tab" aria-selected={left === "layers"} onClick={() => setLeft("layers")}>Qatlamlar</button>
+              <button role="tab" aria-selected={left === "modules"} onClick={() => setLeft("modules")}>{tx("Modullar")}</button>
+              <button role="tab" aria-selected={left === "layers"} onClick={() => setLeft("layers")}>{tx("Qatlamlar")}</button>
             </div>
             {left === "modules" ? (
               <div className="hb-lib">
-                <div className="search"><I.search size={16} /><input className="input input-sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Modul qidirish…" /></div>
+                <div className="search"><I.search size={16} /><input className="input input-sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx("Modul qidirish…")} /></div>
                 {MODULE_GROUPS.map((g) => {
                   const items = lib.filter((m) => m.group === g);
                   if (!items.length) return null;
@@ -426,10 +427,10 @@ export function HomepageBuilder() {
                     <Fragment key={g}>
                       <div className="hb-lib-group">{g}</div>
                       {items.map((m) => (
-                        <div key={m.type} className="hb-lib-item" draggable onDragStart={startDrag({ kind: "new", type: m.type })} onDragEnd={endDrag} title="Kanvasga sudrang">
+                        <div key={m.type} className="hb-lib-item" draggable onDragStart={startDrag({ kind: "new", type: m.type })} onDragEnd={endDrag} title={tx("Kanvasga sudrang")}>
                           <span className="ic"><TypeIcon type={m.type} /></span>
                           <span className="grow"><b>{m.name}</b><small>{m.desc}</small></span>
-                          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => addBlock(m.type)} aria-label={`${m.name} qo‘shish`} title="Qo‘shish"><I.plus size={16} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => addBlock(m.type)} aria-label={tx("{0} qo‘shish", m.name)} title={tx("Qo‘shish")}><I.plus size={16} /></button>
                         </div>
                       ))}
                     </Fragment>
@@ -443,20 +444,20 @@ export function HomepageBuilder() {
 
           {/* ---------- canvas ---------- */}
           <main className="hb-canvas" onClick={() => setSel(null)}>
-            {at && <div className="hb-tt-note"><BI.clock size={14} /> Sahifa <b>{shortLocal(toLocal(at))}</b> holatida — vaqtga bog‘liq bloklar shu vaqtga ko‘ra ko‘rsatilgan.</div>}
+            {at && <div className="hb-tt-note"><BI.clock size={14} />{" "}{tx("Sahifa")}{" "}<b>{shortLocal(toLocal(at))}</b>{" "}{tx("holatida — vaqtga bog‘liq bloklar shu vaqtga ko‘ra ko‘rsatilgan.")}</div>}
             {device === "mobile" ? (
               <MobileCanvas />
             ) : (
               <div className={`hb-page d-${device}`}>
-                <Gap index={0} active={drop?.kind === "gap" && drop.index === 0} onOver={overGap(0)} onDrop={doDrop} label={drag.current?.kind === "row" ? "Qatorni shu yerga" : "Yangi qator"} />
+                <Gap index={0} active={drop?.kind === "gap" && drop.index === 0} onOver={overGap(0)} onDrop={doDrop} label={drag.current?.kind === "row" ? tx("Qatorni shu yerga") : tx("Yangi qator")} />
                 {layout.rows.map((row, ri) => (
                   <Fragment key={row.id}>
                     <RowView row={row} ri={ri} drop={drop?.kind === "in" && drop.rowId === row.id ? drop : null}
                       onOver={overRow(row, ri)} onDrop={doDrop} startDrag={startDrag} endDrag={endDrag} resize={resize} />
-                    <Gap index={ri + 1} active={drop?.kind === "gap" && drop.index === ri + 1} onOver={overGap(ri + 1)} onDrop={doDrop} label={drag.current?.kind === "row" ? "Qatorni shu yerga" : "Yangi qator"} />
+                    <Gap index={ri + 1} active={drop?.kind === "gap" && drop.index === ri + 1} onOver={overGap(ri + 1)} onDrop={doDrop} label={drag.current?.kind === "row" ? tx("Qatorni shu yerga") : tx("Yangi qator")} />
                   </Fragment>
                 ))}
-                {!layout.rows.length && <div className="hb-empty">Modulni chap paneldan shu yerga sudrang</div>}
+                {!layout.rows.length && <div className="hb-empty">{tx("Modulni chap paneldan shu yerga sudrang")}</div>}
               </div>
             )}
           </main>
@@ -500,15 +501,15 @@ function RowView({ row, ri, drop, onOver, onDrop, startDrag, endDrag, resize }: 
   return (
     <div className={`hb-row${selected ? " sel" : ""}${row.hidden ? " is-hidden" : ""}${row.bg ? ` bg-${row.bg}` : ""}`} data-hb-row={row.id}>
       <button className="hb-row-handle" draggable onDragStart={startDrag({ kind: "row", id: row.id })} onDragEnd={endDrag}
-        onClick={(e) => { e.stopPropagation(); select({ kind: "row", id: row.id }); }} title="Qator sozlamalari · sudrab ko‘chirish">
+        onClick={(e) => { e.stopPropagation(); select({ kind: "row", id: row.id }); }} title={tx("Qator sozlamalari · sudrab ko‘chirish")}>
         <I.table size={13} /><span>{ri + 1}</span>
       </button>
-      {selected && <span className="hb-row-label">Qator {ri + 1} · {row.blocks.length} blok · {row.blocks.map((b) => b.span).join(" + ")}{row.hidden ? " · yashirin" : ""}</span>}
+      {selected && <span className="hb-row-label">{tx("Qator {0} · {1} blok ·", ri + 1, row.blocks.length)}{" "}{row.blocks.map((b) => b.span).join(" + ")}{row.hidden ? tx(" · yashirin") : ""}</span>}
       <div className="hb-row-grid" style={{ gap: row.gap ? Math.round(row.gap / 2) : 12 }} onDragOver={onOver} onDragEnter={onOver} onDrop={onDrop}>
         {row.blocks.map((b, bi) => (
           <BlockView key={b.id} b={b} bi={bi} row={row} span={device === "tablet" ? (half ? 6 : 12) : b.span} startDrag={startDrag} endDrag={endDrag} resize={resize} />
         ))}
-        {device === "desktop" && sum < 12 && !row.blocks.some((b) => b.type === "hero") && <div className="hb-free" style={{ gridColumn: `span ${12 - sum}` }}>{12 - sum} ustun bo‘sh</div>}
+        {device === "desktop" && sum < 12 && !row.blocks.some((b) => b.type === "hero") && <div className="hb-free" style={{ gridColumn: `span ${12 - sum}` }}>{12 - sum}{" "}{tx("ustun bo‘sh")}</div>}
         {drop && <i className={`hb-vind${drop.ok ? "" : " bad"}`} style={{ left: drop.x }} />}
       </div>
     </div>
@@ -538,12 +539,12 @@ function BlockView({ b, bi, row, span, startDrag, endDrag, resize }: {
       )}
       {selected && (
         <div className="hb-toolbar" onClick={(e) => e.stopPropagation()}>
-          <span className="hb-tb-grip" title="Sudrab ko‘chirish"><BI.grip size={14} /></span>
-          <button title="Nusxa" onClick={act(() => { const c = copyBlock(b); const next = clone(layout); next.rows.splice(layout.rows.indexOf(row) + 1, 0, { id: uid("r"), blocks: [c] }); commit(next); select({ kind: "block", id: c.id }); })}><I.copy size={14} /></button>
-          {b.type === "news" && <button title="Yangilikni alohida blokka chiqarish — «Sozlamalar» → Ichki elementlar" onClick={act(() => toast("Inspektorda «Ichki elementlar» ro‘yxatidan yangilikni tanlang", "info"))}><BI.extract size={14} /></button>}
-          <button title={b.hidden ? "Ko‘rsatish" : "Yashirish"} onClick={act(() => commit(updateBlock(layout, b.id, (x) => ({ ...x, hidden: !x.hidden }))))}>{b.hidden ? <I.eye size={14} /> : <BI.eyeOff size={14} />}</button>
-          <button title={b.locked ? "Qulfni ochish" : "Qulflash"} onClick={act(() => commit(updateBlock(layout, b.id, (x) => ({ ...x, locked: !x.locked }))))}>{b.locked ? <BI.unlock size={14} /> : <I.lock size={14} />}</button>
-          <button title="O‘chirish" disabled={b.locked} onClick={act(() => { commit(removeBlock(layout, b.id)); select(null); })}><I.trash size={14} /></button>
+          <span className="hb-tb-grip" title={tx("Sudrab ko‘chirish")}><BI.grip size={14} /></span>
+          <button title={tx("Nusxa")} onClick={act(() => { const c = copyBlock(b); const next = clone(layout); next.rows.splice(layout.rows.indexOf(row) + 1, 0, { id: uid("r"), blocks: [c] }); commit(next); select({ kind: "block", id: c.id }); })}><I.copy size={14} /></button>
+          {b.type === "news" && <button title={tx("Yangilikni alohida blokka chiqarish — «Sozlamalar» → Ichki elementlar")} onClick={act(() => toast(tx("Inspektorda «Ichki elementlar» ro‘yxatidan yangilikni tanlang"), "info"))}><BI.extract size={14} /></button>}
+          <button title={b.hidden ? tx("Ko‘rsatish") : tx("Yashirish")} onClick={act(() => commit(updateBlock(layout, b.id, (x) => ({ ...x, hidden: !x.hidden }))))}>{b.hidden ? <I.eye size={14} /> : <BI.eyeOff size={14} />}</button>
+          <button title={b.locked ? tx("Qulfni ochish") : tx("Qulflash")} onClick={act(() => commit(updateBlock(layout, b.id, (x) => ({ ...x, locked: !x.locked }))))}>{b.locked ? <BI.unlock size={14} /> : <I.lock size={14} />}</button>
+          <button title={tx("O‘chirish")} disabled={b.locked} onClick={act(() => { commit(removeBlock(layout, b.id)); select(null); })}><I.trash size={14} /></button>
         </div>
       )}
       <div className="hb-blk-head">
@@ -554,17 +555,17 @@ function BlockView({ b, bi, row, span, startDrag, endDrag, resize }: {
       <Thumb b={shown} />
       <div className="hb-badges">
         {sch && <span className={`hb-badge ${sch.active ? "ok" : "off"}`} title={sch.text}><BI.clock size={11} /> {scheduleText(b.schedule)}{b.schedule?.mode === "range" ? ` · ${sch.text.replace("Faol · ", "")}` : ""}</span>}
-        {b.alt && <span className="hb-badge" title="Ko‘rinmaydigan vaqtda o‘rniga">↺ {blockLabel(b.alt)}</span>}
-        {b.devices && !b.devices.mobile && <span className="hb-badge"><BI.phone size={11} /> yashirin</span>}
-        {b.devices && !b.devices.tablet && <span className="hb-badge"><BI.tablet size={11} /> yashirin</span>}
-        {b.devices && !b.devices.desktop && <span className="hb-badge"><BI.monitor size={11} /> yashirin</span>}
-        {b.mobileOrder ? <span className="hb-badge"><BI.phone size={11} /> {b.mobileOrder}-o‘rin</span> : null}
-        {b.hidden && <span className="hb-badge off">yashirilgan</span>}
+        {b.alt && <span className="hb-badge" title={tx("Ko‘rinmaydigan vaqtda o‘rniga")}>↺ {blockLabel(b.alt)}</span>}
+        {b.devices && !b.devices.mobile && <span className="hb-badge"><BI.phone size={11} />{" "}{tx("yashirin")}</span>}
+        {b.devices && !b.devices.tablet && <span className="hb-badge"><BI.tablet size={11} />{" "}{tx("yashirin")}</span>}
+        {b.devices && !b.devices.desktop && <span className="hb-badge"><BI.monitor size={11} />{" "}{tx("yashirin")}</span>}
+        {b.mobileOrder ? <span className="hb-badge"><BI.phone size={11} />{" "}{tx("{0}-o‘rin", b.mobileOrder)}</span> : null}
+        {b.hidden && <span className="hb-badge off">{tx("yashirilgan")}</span>}
         {b.locked && <span className="hb-badge"><I.lock size={11} /></span>}
       </div>
-      {off && <div className="hb-off-note">{b.hidden ? "Yashirilgan" : "Bu vaqtda ko‘rinmaydi"}</div>}
-      {resolved && resolved !== b && resolved.id !== b.id && <div className="hb-alt-note">O‘rnida: {blockLabel(resolved)}</div>}
-      {selected && device === "desktop" && !b.locked && b.type !== "hero" && <span className="hb-resize" onPointerDown={resize(b, row)} title="Kenglikni o‘zgartirish" />}
+      {off && <div className="hb-off-note">{b.hidden ? tx("Yashirilgan") : tx("Bu vaqtda ko‘rinmaydi")}</div>}
+      {resolved && resolved !== b && resolved.id !== b.id && <div className="hb-alt-note">{tx("O‘rnida:")}{" "}{blockLabel(resolved)}</div>}
+      {selected && device === "desktop" && !b.locked && b.type !== "hero" && <span className="hb-resize" onPointerDown={resize(b, row)} title={tx("Kenglikni o‘zgartirish")} />}
     </div>
   );
 }
@@ -577,7 +578,7 @@ function MobileCanvas() {
   for (const f of fixed) rest.splice(Math.min(f.b.mobileOrder! - 1, rest.length), 0, f);
   return (
     <div className="hb-page d-mobile">
-      <p className="hb-hint-m">Telefonda bloklar bitta ustunda. Tartibni blokning «Qurilmalar» bo‘limida o‘zgartiring.</p>
+      <p className="hb-hint-m">{tx("Telefonda bloklar bitta ustunda. Tartibni blokning «Qurilmalar» bo‘limida o‘zgartiring.")}</p>
       {rest.map(({ b, rowHidden }, i) => {
         const hidden = (b.devices && !b.devices.mobile) || b.hidden || rowHidden;
         const resolved = resolveBlock({ ...b, hidden: false }, now, refs.matches);
@@ -586,10 +587,10 @@ function MobileCanvas() {
         return (
           <div key={b.id} className={`hb-blk t-${shown.type}${selected ? " sel" : ""}${hidden ? " is-hidden" : ""}${!resolved ? " is-off" : ""}`} data-hb-block={b.id}
             onClick={(e) => { e.stopPropagation(); select({ kind: "block", id: b.id }); }}>
-            <div className="hb-blk-head"><span className="ic"><TypeIcon type={shown.type} /></span><b>{blockLabel(shown)}</b><small>{i + 1}{b.mobileOrder ? " · qo‘lda" : ""}</small></div>
+            <div className="hb-blk-head"><span className="ic"><TypeIcon type={shown.type} /></span><b>{blockLabel(shown)}</b><small>{i + 1}{b.mobileOrder ? tx(" · qo‘lda") : ""}</small></div>
             <Thumb b={shown} />
-            {hidden && <div className="hb-off-note">Mobil versiyada yashirin</div>}
-            {!hidden && !resolved && <div className="hb-off-note">Bu vaqtda ko‘rinmaydi</div>}
+            {hidden && <div className="hb-off-note">{tx("Mobil versiyada yashirin")}</div>}
+            {!hidden && !resolved && <div className="hb-off-note">{tx("Bu vaqtda ko‘rinmaydi")}</div>}
           </div>
         );
       })}
@@ -609,9 +610,9 @@ function Layers() {
       {layout.rows.map((r, ri) => (
         <div key={r.id} className="hb-layer-row">
           <div className={`hb-layer${sel?.kind === "row" && sel.id === r.id ? " sel" : ""}${r.hidden ? " is-hidden" : ""}`} onClick={() => select({ kind: "row", id: r.id })}>
-            <I.table size={14} /><b className="grow">{ri + 1} · {r.blocks.length > 1 ? `${r.blocks.length} blok (${r.blocks.map((b) => b.span).join("+")})` : blockLabel(r.blocks[0])}</b>
-            <button className="btn btn-ghost btn-icon btn-sm" onClick={(e) => { e.stopPropagation(); moveTo(ri, -1); }} disabled={ri === 0} aria-label="Yuqoriga"><I.up size={14} /></button>
-            <button className="btn btn-ghost btn-icon btn-sm" onClick={(e) => { e.stopPropagation(); moveTo(ri, 1); }} disabled={ri === layout.rows.length - 1} aria-label="Pastga"><I.down size={14} /></button>
+            <I.table size={14} /><b className="grow">{ri + 1} · {r.blocks.length > 1 ? tx("{0} blok ({1})", r.blocks.length, r.blocks.map((b) => b.span).join("+")) : blockLabel(r.blocks[0])}</b>
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={(e) => { e.stopPropagation(); moveTo(ri, -1); }} disabled={ri === 0} aria-label={tx("Yuqoriga")}><I.up size={14} /></button>
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={(e) => { e.stopPropagation(); moveTo(ri, 1); }} disabled={ri === layout.rows.length - 1} aria-label={tx("Pastga")}><I.down size={14} /></button>
           </div>
           {r.blocks.map((b) => (
             <Fragment key={b.id}>
@@ -622,7 +623,7 @@ function Layers() {
               </div>
               {b.alt && (
                 <div className={`hb-layer child alt${sel?.kind === "block" && sel.id === b.alt.id ? " sel" : ""}`} onClick={() => select({ kind: "block", id: b.alt!.id })}>
-                  ↺ <span className="grow">{blockLabel(b.alt)} (o‘rniga)</span>
+                  ↺ <span className="grow">{blockLabel(b.alt)}{" "}{tx("(o‘rniga)")}</span>
                 </div>
               )}
             </Fragment>
@@ -656,9 +657,9 @@ function Thumb({ b }: { b: Block }) {
   const narrow = b.variant === "compact" || b.span <= 4;
   switch (b.type) {
     case "hero":
-      return <div className="hb-th dark tall"><span className="ov">HERO · BANNERLAR</span><b className="big">Bosh e’lonlar karuseli</b><Lines n={1} w={[40]} /></div>;
+      return <div className="hb-th dark tall"><span className="ov">{tx("HERO · BANNERLAR")}</span><b className="big">{tx("Bosh e’lonlar karuseli")}</b><Lines n={1} w={[40]} /></div>;
     case "intro":
-      return <div className="hb-th split"><b>{(p.title as string) || "United MFL — media futbol ligasi"}</b><div><Lines n={3} w={[100, 90, 60]} /></div></div>;
+      return <div className="hb-th split"><b>{(p.title as string) || tx("United MFL — media futbol ligasi")}</b><div><Lines n={3} w={[100, 90, 60]} /></div></div>;
     case "fmatch": {
       const m = refs.matches.find((x) => x.id === p.matchId);
       return <div className="hb-th match"><span className="cr" /><b className="big">{m ? `${m.home?.name || "?"} — ${m.away?.name || "?"}` : "2 : 1"}</b><span className="cr" /></div>;
@@ -671,7 +672,7 @@ function Thumb({ b }: { b: Block }) {
     }
     case "standings": {
       const g = refs.groups.find((x) => x.code === p.group);
-      return <div className="hb-th table"><span className="ov">{p.group === "all" ? "BARCHA GURUHLAR" : (g?.name || "1-GURUH").toUpperCase()}</span>{Array.from({ length: narrow ? 4 : 5 }, (_, i) => <div key={i} className="tr"><span className="cr s" /><i className="ln" /><i className="num" /></div>)}</div>;
+      return <div className="hb-th table"><span className="ov">{p.group === "all" ? tx("BARCHA GURUHLAR") : (g?.name || tx("1-GURUH")).toUpperCase()}</span>{Array.from({ length: narrow ? 4 : 5 }, (_, i) => <div key={i} className="tr"><span className="cr s" /><i className="ln" /><i className="num" /></div>)}</div>;
     }
     case "scorers":
       return <div className="hb-th list">{Array.from({ length: Math.min(n("count", 5), 5) }, (_, i) => <div key={i} className="li"><em>{i + 1}</em><Lines n={1} w={[70]} /><i className="num" /></div>)}</div>;
@@ -683,7 +684,7 @@ function Thumb({ b }: { b: Block }) {
         : <div className="hb-th list">{Array.from({ length: Math.min(n("count", 5), narrow ? 4 : 3) }, (_, i) => <div key={i} className="li"><span className="img s" /><Lines n={2} w={[90, 60]} /></div>)}</div>;
     case "fnews": {
       const it = refs.news.find((x) => x.slug === p.slug);
-      return <div className="hb-th fnews"><span className="img" /><div><span className="ov">{it?.category || "YANGILIK"}</span><b>{it?.title || "Eng so‘nggi yangilik"}</b><Lines n={2} w={[90, 70]} /></div></div>;
+      return <div className="hb-th fnews"><span className="img" /><div><span className="ov">{it?.category || tx("YANGILIK")}</span><b>{it?.title || tx("Eng so‘nggi yangilik")}</b><Lines n={2} w={[90, 70]} /></div></div>;
     }
     case "video": case "shop": case "gallery": case "social": {
       const c = Math.max(1, Math.min(n("count", 3), b.span >= 8 ? 4 : narrow ? 2 : 3));
@@ -691,16 +692,16 @@ function Thumb({ b }: { b: Block }) {
     }
     case "player": case "team": {
       const t = refs.teams.find((x) => x.slug === p.slug);
-      return <div className="hb-th spot"><span className="av" /><div><b>{b.type === "team" ? t?.name || "Jamoa" : "O‘yinchi"}</b><Lines n={2} w={[60, 40]} /></div></div>;
+      return <div className="hb-th spot"><span className="av" /><div><b>{b.type === "team" ? t?.name || tx("Jamoa") : tx("O‘yinchi")}</b><Lines n={2} w={[60, 40]} /></div></div>;
     }
     case "partners": {
       // partners come from Kontent → Hamkorlar; the thumbnail only sketches the row
-      return <div className="hb-th partners">{["Logo", "Logo", "Logo"].map((x, i) => <span key={i}>{x}</span>)}<span className="muted">+ Brend</span></div>;
+      return <div className="hb-th partners">{[tx("Logo"), tx("Logo"), tx("Logo")].map((x, i) => <span key={i}>{x}</span>)}<span className="muted">{tx("+ Brend")}</span></div>;
     }
     case "banner":
-      return <div className="hb-th dark banner" style={p.image ? { backgroundImage: `linear-gradient(90deg, rgba(11,13,16,.85), rgba(11,13,16,.3)), url("${p.image as string}")` } : undefined}><span className="ov">{(p.eyebrow as string) || "BANNER"}</span><b className="big">{(p.title as string) || "Sarlavha"}</b>{p.ctaLabel ? <span className="cta">{p.ctaLabel as string}</span> : null}</div>;
+      return <div className="hb-th dark banner" style={p.image ? { backgroundImage: `linear-gradient(90deg, rgba(11,13,16,.85), rgba(11,13,16,.3)), url("${p.image as string}")` } : undefined}><span className="ov">{(p.eyebrow as string) || tx("BANNER")}</span><b className="big">{(p.title as string) || tx("Sarlavha")}</b>{p.ctaLabel ? <span className="cta">{p.ctaLabel as string}</span> : null}</div>;
     case "custom":
-      return <div className="hb-th text"><b>{b.title || "Matn bloki"}</b><p>{((p.text as string) || "Matn…").slice(0, 140)}</p></div>;
+      return <div className="hb-th text"><b>{b.title || tx("Matn bloki")}</b><p>{((p.text as string) || tx("Matn…")).slice(0, 140)}</p></div>;
   }
   return <div className="hb-th"><Lines n={3} /></div>;
 }

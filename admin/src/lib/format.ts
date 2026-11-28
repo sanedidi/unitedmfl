@@ -1,5 +1,6 @@
+import { lang, tx } from "@/lib/i18n";
 export const TZ = "Asia/Tashkent";
-const MONTHS = ["yan", "fev", "mar", "apr", "may", "iyun", "iyul", "avg", "sen", "okt", "noy", "dek"];
+const MONTHS = lang === "ru" ? ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"] : ["yan", "fev", "mar", "apr", "may", "iyun", "iyul", "avg", "sen", "okt", "noy", "dek"];
 
 function parts(iso: string) {
   const f = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso));
@@ -23,30 +24,30 @@ export function fromLocalInput(v: string) {
 
 export function ago(iso: string) {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return "hozirgina";
-  if (s < 3600) return `${Math.floor(s / 60)} daqiqa oldin`;
-  if (s < 86400) return `${Math.floor(s / 3600)} soat oldin`;
-  if (s < 86400 * 7) return `${Math.floor(s / 86400)} kun oldin`;
+  if (s < 60) return tx("hozirgina");
+  if (s < 3600) return tx("{0} daqiqa oldin", Math.floor(s / 60));
+  if (s < 86400) return tx("{0} soat oldin", Math.floor(s / 3600));
+  if (s < 86400 * 7) return tx("{0} kun oldin", Math.floor(s / 86400));
   return fmtDate(iso);
 }
 
 export const MATCH_STATUS: Record<string, { label: string; tone: string }> = {
-  scheduled: { label: "Rejalashtirilgan", tone: "info" },
-  live: { label: "Jonli", tone: "live" },
-  halftime: { label: "Tanaffus", tone: "live" },
-  finished: { label: "Yakunlangan", tone: "muted" },
-  postponed: { label: "Qoldirilgan", tone: "warn" },
-  cancelled: { label: "Bekor qilingan", tone: "danger" },
+  scheduled: { label: tx("Rejalashtirilgan"), tone: "info" },
+  live: { label: tx("Jonli"), tone: "live" },
+  halftime: { label: tx("Tanaffus"), tone: "live" },
+  finished: { label: tx("Yakunlangan"), tone: "muted" },
+  postponed: { label: tx("Qoldirilgan"), tone: "warn" },
+  cancelled: { label: tx("Bekor qilingan"), tone: "danger" },
 };
 
 export const EVENT_LABEL: Record<string, string> = {
-  goal: "Gol", own_goal: "Avtogol", penalty_goal: "Penalti (gol)", penalty_missed: "Penalti (o‘tmadi)",
-  yellow: "Sariq", second_yellow: "Ikkinchi sariq", red: "Qizil", sub: "Almashtirish",
-  shootout_scored: "Seriya: gol", shootout_missed: "Seriya: o‘tmadi", note: "Izoh", period: "Davr", formation: "Sxema",
+  goal: tx("Gol"), own_goal: tx("Avtogol"), penalty_goal: tx("Penalti (gol)"), penalty_missed: tx("Penalti (o‘tmadi)"),
+  yellow: tx("Sariq"), second_yellow: tx("Ikkinchi sariq"), red: tx("Qizil"), sub: tx("Almashtirish"),
+  shootout_scored: tx("Seriya: gol"), shootout_missed: tx("Seriya: o‘tmadi"), note: tx("Izoh"), period: tx("Davr"), formation: tx("Sxema"),
 };
 
-export const POSITIONS: Record<string, string> = { GK: "Darvozabon", DF: "Himoyachi", MF: "Yarim himoyachi", FW: "Hujumchi" };
-export const ROLE_LABEL: Record<string, string> = { admin: "Administrator", editor: "Muharrir", operator: "Match operatori", shop: "Do‘kon menejeri", controller: "Nazoratchi" };
+export const POSITIONS: Record<string, string> = { GK: tx("Darvozabon"), DF: tx("Himoyachi"), MF: tx("Yarim himoyachi"), FW: tx("Hujumchi") };
+export const ROLE_LABEL: Record<string, string> = { admin: tx("Administrator"), editor: tx("Muharrir"), operator: tx("Match operatori"), shop: tx("Do‘kon menejeri"), controller: tx("Nazoratchi") };
 
 export function initials(name: string, short?: string) {
   if (short) return short.slice(0, 3).toUpperCase();
@@ -80,7 +81,7 @@ export const jerseyCmp = (a: string | null | undefined, b: string | null | undef
   return a < b ? -1 : a > b ? 1 : 0;
 };
 
-export const fmtUZS = (n: number | null | undefined) => (n == null ? "—" : new Intl.NumberFormat("ru-RU").format(n).replace(/ /g, " ") + " so‘m");
+export const fmtUZS = (n: number | null | undefined) => (n == null ? "—" : new Intl.NumberFormat("ru-RU").format(n).replace(/ /g, " ") + tx(" so‘m"));
 export const fmtBytes = (n: number) => (n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
 /**

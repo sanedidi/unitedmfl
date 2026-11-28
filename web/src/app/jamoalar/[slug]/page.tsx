@@ -12,6 +12,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { abs, breadcrumbLd, clip, orgRef, pageMeta, playerPath, teamPath } from "@/lib/seo";
 import { sized } from "@/lib/img";
 
+import { getT } from "@/lib/i18n/server";
 type P = Promise<{ slug: string }>;
 const load = cache(async (slug: string) => apiOrNull<TeamDetail>(`/teams/${encodeURIComponent(slug)}`));
 
@@ -27,15 +28,17 @@ function record(d: TeamDetail) {
 }
 
 export async function generateMetadata({ params }: { params: P }): Promise<Metadata> {
+  const tx = await getT();
   const d = await load((await params).slug);
-  if (!d) return { title: "Jamoa topilmadi", robots: { index: false } };
+  if (!d) return { title: tx("Jamoa topilmadi"), robots: { index: false } };
   const r = record(d);
-  const group = d.team.group_label ? ` ${groupName(d.team.group_label, d.team.group_name)}${d.team.group_is_provisional ? " (taxminiy)" : ""}.` : "";
-  const desc = clip(`${d.team.name} — United MFL 2026 ishtirokchisi.${group} ${r.played} o‘yin: ${r.w} g‘alaba, ${r.dr} durang, ${r.l} mag‘lubiyat, gollar ${r.gf}:${r.ga}. Tarkib, matchlar taqvimi va natijalar.`);
-  return pageMeta({ title: `${d.team.name} — tarkib, matchlar va natijalar`, description: desc, path: teamPath(d.team), image: `${teamPath(d.team)}/opengraph-image` });
+  const group = d.team.group_label ? ` ${groupName(d.team.group_label, d.team.group_name)}${d.team.group_is_provisional ? tx(" (taxminiy)") : ""}.` : "";
+  const desc = clip(tx("{0} — United MFL 2026 ishtirokchisi.{1} {2} o‘yin: {3} g‘alaba, {4} durang, {5} mag‘lubiyat, gollar {6}:{7}. Tarkib, matchlar taqvimi va natijalar.", d.team.name, group, r.played, r.w, r.dr, r.l, r.gf, r.ga));
+  return pageMeta({ title: tx("{0} — tarkib, matchlar va natijalar", d.team.name), description: desc, path: teamPath(d.team), image: `${teamPath(d.team)}/opengraph-image` });
 }
 
 export default async function TeamPage({ params }: { params: P }) {
+  const tx = await getT();
   const d = await load((await params).slug);
   if (!d) notFound();
   const { team, players, matches } = d;
@@ -60,16 +63,16 @@ export default async function TeamPage({ params }: { params: P }) {
     <>
       <header className="page-title">
         <div className="container">
-          <nav className="crumbs" style={{ paddingTop: 0 }} aria-label="Breadcrumb"><Link href="/jamoalar">Jamoalar</Link><ChevronRight size={12} /><b>{team.name}</b></nav>
+          <nav className="crumbs" style={{ paddingTop: 0 }} aria-label="Breadcrumb"><Link href="/jamoalar">{tx("Jamoalar")}</Link><ChevronRight size={12} /><b>{team.name}</b></nav>
           <div className="row" style={{ gap: 28, flexWrap: "wrap" }}>
             <Crest team={team} size={120} />
             <div className="grow">
-              {team.group_label && <div className="overline">{groupName(team.group_label, team.group_name)}{team.group_is_provisional ? " · taxminiy" : ""}</div>}
+              {team.group_label && <div className="overline">{groupName(team.group_label, team.group_name)}{team.group_is_provisional ? tx(" · taxminiy") : ""}</div>}
               <h1 className="h1">{team.name}</h1>
-              {team.leader && <p className="lead" style={{ marginTop: 8 }}>Jamoa sardori: {team.leader}</p>}
+              {team.leader && <p className="lead" style={{ marginTop: 8 }}>{tx("Jamoa sardori:")}{" "}{team.leader}</p>}
               <div className="row" style={{ marginTop: 12 }}>
-                {team.instagram && <a className="btn btn-ghost btn-sm" href={team.instagram} target="_blank" rel="noopener noreferrer"><Instagram /> Instagram</a>}
-                {team.telegram && <a className="btn btn-ghost btn-sm" href={team.telegram} target="_blank" rel="noopener noreferrer"><Telegram /> Telegram</a>}
+                {team.instagram && <a className="btn btn-ghost btn-sm" href={team.instagram} target="_blank" rel="noopener noreferrer"><Instagram />{" "}{tx("Instagram")}</a>}
+                {team.telegram && <a className="btn btn-ghost btn-sm" href={team.telegram} target="_blank" rel="noopener noreferrer"><Telegram />{" "}{tx("Telegram")}</a>}
               </div>
             </div>
           </div>
@@ -77,23 +80,23 @@ export default async function TeamPage({ params }: { params: P }) {
       </header>
       <div className="container">
         <div className="grid grid-4" style={{ marginTop: 32 }}>
-          <div className="card card-pad"><div className="muted">O‘yinlar</div><div className="h2 tnum">{played}</div></div>
-          <div className="card card-pad"><div className="muted">G / D / M</div><div className="h2 tnum">{w}/{dr}/{l}</div></div>
-          <div className="card card-pad"><div className="muted">Gollar</div><div className="h2 tnum">{gf}:{ga}</div></div>
-          <div className="card card-pad"><div className="muted">Farq</div><div className="h2 tnum accent">{gf - ga > 0 ? `+${gf - ga}` : gf - ga}</div></div>
+          <div className="card card-pad"><div className="muted">{tx("O‘yinlar")}</div><div className="h2 tnum">{played}</div></div>
+          <div className="card card-pad"><div className="muted">{tx("G / D / M")}</div><div className="h2 tnum">{w}/{dr}/{l}</div></div>
+          <div className="card card-pad"><div className="muted">{tx("Gollar")}</div><div className="h2 tnum">{gf}:{ga}</div></div>
+          <div className="card card-pad"><div className="muted">{tx("Farq")}</div><div className="h2 tnum accent">{gf - ga > 0 ? `+${gf - ga}` : gf - ga}</div></div>
         </div>
 
         <section style={{ marginTop: 48 }}>
-          <h2 className="h3" style={{ marginBottom: 16 }}>Matchlar</h2>
-          {matches.length ? <div className="card">{matches.map((m) => <ResultRow key={m.id} match={m} />)}</div> : <div className="empty">Matchlar yo‘q.</div>}
+          <h2 className="h3" style={{ marginBottom: 16 }}>{tx("Matchlar")}</h2>
+          {matches.length ? <div className="card">{matches.map((m) => <ResultRow key={m.id} match={m} />)}</div> : <div className="empty">{tx("Matchlar yo‘q.")}</div>}
         </section>
 
         <section style={{ marginTop: 48 }}>
-          <h2 className="h3" style={{ marginBottom: 16 }}>Tarkib</h2>
-          {players.length === 0 ? <div className="empty">Tarkib hali e’lon qilinmagan.</div> : (
+          <h2 className="h3" style={{ marginBottom: 16 }}>{tx("Tarkib")}</h2>
+          {players.length === 0 ? <div className="empty">{tx("Tarkib hali e’lon qilinmagan.")}</div> : (
             [...byPos, ...(noPos.length ? [{ p: "", items: noPos }] : [])].map((g) => (
               <div key={g.p || "other"} style={{ marginBottom: 28 }}>
-                <div className="overline" style={{ color: "var(--text-muted)", marginBottom: 12 }}>{POSITION_LABEL[g.p] || "Boshqa"}</div>
+                <div className="overline" style={{ color: "var(--text-muted)", marginBottom: 12 }}>{POSITION_LABEL[g.p] || tx("Boshqa")}</div>
                 <div className="grid grid-4" style={{ gap: 12 }}>
                   {g.items.map((p) => (
                     <Link key={p.id} href={playerPath(p)} className="card card-hover player-tile">

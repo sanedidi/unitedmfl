@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AISLE, P, PITCH_MAX, PITCH_MIN, SEAT, layoutBox, seatX, seatZone, sectionSize, type Layout, type Rect, type Section, type Stand } from "@/lib/tickets";
 
+import { tx } from "@/lib/i18n";
 /** SVG renderer of a stadium layout: view-only thumbnails and the editor canvas (pan, zoom, drag). */
 
 export type Sel = { stand?: string; section?: string; pitch?: boolean } | null;
@@ -37,7 +38,7 @@ export function seatPaths(s: Section) {
   s.rows.forEach((r, ri) => {
     for (let n = 1; n <= r.seats; n++) {
       if (r.removed.includes(n)) continue;
-      const d = `M${seatX(s, n)} ${ri * P}h${SEAT}v${SEAT}h-${SEAT}z`;
+      const d = tx("M{0} {1}h{2}v{3}h-{4}z", seatX(s, n), ri * P, SEAT, SEAT, SEAT);
       if (r.blocked.includes(n)) { blocked += d; continue; }
       const z = r.zone_seats ? seatZone(s, r, n) : s.zone;
       if (z !== s.zone) zones[z] = (zones[z] || "") + d; else normal += d;
@@ -154,7 +155,7 @@ export function StadiumCanvas(p: Props) {
   return (
     <svg ref={svg} className={`st-canvas${p.interactive ? " interactive" : ""}${p.ghost ? " placing" : ""}`} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
       style={{ height: p.height ?? "100%" }} onPointerDown={(e) => down(e, "pan")} onPointerMove={move} onPointerUp={up}
-      onDoubleClick={(e) => e.preventDefault()} preserveAspectRatio="xMidYMid meet" role="img" aria-label="Stadion sxemasi">
+      onDoubleClick={(e) => e.preventDefault()} preserveAspectRatio="xMidYMid meet" role="img" aria-label={tx("Stadion sxemasi")}>
       <g className={`pitch${p.interactive && p.onResizePitch ? " pick" : ""}`} onPointerDown={downPitch}>
         <rect x={pitch.x} y={pitch.y} width={pitch.w} height={pitch.h} rx={4} fill="#2E6B45" />
         <rect x={pitch.x + 8} y={pitch.y + 8} width={pitch.w - 16} height={pitch.h - 16} fill="none" stroke="#fff" strokeOpacity={.85} strokeWidth={1.4} />
@@ -191,7 +192,7 @@ export function StadiumCanvas(p: Props) {
                   <path d={paths.normal} fill={color} />
                   {Object.entries(paths.zones).map(([z, d]) => <path key={z} d={d} fill={zoneColor[z] || "#C4C9D0"} />)}
                   {paths.blocked && <path d={paths.blocked} fill="#D5D9DF" />}
-                  {sec.seat_mode === "free" && <text x={w / 2} y={h + 14} textAnchor="middle" fontSize={8} fill="#8A92A0" pointerEvents="none">erkin o‘rindiq</text>}
+                  {sec.seat_mode === "free" && <text x={w / 2} y={h + 14} textAnchor="middle" fontSize={8} fill="#8A92A0" pointerEvents="none">{tx("erkin o‘rindiq")}</text>}
                 </g>
               );
             })}

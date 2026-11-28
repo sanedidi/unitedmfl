@@ -393,3 +393,7 @@ button.hero-pill:hover, a.hero-pill:hover { background: rgba(255,255,255,.14); }
   .login-card { padding: 20px; margin-top: 8px; }
   .cab-logo { flex-direction: row; flex-wrap: wrap; align-items: center; }
 }
+
+/* language switcher */
+.hdr .lang-switch { flex: none; margin-right: 8px; }
+.hdr .lang-switch button { padding: 5px 8px; }

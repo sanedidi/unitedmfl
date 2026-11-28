@@ -13,10 +13,11 @@ import { useAuth, Allowed } from "@/lib/auth";
 import { LineupEditor } from "./Lineups";
 import { MatchPhotos } from "@/components/MatchPhotos";
 
+import { tx } from "@/lib/i18n";
 export function StageTag({ m }: { m: Pick<Match, "stage" | "round"> }) {
   if (!m.stage) return <span className="tag">—</span>;
   const k = m.stage.kind;
-  return <span className={`tag ${k === "final" ? "lime" : k === "group" ? "" : "navy"}`}>{k === "group" ? m.round || "Guruh" : m.stage.name}</span>;
+  return <span className={`tag ${k === "final" ? "lime" : k === "group" ? "" : "navy"}`}>{k === "group" ? m.round || tx("Guruh") : m.stage.name}</span>;
 }
 export const StatusBadge = ({ s }: { s: string }) => <Badge tone={MATCH_STATUS[s]?.tone}>{MATCH_STATUS[s]?.label || s}</Badge>;
 
@@ -24,9 +25,9 @@ export function MatchVs({ m }: { m: Match }) {
   const played = m.home_score != null && m.status !== "scheduled";
   return (
     <span className="vs">
-      <Crest team={m.home} size={22} /> <span className="ellipsis">{m.home?.name || "Aniqlanmagan"}</span>
+      <Crest team={m.home} size={22} /> <span className="ellipsis">{m.home?.name || tx("Aniqlanmagan")}</span>
       <span className="score tnum">{played ? `${m.home_score} : ${m.away_score}` : "—"}</span>
-      <span className="ellipsis">{m.away?.name || "Aniqlanmagan"}</span> <Crest team={m.away} size={22} />
+      <span className="ellipsis">{m.away?.name || tx("Aniqlanmagan")}</span> <Crest team={m.away} size={22} />
     </span>
   );
 }
@@ -53,23 +54,23 @@ export function MatchesPage() {
 
   return (
     <>
-      <PageHead title="Matchlar" sub="Taqvim, natijalar va match sahifalari" actions={can("matches:create") && <Link className="btn btn-primary" to="/matches/new"><I.plus size={16} /> Yangi match</Link>} />
+      <PageHead title={tx("Matchlar")} sub={tx("Taqvim, natijalar va match sahifalari")} actions={can("matches:create") && <Link className="btn btn-primary" to="/matches/new"><I.plus size={16} />{" "}{tx("Yangi match")}</Link>} />
       <div className="card">
         <div className="toolbar">
-          <div className="search grow" style={{ maxWidth: 320 }}><I.search size={16} /><input className="input" placeholder="Jamoa nomi…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Qidirish" /></div>
-          <select className="select" style={{ width: "auto" }} value={stage} onChange={(e) => setStage(e.target.value)} aria-label="Bosqich">
-            <option value="">Bosqich: barchasi</option>
+          <div className="search grow" style={{ maxWidth: 320 }}><I.search size={16} /><input className="input" placeholder={tx("Jamoa nomi…")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={tx("Qidirish")} /></div>
+          <select className="select" style={{ width: "auto" }} value={stage} onChange={(e) => setStage(e.target.value)} aria-label={tx("Bosqich")}>
+            <option value="">{tx("Bosqich: barchasi")}</option>
             {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           <div className="seg">
-            {[["", "Hammasi"], ["scheduled", "Kelgusi"], ["live", "Jonli"], ["finished", "Yakunlangan"]].map(([v, l]) => (
+            {[["", tx("Hammasi")], ["scheduled", tx("Kelgusi")], ["live", tx("Jonli")], ["finished", tx("Yakunlangan")]].map(([v, l]) => (
               <button key={v} aria-pressed={status === v} onClick={() => setStatus(v)}>{l}</button>
             ))}
           </div>
         </div>
-        {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading && !data ? <Loading /> : !data?.length ? <Empty title="Matchlar topilmadi" /> : (
+        {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading && !data ? <Loading /> : !data?.length ? <Empty title={tx("Matchlar topilmadi")} /> : (
           <div className="table-wrap"><table className="table">
-            <thead><tr><th>Sana</th><th>Bosqich</th><th>Match</th><th>Holat</th><th className="hide-mobile">Saytda</th><th /></tr></thead>
+            <thead><tr><th>{tx("Sana")}</th><th>{tx("Bosqich")}</th><th>{tx("Match")}</th><th>{tx("Holat")}</th><th className="hide-mobile">{tx("Saytda")}</th><th /></tr></thead>
             <tbody>
               {data.map((m) => (
                 <tr key={m.id} className="clickable" onClick={() => nav(`/matches/${m.id}`)}>
@@ -77,9 +78,9 @@ export function MatchesPage() {
                   <td><StageTag m={m} /></td>
                   <td style={{ minWidth: 300 }}><MatchVs m={m} /></td>
                   <td><StatusBadge s={m.status} /></td>
-                  <td className="hide-mobile">{m.published ? <Badge tone="ok">Ko‘rinadi</Badge> : <Badge tone="warn">Yashirin</Badge>}</td>
+                  <td className="hide-mobile">{m.published ? <Badge tone="ok">{tx("Ko‘rinadi")}</Badge> : <Badge tone="warn">{tx("Yashirin")}</Badge>}</td>
                   <td className="actions" onClick={(e) => e.stopPropagation()}>
-                    {can("live") && m.status !== "finished" && <Link className="btn btn-sm" to={`/live/${m.id}`}><I.radio size={15} /> Live</Link>}
+                    {can("live") && m.status !== "finished" && <Link className="btn btn-sm" to={`/live/${m.id}`}><I.radio size={15} />{" "}{tx("Live")}</Link>}
                   </td>
                 </tr>
               ))}
@@ -102,18 +103,18 @@ export function MatchEditPage() {
   if (!isNew && error) return <ErrorBox error={error} retry={reload} />;
   if (!isNew && (loading || !data)) return <Loading />;
   const d = data?.detail;
-  const title = d ? `${d.match.home?.name || "?"} — ${d.match.away?.name || "?"}` : "Yangi match";
+  const title = d ? `${d.match.home?.name || "?"} — ${d.match.away?.name || "?"}` : tx("Yangi match");
   return (
     <>
-      <div className="row" style={{ marginBottom: 12 }}><Link to="/matches" className="btn btn-ghost btn-sm"><I.back size={16} /> Matchlar</Link></div>
+      <div className="row" style={{ marginBottom: 12 }}><Link to="/matches" className="btn btn-ghost btn-sm"><I.back size={16} />{" "}{tx("Matchlar")}</Link></div>
       <PageHead title={title} sub={d ? <span className="row wrap"><StageTag m={d.match} /> <StatusBadge s={d.match.status} /> <span>{fmtShort(d.match.kickoff_at)}</span></span> : undefined}
         actions={d && <>
-          <a className="btn" href={`${SITE_URL}/matchlar/${d.match.id}`} target="_blank" rel="noreferrer"><I.globe size={16} /> Saytda</a>
-          {d.match.status !== "finished" && <Link className="btn btn-dark" to={`/live/${d.match.id}`}><I.radio size={16} /> Live-pult</Link>}
+          <a className="btn" href={`${SITE_URL}/matchlar/${d.match.id}`} target="_blank" rel="noreferrer"><I.globe size={16} />{" "}{tx("Saytda")}</a>
+          {d.match.status !== "finished" && <Link className="btn btn-dark" to={`/live/${d.match.id}`}><I.radio size={16} />{" "}{tx("Live-pult")}</Link>}
         </>} />
       {!isNew && (
         <div className="tabs" role="tablist">
-          {([["main", "Asosiy"], ["result", "Natija"], ["lineups", "Tarkiblar"], ["events", "Voqealar"], ["photos", "Foto hisobot"]] as [Tab, string][]).map(([k, l]) => (
+          {([["main", tx("Asosiy")], ["result", tx("Natija")], ["lineups", tx("Tarkiblar")], ["events", tx("Voqealar")], ["photos", tx("Foto hisobot")]] as [Tab, string][]).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
@@ -135,34 +136,34 @@ function MatchForm({ detail, mode, onSaved }: { detail?: MatchDetail; mode: "mai
   const teamOpts = teams.map((t) => ({ value: String(t.id), label: t.name }));
   const statusOpts = Object.entries(MATCH_STATUS).map(([value, v]) => ({ value, label: v.label }));
   const mainFields: FieldSpec[] = [
-    { name: "season_id", label: "Mavsum", type: "select", numeric: true, nullable: true, hint: "Bo‘sh — o‘rtoqlik o‘yini, mavsum va jadvalga kirmaydi", options: seasons.map((s) => ({ value: String(s.id), label: s.name })) },
-    { name: "stage_id", label: "Bosqich", type: "select", numeric: true, nullable: true, options: stages.map((s) => ({ value: String(s.id), label: s.name })) },
-    { name: "home_team_id", label: "Uy egasi", type: "select", numeric: true, nullable: true, options: teamOpts },
-    { name: "away_team_id", label: "Mehmon", type: "select", numeric: true, nullable: true, options: teamOpts },
-    { name: "kickoff_at", label: "Boshlanish (Toshkent vaqti)", type: "datetime" },
-    { name: "round", label: "Tur / izoh", placeholder: "Guruh, 2-tur…" },
-    { name: "venue", label: "Stadion", full: true },
-    { name: "ticket_url", label: "Chipta havolasi", type: "url", full: true },
-    { name: "status", label: "Holat", type: "select", options: statusOpts },
-    { name: "published", label: "Saytda ko‘rsatish", type: "bool" },
-    { name: "show_in_hero", label: "Bosh sahifadagi «Yaqin matchlar»da", type: "bool" },
-    { name: "banner_url", label: "Match banneri", type: "image" },
-    { name: "notes", label: "Ichki izoh", type: "textarea" },
+    { name: "season_id", label: tx("Mavsum"), type: "select", numeric: true, nullable: true, hint: tx("Bo‘sh — o‘rtoqlik o‘yini, mavsum va jadvalga kirmaydi"), options: seasons.map((s) => ({ value: String(s.id), label: s.name })) },
+    { name: "stage_id", label: tx("Bosqich"), type: "select", numeric: true, nullable: true, options: stages.map((s) => ({ value: String(s.id), label: s.name })) },
+    { name: "home_team_id", label: tx("Uy egasi"), type: "select", numeric: true, nullable: true, options: teamOpts },
+    { name: "away_team_id", label: tx("Mehmon"), type: "select", numeric: true, nullable: true, options: teamOpts },
+    { name: "kickoff_at", label: tx("Boshlanish (Toshkent vaqti)"), type: "datetime" },
+    { name: "round", label: tx("Tur / izoh"), placeholder: tx("Guruh, 2-tur…") },
+    { name: "venue", label: tx("Stadion"), full: true },
+    { name: "ticket_url", label: tx("Chipta havolasi"), type: "url", full: true },
+    { name: "status", label: tx("Holat"), type: "select", options: statusOpts },
+    { name: "published", label: tx("Saytda ko‘rsatish"), type: "bool" },
+    { name: "show_in_hero", label: tx("Bosh sahifadagi «Yaqin matchlar»da"), type: "bool" },
+    { name: "banner_url", label: tx("Match banneri"), type: "image" },
+    { name: "notes", label: tx("Ichki izoh"), type: "textarea" },
   ];
   const resultFields: FieldSpec[] = [
-    { name: "status", label: "Holat", type: "select", options: statusOpts, full: true },
-    { name: "home_score", label: `${m?.home?.name || "Uy egasi"} — gollar`, type: "number", nullable: true },
-    { name: "away_score", label: `${m?.away?.name || "Mehmon"} — gollar`, type: "number", nullable: true },
-    { name: "home_ht", label: "1-taym (uy)", type: "number", nullable: true },
-    { name: "away_ht", label: "1-taym (mehmon)", type: "number", nullable: true },
-    { name: "home_et", label: "Qo‘sh. vaqt (uy)", type: "number", nullable: true },
-    { name: "away_et", label: "Qo‘sh. vaqt (mehmon)", type: "number", nullable: true },
-    { name: "home_pen", label: "Penaltilar (uy)", type: "number", nullable: true },
-    { name: "away_pen", label: "Penaltilar (mehmon)", type: "number", nullable: true },
-    { name: "attendance", label: "Tomoshabinlar", type: "number", nullable: true },
-    { name: "video_url", label: "Videosharh havolasi", type: "url" },
-    { name: "added_time_1h", label: "Qo‘shilgan vaqt, 1-taym", type: "number", nullable: true },
-    { name: "added_time_2h", label: "Qo‘shilgan vaqt, 2-taym", type: "number", nullable: true },
+    { name: "status", label: tx("Holat"), type: "select", options: statusOpts, full: true },
+    { name: "home_score", label: tx("{0} — gollar", m?.home?.name || "Uy egasi"), type: "number", nullable: true },
+    { name: "away_score", label: tx("{0} — gollar", m?.away?.name || "Mehmon"), type: "number", nullable: true },
+    { name: "home_ht", label: tx("1-taym (uy)"), type: "number", nullable: true },
+    { name: "away_ht", label: tx("1-taym (mehmon)"), type: "number", nullable: true },
+    { name: "home_et", label: tx("Qo‘sh. vaqt (uy)"), type: "number", nullable: true },
+    { name: "away_et", label: tx("Qo‘sh. vaqt (mehmon)"), type: "number", nullable: true },
+    { name: "home_pen", label: tx("Penaltilar (uy)"), type: "number", nullable: true },
+    { name: "away_pen", label: tx("Penaltilar (mehmon)"), type: "number", nullable: true },
+    { name: "attendance", label: tx("Tomoshabinlar"), type: "number", nullable: true },
+    { name: "video_url", label: tx("Videosharh havolasi"), type: "url" },
+    { name: "added_time_1h", label: tx("Qo‘shilgan vaqt, 1-taym"), type: "number", nullable: true },
+    { name: "added_time_2h", label: tx("Qo‘shilgan vaqt, 2-taym"), type: "number", nullable: true },
   ];
   const fields = mode === "main" ? mainFields : resultFields;
   const initial = useMemo(() => (detail?.row ? ({ ...detail.row } as Record<string, unknown>) : null), [detail?.row]);
@@ -179,46 +180,46 @@ function MatchForm({ detail, mode, onSaved }: { detail?: MatchDetail; mode: "mai
     e?.preventDefault();
     const body = form.payload();
     if (body.home_team_id && body.home_team_id === body.away_team_id) {
-      form.setErrors({ away_team_id: "Jamoalar bir xil bo‘lishi mumkin emas" });
+      form.setErrors({ away_team_id: tx("Jamoalar bir xil bo‘lishi mumkin emas") });
       return;
     }
     setBusy(true);
     try {
       if (m) {
         await api.patch(`/admin/matches/${m.id}`, body);
-        toast("Saqlandi");
+        toast(tx("Saqlandi"));
         onSaved();
       } else {
         const r = await api.post<{ id: number }>("/admin/matches", body);
-        toast("Match yaratildi");
+        toast(tx("Match yaratildi"));
         nav(`/matches/${r.id}`, { replace: true });
       }
     } catch (err) {
       form.fail(err);
-      toast(err instanceof Error ? err.message : "Xato", "error");
+      toast(err instanceof Error ? err.message : tx("Xato"), "error");
     } finally {
       setBusy(false);
     }
   }
   async function remove() {
-    if (!m || !(await confirm({ title: "Matchni o‘chirish", text: "Match, uning voqealari va tarkiblari o‘chiriladi.", ok: "O‘chirish", danger: true }))) return;
+    if (!m || !(await confirm({ title: tx("Matchni o‘chirish"), text: tx("Match, uning voqealari va tarkiblari o‘chiriladi."), ok: tx("O‘chirish"), danger: true }))) return;
     try {
       await api.del(`/admin/matches/${m.id}`);
-      toast("O‘chirildi");
+      toast(tx("O‘chirildi"));
       nav("/matches", { replace: true });
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     }
   }
   return (
     <form className="card card-pad" onSubmit={save}>
       {mode === "result" && detail && detail.events.length > 0 && (m?.status === "live" || m?.status === "halftime") && (
-        <div className="alert info" style={{ marginBottom: 16 }}><I.alert size={16} /> Jonli rejimda hisob voqealardan avtomatik hisoblanadi.</div>
+        <div className="alert info" style={{ marginBottom: 16 }}><I.alert size={16} />{" "}{tx("Jonli rejimda hisob voqealardan avtomatik hisoblanadi.")}</div>
       )}
       <FormFields fields={fields} values={form.values} set={form.set} errors={form.errors} />
       <div className="row" style={{ marginTop: 24, justifyContent: "space-between" }}>
-        {m ? <Allowed to="delete" otherwise={<span />}><button type="button" className="btn btn-danger" onClick={remove}><I.trash size={16} /> O‘chirish</button></Allowed> : <span />}
-        <Allowed to={m ? "edit" : "create"}><button className="btn btn-primary" disabled={busy}>{busy ? "Saqlanmoqda…" : "Saqlash"}</button></Allowed>
+        {m ? <Allowed to="delete" otherwise={<span />}><button type="button" className="btn btn-danger" onClick={remove}><I.trash size={16} />{" "}{tx("O‘chirish")}</button></Allowed> : <span />}
+        <Allowed to={m ? "edit" : "create"}><button className="btn btn-primary" disabled={busy}>{busy ? tx("Saqlanmoqda…") : tx("Saqlash")}</button></Allowed>
       </div>
     </form>
   );
@@ -240,33 +241,33 @@ function EventsEditor({ detail, onChanged }: { detail: MatchDetail; onChanged: (
         player_name: f.player_name, related_player_name: f.related_player_name, note: f.note, source: "manual",
       }, { "Idempotency-Key": uid() });
       setF({ ...f, minute: "", extra_minute: "", player_name: "", related_player_name: "", note: "" });
-      toast("Voqea qo‘shildi");
+      toast(tx("Voqea qo‘shildi"));
       onChanged();
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Xato", "error");
+      toast(err instanceof Error ? err.message : tx("Xato"), "error");
     }
   }
   async function del(id: number) {
-    if (!(await confirm({ title: "Voqeani o‘chirish", ok: "O‘chirish", danger: true }))) return;
-    await api.del(`/admin/matches/${m.id}/events/${id}`).then(() => { toast("O‘chirildi"); onChanged(); }, (e) => toast(e.message, "error"));
+    if (!(await confirm({ title: tx("Voqeani o‘chirish"), ok: tx("O‘chirish"), danger: true }))) return;
+    await api.del(`/admin/matches/${m.id}/events/${id}`).then(() => { toast(tx("O‘chirildi")); onChanged(); }, (e) => toast(e.message, "error"));
   }
   return (
     <div className="stack">
       <form className="card card-pad" onSubmit={add}>
         <div className="grid g4" style={{ alignItems: "end" }}>
-          <div className="field"><label>Jamoa</label><select className="select" value={f.side} onChange={(e) => setF({ ...f, side: e.target.value })}><option value="home">{m.home?.name || "Uy egasi"}</option><option value="away">{m.away?.name || "Mehmon"}</option></select></div>
-          <div className="field"><label>Voqea</label><select className="select" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>{TYPES.map((t) => <option key={t} value={t}>{EVENT_LABEL[t]}</option>)}</select></div>
-          <div className="field"><label>Daqiqa</label><div className="row"><input className="input" type="number" min={0} max={130} required value={f.minute} onChange={(e) => setF({ ...f, minute: e.target.value })} /><span>+</span><input className="input" type="number" min={0} max={30} value={f.extra_minute} onChange={(e) => setF({ ...f, extra_minute: e.target.value })} /></div></div>
-          <div className="field"><label>{f.type === "sub" ? "Kirdi" : "O‘yinchi"}</label><input className="input" value={f.player_name} onChange={(e) => setF({ ...f, player_name: e.target.value })} /></div>
-          {f.type === "sub" && <div className="field"><label>Chiqdi</label><input className="input" value={f.related_player_name} onChange={(e) => setF({ ...f, related_player_name: e.target.value })} /></div>}
-          <div className="field"><label>Izoh</label><input className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></div>
-          <div><button className="btn btn-primary"><I.plus size={16} /> Qo‘shish</button></div>
+          <div className="field"><label>{tx("Jamoa")}</label><select className="select" value={f.side} onChange={(e) => setF({ ...f, side: e.target.value })}><option value="home">{m.home?.name || tx("Uy egasi")}</option><option value="away">{m.away?.name || tx("Mehmon")}</option></select></div>
+          <div className="field"><label>{tx("Voqea")}</label><select className="select" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>{TYPES.map((t) => <option key={t} value={t}>{EVENT_LABEL[t]}</option>)}</select></div>
+          <div className="field"><label>{tx("Daqiqa")}</label><div className="row"><input className="input" type="number" min={0} max={130} required value={f.minute} onChange={(e) => setF({ ...f, minute: e.target.value })} /><span>+</span><input className="input" type="number" min={0} max={30} value={f.extra_minute} onChange={(e) => setF({ ...f, extra_minute: e.target.value })} /></div></div>
+          <div className="field"><label>{f.type === "sub" ? tx("Kirdi") : tx("O‘yinchi")}</label><input className="input" value={f.player_name} onChange={(e) => setF({ ...f, player_name: e.target.value })} /></div>
+          {f.type === "sub" && <div className="field"><label>{tx("Chiqdi")}</label><input className="input" value={f.related_player_name} onChange={(e) => setF({ ...f, related_player_name: e.target.value })} /></div>}
+          <div className="field"><label>{tx("Izoh")}</label><input className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></div>
+          <div><button className="btn btn-primary"><I.plus size={16} />{" "}{tx("Qo‘shish")}</button></div>
         </div>
       </form>
       <div className="card">
-        {!events.length ? <Empty title="Voqealar yo‘q" /> : (
+        {!events.length ? <Empty title={tx("Voqealar yo‘q")} /> : (
           <div className="table-wrap"><table className="table">
-            <thead><tr><th>Daqiqa</th><th>Jamoa</th><th>Voqea</th><th>O‘yinchi</th><th className="hide-mobile">Manba</th><th /></tr></thead>
+            <thead><tr><th>{tx("Daqiqa")}</th><th>{tx("Jamoa")}</th><th>{tx("Voqea")}</th><th>{tx("O‘yinchi")}</th><th className="hide-mobile">{tx("Manba")}</th><th /></tr></thead>
             <tbody>
               {events.map((e) => (
                 <tr key={e.id}>
@@ -275,7 +276,7 @@ function EventsEditor({ detail, onChanged }: { detail: MatchDetail; onChanged: (
                   <td>{EVENT_LABEL[e.type] || e.type}</td>
                   <td>{e.type === "formation" ? e.note : e.player_name}{e.related_player_name && <span className="muted"> ↔ {e.related_player_name}</span>}</td>
                   <td className="hide-mobile"><Badge plain>{e.source}</Badge></td>
-                  <td className="actions"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => del(e.id)} aria-label="O‘chirish"><I.trash size={16} /></button></td>
+                  <td className="actions"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => del(e.id)} aria-label={tx("O‘chirish")}><I.trash size={16} /></button></td>
                 </tr>
               ))}
             </tbody>

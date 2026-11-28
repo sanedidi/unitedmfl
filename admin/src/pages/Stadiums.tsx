@@ -13,6 +13,7 @@ import {
   ZONE_COLORS, PITCH_MAX, PITCH_MIN, addZone, buildStand, cleanRowZones, dropZoneSeats, hasCategories, seatZone, cloneStand, resizePitch, freeKey, mergeZones, newRow, newSection, nextLetter, seatCount, sectionSize, standBox, standSeats, stats,
   type Layout, type LayoutView, type Rect, type LibraryStand, type Section, type Stand, type StandDraft, type Template, type Venue, type Zone,
 } from "@/lib/tickets";
+import { tx } from "@/lib/i18n";
 import "@/tickets.css";
 
 export function StadiumsSection() {
@@ -32,26 +33,26 @@ function StadiumsList() {
   if (error) return <ErrorBox error={error} retry={reload} />;
   return (
     <>
-      <PageHead title="Stadionlar" sub="Tribunalar, sektorlar va o‘rinlar sxemasi. Bitta sxema ko‘p matchlarda ishlatiladi"
-        actions={<Allowed to="create"><Link className="btn" to="new?from=templates">Shablondan yaratish</Link><Link className="btn btn-primary" to="new"><I.plus /> Yangi stadion</Link></Allowed>} />
+      <PageHead title={tx("Stadionlar")} sub={tx("Tribunalar, sektorlar va o‘rinlar sxemasi. Bitta sxema ko‘p matchlarda ishlatiladi")}
+        actions={<Allowed to="create"><Link className="btn" to="new?from=templates">{tx("Shablondan yaratish")}</Link><Link className="btn btn-primary" to="new"><I.plus />{" "}{tx("Yangi stadion")}</Link></Allowed>} />
       {loading && !data ? <Loading /> : (
         <div className="st-cards">
           {data!.items.map((v) => (
             <div key={v.id} className={`card st-card${v.archived ? " archived" : ""}`}>
-              <div className="st-thumb">{v.preview ? <StadiumCanvas layout={v.preview} height={180} /> : <span className="muted">Sxema yo‘q</span>}</div>
+              <div className="st-thumb">{v.preview ? <StadiumCanvas layout={v.preview} height={180} /> : <span className="muted">{tx("Sxema yo‘q")}</span>}</div>
               <div className="card-pad stack" style={{ gap: 8 }}>
                 <h3>{v.name}</h3>
-                <div className="muted small">{v.city || "—"} · {v.stats?.seats ?? 0} o‘rin · {v.stats?.sections ?? 0} sektor · {v.preview?.zones.length ?? 0} zona</div>
+                <div className="muted small">{v.city || "—"}{" "}{tx("· {0} o‘rin · {1} sektor · {2} zona", v.stats?.seats ?? 0, v.stats?.sections ?? 0, v.preview?.zones.length ?? 0)}</div>
                 <div className="row small">
-                  {v.published && <span className="badge ok">Nashr: v{v.published.version}</span>}
-                  {v.draft && <span className="badge warn">Qoralama: v{v.draft.version}</span>}
+                  {v.published && <span className="badge ok">{tx("Nashr: v")}{v.published.version}</span>}
+                  {v.draft && <span className="badge warn">{tx("Qoralama: v")}{v.draft.version}</span>}
                 </div>
-                <div className="muted small">{v.published?.matches ? `${v.published.matches} ta matchda ishlatilmoqda` : "Hali matchga ulanmagan"}</div>
-                <button className={`btn ${v.draft || !v.published ? "btn-primary" : ""}`} onClick={() => nav(String(v.id))}>Konstruktorni ochish</button>
+                <div className="muted small">{v.published?.matches ? tx("{0} ta matchda ishlatilmoqda", v.published.matches) : tx("Hali matchga ulanmagan")}</div>
+                <button className={`btn ${v.draft || !v.published ? "btn-primary" : ""}`} onClick={() => nav(String(v.id))}>{tx("Konstruktorni ochish")}</button>
               </div>
             </div>
           ))}
-          <Allowed to="create"><Link to="new" className="st-card st-new"><I.plus size={24} /><b>Yangi stadion</b><span className="muted small">Bo‘sh maydon, mavjud sxemadan nusxa yoki shablonlar</span></Link></Allowed>
+          <Allowed to="create"><Link to="new" className="st-card st-new"><I.plus size={24} /><b>{tx("Yangi stadion")}</b><span className="muted small">{tx("Bo‘sh maydon, mavjud sxemadan nusxa yoki shablonlar")}</span></Link></Allowed>
         </div>
       )}
     </>
@@ -66,7 +67,7 @@ function VenueNew() {
   const venues = useLoad(() => api.get<{ items: Venue[] }>("/admin/venues"), []);
   const lib = useLoad(() => api.get<{ templates: Template[] }>("/admin/layout-library"), []);
   const [name, setName] = useState("");
-  const [city, setCity] = useState("Toshkent");
+  const [city, setCity] = useState(tx("Toshkent"));
   const [from, setFrom] = useState<"empty" | "layout" | "templates">((params.get("from") as "templates") || "layout");
   const [layoutId, setLayoutId] = useState<number | null>(null);
   const [tpl, setTpl] = useState<number[]>([]);
@@ -80,7 +81,7 @@ function VenueNew() {
     setBusy(true); setErr({});
     try {
       const v = await api.post<Venue>("/admin/venues", { name, city, from: from === "empty" ? "" : from, layout_id: layoutId || 0, template_ids: tpl, copy });
-      toast("Stadion yaratildi");
+      toast(tx("Stadion yaratildi"));
       nav(`/stadiums/${v.id}`, { replace: true });
     } catch (e) {
       if (e instanceof ApiError) { setErr(e.fields); toast(e.message, "error"); }
@@ -88,45 +89,45 @@ function VenueNew() {
   };
   return (
     <>
-      <PageHead pre={<Link to="/stadiums" className="muted"><I.back size={14} /> Stadionlar</Link>} title="Yangi stadion" sub="Noldan, avvalgi sxemadan yoki kutubxona shablonidan boshlang"
-        actions={<><Link className="btn" to="/stadiums">Bekor qilish</Link><button className="btn btn-primary" disabled={busy || !name.trim() || (from === "layout" && !layoutId)} onClick={create}>Yaratish va konstruktorga o‘tish</button></>} />
+      <PageHead pre={<Link to="/stadiums" className="muted"><I.back size={14} />{" "}{tx("Stadionlar")}</Link>} title={tx("Yangi stadion")} sub={tx("Noldan, avvalgi sxemadan yoki kutubxona shablonidan boshlang")}
+        actions={<><Link className="btn" to="/stadiums">{tx("Bekor qilish")}</Link><button className="btn btn-primary" disabled={busy || !name.trim() || (from === "layout" && !layoutId)} onClick={create}>{tx("Yaratish va konstruktorga o‘tish")}</button></>} />
       <div className="tk-cols">
         <div className="stack">
           <div className="card card-pad stack">
-            <h3>Asosiy</h3>
+            <h3>{tx("Asosiy")}</h3>
             <div className="form-grid">
-              <Field label="Nomi" error={err.name}><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jar stadioni — Kubok" autoFocus /></Field>
-              <Field label="Shahar"><input className="input" value={city} onChange={(e) => setCity(e.target.value)} /></Field>
+              <Field label={tx("Nomi")} error={err.name}><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={tx("Jar stadioni — Kubok")} autoFocus /></Field>
+              <Field label={tx("Shahar")}><input className="input" value={city} onChange={(e) => setCity(e.target.value)} /></Field>
             </div>
           </div>
           <div className="card card-pad stack">
-            <h3>Qayerdan boshlaymiz?</h3>
+            <h3>{tx("Qayerdan boshlaymiz?")}</h3>
             <div className="tk-opts">
-              {([["empty", "Bo‘sh maydon", "Faqat maydon, tribunalarni o‘zingiz qurasiz"], ["layout", "Mavjud sxemadan nusxa", "Boshqa stadion yoki uning versiyasi"], ["templates", "Kutubxona shablonlaridan", "Tribunalarni shablonlardan yig‘ish"]] as const).map(([k, t, d]) => (
+              {([["empty", tx("Bo‘sh maydon"), tx("Faqat maydon, tribunalarni o‘zingiz qurasiz")], ["layout", tx("Mavjud sxemadan nusxa"), tx("Boshqa stadion yoki uning versiyasi")], ["templates", tx("Kutubxona shablonlaridan"), tx("Tribunalarni shablonlardan yig‘ish")]] as const).map(([k, t, d]) => (
                 <button key={k} className={`tk-opt${from === k ? " on" : ""}`} onClick={() => setFrom(k)}><b>{t}</b><span>{d}</span></button>
               ))}
             </div>
             {from === "layout" && (
               <>
-                <div className="label">Qaysi sxemadan?</div>
-                {versions.length === 0 ? <Empty title="Hali sxema yo‘q" text="«Bo‘sh maydon»dan boshlang" /> : (
+                <div className="label">{tx("Qaysi sxemadan?")}</div>
+                {versions.length === 0 ? <Empty title={tx("Hali sxema yo‘q")} text={tx("«Bo‘sh maydon»dan boshlang")} /> : (
                   <div className="tk-radio-list">
                     {versions.map(({ v, ver }) => (
                       <label key={ver.id} className={layoutId === ver.id ? "on" : ""}>
                         <input type="radio" checked={layoutId === ver.id} onChange={() => setLayoutId(ver.id)} />
-                        <span className="grow"><b>{v.name}</b><small>{ver.seats} o‘rin · v{ver.version} · {ver.status === "published" ? "nashr qilingan" : "qoralama"}</small></span>
+                        <span className="grow"><b>{v.name}</b><small>{ver.seats}{" "}{tx("o‘rin · v{0} ·", ver.version)}{" "}{ver.status === "published" ? tx("nashr qilingan") : tx("qoralama")}</small></span>
                       </label>
                     ))}
                   </div>
                 )}
-                <div className="label">Nimalar ko‘chiriladi</div>
+                <div className="label">{tx("Nimalar ko‘chiriladi")}</div>
                 <div className="row wrap">
-                  <label className="row small"><input type="checkbox" checked disabled /> Tribunalar, sektorlar, o‘rinlar</label>
-                  {([["zones", "Zonalar"], ["blocked", "Bloklangan o‘rinlar"], ["gates", "Kirishlar"], ["links", "Shablon bog‘lanishlari"]] as const).map(([k, l]) => (
+                  <label className="row small"><input type="checkbox" checked disabled />{" "}{tx("Tribunalar, sektorlar, o‘rinlar")}</label>
+                  {([["zones", tx("Zonalar")], ["blocked", tx("Bloklangan o‘rinlar")], ["gates", tx("Kirishlar")], ["links", tx("Shablon bog‘lanishlari")]] as const).map(([k, l]) => (
                     <label key={k} className="row small"><input type="checkbox" checked={copy[k]} onChange={(e) => setCopy({ ...copy, [k]: e.target.checked })} /> {l}</label>
                   ))}
                 </div>
-                <div className="tk-note">Nusxa mustaqil: asl sxema va unga ulangan matchlar o‘zgarmaydi. Narxlar ko‘chirilmaydi — ular har bir matchda alohida.</div>
+                <div className="tk-note">{tx("Nusxa mustaqil: asl sxema va unga ulangan matchlar o‘zgarmaydi. Narxlar ko‘chirilmaydi — ular har bir matchda alohida.")}</div>
               </>
             )}
             {from === "templates" && (
@@ -134,24 +135,24 @@ function VenueNew() {
                 {(lib.data?.templates || []).filter((t) => t.kind === "stand").map((t) => (
                   <label key={t.id} className={tpl.includes(t.id) ? "on" : ""}>
                     <input type="checkbox" checked={tpl.includes(t.id)} onChange={(e) => setTpl(e.target.checked ? [...tpl, t.id] : tpl.filter((x) => x !== t.id))} />
-                    <span className="grow"><b>{t.name}</b><small>{t.seats} o‘rin · {t.description || "tribuna"}</small></span>
+                    <span className="grow"><b>{t.name}</b><small>{t.seats}{" "}{tx("o‘rin ·")}{" "}{t.description || tx("tribuna")}</small></span>
                   </label>
                 ))}
-                {lib.data && !lib.data.templates.some((t) => t.kind === "stand") && <div className="muted small">Kutubxonada tribuna shablonlari yo‘q — konstruktorda tribunani «Shablon sifatida saqlash» mumkin.</div>}
+                {lib.data && !lib.data.templates.some((t) => t.kind === "stand") && <div className="muted small">{tx("Kutubxonada tribuna shablonlari yo‘q — konstruktorda tribunani «Shablon sifatida saqlash» mumkin.")}</div>}
               </div>
             )}
           </div>
         </div>
         <div className="card card-pad stack tk-side">
-          <h3>Oldindan ko‘rish</h3>
+          <h3>{tx("Oldindan ko‘rish")}</h3>
           {from === "layout" && preview.data ? (
             <>
               <div className="st-thumb"><StadiumCanvas layout={preview.data.doc} height={200} /></div>
-              <KV k="O‘rinlar" v={preview.data.stats.seats} /><KV k="Sektorlar" v={preview.data.stats.sections} />
-              <KV k="Zonalar" v={preview.data.doc.zones.map((z) => z.name).join(", ") || "—"} />
-              <KV k="Bloklangan / o‘chirilgan" v={`${preview.data.stats.blocked} / ${preview.data.stats.removed}`} />
+              <KV k={tx("O‘rinlar")} v={preview.data.stats.seats} /><KV k={tx("Sektorlar")} v={preview.data.stats.sections} />
+              <KV k={tx("Zonalar")} v={preview.data.doc.zones.map((z) => z.name).join(", ") || "—"} />
+              <KV k={tx("Bloklangan / o‘chirilgan")} v={`${preview.data.stats.blocked} / ${preview.data.stats.removed}`} />
             </>
-          ) : <div className="muted small">{from === "empty" ? "Maydon va ikkita zona (Oddiy, VIP) bilan boshlanadi" : "Tanlangan shablonlar tribunalar bo‘lib qo‘yiladi"}</div>}
+          ) : <div className="muted small">{from === "empty" ? tx("Maydon va ikkita zona (Oddiy, VIP) bilan boshlanadi") : tx("Tanlangan shablonlar tribunalar bo‘lib qo‘yiladi")}</div>}
         </div>
       </div>
     </>
@@ -211,7 +212,7 @@ function StadiumEditor() {
       setSaveState({ at: lv.updated_at });
       if (venue && !venue.draft) setVenue(await api.get<Venue>(`/admin/venues/${venueId}`));
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Saqlab bo‘lmadi";
+      const msg = e instanceof ApiError ? e.message : tx("Saqlab bo‘lmadi");
       setSaveState({ error: msg });
       toast(msg, "error");
     }
@@ -260,13 +261,13 @@ function StadiumEditor() {
   const updSection = (sk: string, key: string, fn: (s: Section) => void) => change((l) => { const s = l.stands.find((x) => x.key === sk)?.sections.find((x) => x.key === key); if (s) fn(s); return l; });
 
   const publish = async () => {
-    if (!(await confirm({ title: "Sxemani nashr qilish?", text: "Nashr qilingan versiya matchlarga tanlanadi. Allaqachon sotilgan matchlar o‘z versiyasida qoladi.", ok: "Nashr qilish" }))) return;
+    if (!(await confirm({ title: tx("Sxemani nashr qilish?"), text: tx("Nashr qilingan versiya matchlarga tanlanadi. Allaqachon sotilgan matchlar o‘z versiyasida qoladi."), ok: tx("Nashr qilish") }))) return;
     window.clearTimeout(timer.current);
     try {
       await api.put(`/admin/venues/${venueId}/draft`, { doc, base: base.current });
       const v = await api.post<Venue>(`/admin/venues/${venueId}/publish`, {});
-      setVenue(v); toast(`v${v.published?.version} nashr qilindi`); load();
-    } catch (e) { toast(e instanceof ApiError ? e.message : "Xato", "error"); }
+      setVenue(v); toast(tx("v{0} nashr qilindi", v.published?.version)); load();
+    } catch (e) { toast(e instanceof ApiError ? e.message : tx("Xato"), "error"); }
   };
 
   const seatSection = seatEdit && doc.stands.find((s) => s.key === seatEdit.stand)?.sections.find((s) => s.key === seatEdit.section);
@@ -275,47 +276,47 @@ function StadiumEditor() {
   return (
     <div className="st-editor">
       <header className="st-top">
-        <Link to="/stadiums" className="btn btn-icon" aria-label="Orqaga"><I.back size={16} /></Link>
-        <div className="st-title"><small>Stadionlar / {venue.name}</small><b>{venue.name} — sxema</b></div>
-        <span className={`badge ${venue.draft ? "warn" : "ok"}`} role="button" onClick={() => setPanel(panel === "versions" ? null : "versions")} title="Versiyalar">
-          {venue.draft ? `Qoralama · v${venue.draft.version}` : venue.published ? `Nashr · v${venue.published.version}` : "Yangi"}
+        <Link to="/stadiums" className="btn btn-icon" aria-label={tx("Orqaga")}><I.back size={16} /></Link>
+        <div className="st-title"><small>{tx("Stadionlar /")}{" "}{venue.name}</small><b>{venue.name}{" "}{tx("— sxema")}</b></div>
+        <span className={`badge ${venue.draft ? "warn" : "ok"}`} role="button" onClick={() => setPanel(panel === "versions" ? null : "versions")} title={tx("Versiyalar")}>
+          {venue.draft ? tx("Qoralama · v{0}", venue.draft.version) : venue.published ? tx("Nashr · v{0}", venue.published.version) : tx("Yangi")}
         </span>
-        <span className="muted small st-save grow">{saveState.busy ? "Saqlanmoqda…" : saveState.error ? <span className="danger-text">{saveState.error}</span> : saveState.at ? `Avto-saqlandi ${fmtDateTime(saveState.at).slice(-5)}` : isPublishedView ? "Tahrirlash yangi qoralama ochadi" : ""}</span>
+        <span className="muted small st-save grow">{saveState.busy ? tx("Saqlanmoqda…") : saveState.error ? <span className="danger-text">{saveState.error}</span> : saveState.at ? tx("Avto-saqlandi {0}", fmtDateTime(saveState.at).slice(-5)) : isPublishedView ? tx("Tahrirlash yangi qoralama ochadi") : ""}</span>
         <div className="seg">
-          {([["structure", "Tuzilma"], ["zones", "Zonalar"], ["preview", "Ko‘rinish (sayt)"]] as const).map(([k, l]) => <button key={k} className={mode === k ? "on" : ""} onClick={() => { setMode(k); setSeatEdit(null); }}>{l}</button>)}
+          {([["structure", tx("Tuzilma")], ["zones", tx("Zonalar")], ["preview", tx("Ko‘rinish (sayt)")]] as const).map(([k, l]) => <button key={k} className={mode === k ? "on" : ""} onClick={() => { setMode(k); setSeatEdit(null); }}>{l}</button>)}
         </div>
-        <button className="btn btn-ghost btn-icon" onClick={undo} disabled={!hist.current.past.length} title="Bekor (Ctrl+Z)"><I.back size={16} /></button>
-        <button className="btn btn-ghost btn-icon flip" onClick={redo} disabled={!hist.current.future.length} title="Qaytarish (Ctrl+Shift+Z)"><I.back size={16} /></button>
-        <button className="btn" onClick={() => setPanel(panel === "versions" ? null : "versions")}>Versiyalar</button>
-        <button className="btn btn-primary" onClick={publish} disabled={!venue.draft && !hist.current.past.length}>Nashr qilish</button>
+        <button className="btn btn-ghost btn-icon" onClick={undo} disabled={!hist.current.past.length} title={tx("Bekor (Ctrl+Z)")}><I.back size={16} /></button>
+        <button className="btn btn-ghost btn-icon flip" onClick={redo} disabled={!hist.current.future.length} title={tx("Qaytarish (Ctrl+Shift+Z)")}><I.back size={16} /></button>
+        <button className="btn" onClick={() => setPanel(panel === "versions" ? null : "versions")}>{tx("Versiyalar")}</button>
+        <button className="btn btn-primary" onClick={publish} disabled={!venue.draft && !hist.current.past.length}>{tx("Nashr qilish")}</button>
       </header>
 
       <div className={`st-body${seatEdit ? " seat-mode" : ""}`}>
         {/* ---------- left ---------- */}
         <aside className="st-left">
-          <div className="seg block"><button className={left === "tree" ? "on" : ""} onClick={() => setLeft("tree")}>Tuzilma <small className="muted">{st.sections}</small></button><button className={left === "library" ? "on" : ""} onClick={() => setLeft("library")}>Kutubxona</button></div>
+          <div className="seg block"><button className={left === "tree" ? "on" : ""} onClick={() => setLeft("tree")}>{tx("Tuzilma")}{" "}<small className="muted">{st.sections}</small></button><button className={left === "library" ? "on" : ""} onClick={() => setLeft("library")}>{tx("Kutubxona")}</button></div>
           {left === "tree" ? (
             <>
               <div className="st-tree">
                 <button className={`st-node${sel?.pitch ? " on" : ""}`} onClick={() => setSel({ pitch: true })}>
-                  <i style={{ background: "#2E6B45" }} /><span className="grow">Maydon</span><small>{Math.round(doc.pitch.w)}×{Math.round(doc.pitch.h)}</small>
+                  <i style={{ background: "#2E6B45" }} /><span className="grow">{tx("Maydon")}</span><small>{Math.round(doc.pitch.w)}×{Math.round(doc.pitch.h)}</small>
                 </button>
-                {doc.stands.length === 0 && <div className="muted small" style={{ padding: 12 }}>Tribuna yo‘q. «Tribuna qo‘shish» yoki kutubxonadan qo‘ying.</div>}
+                {doc.stands.length === 0 && <div className="muted small" style={{ padding: 12 }}>{tx("Tribuna yo‘q. «Tribuna qo‘shish» yoki kutubxonadan qo‘ying.")}</div>}
                 {doc.stands.map((s) => (
                   <div key={s.key}>
                     <button className={`st-node${sel?.stand === s.key && !sel.section ? " on" : ""}`} onClick={() => setSel({ stand: s.key })}>
-                      <I.down size={12} /><span className="grow">{s.name || "Tribuna"}{s.template_id ? <I.link size={11} /> : null}</span><small>{standSeats(s)}</small>
+                      <I.down size={12} /><span className="grow">{s.name || tx("Tribuna")}{s.template_id ? <I.link size={11} /> : null}</span><small>{standSeats(s)}</small>
                     </button>
                     {s.sections.map((x) => (
                       <button key={x.key} className={`st-node sub${sel?.section === x.key ? " on" : ""}`} onClick={() => setSel({ stand: s.key, section: x.key })} onDoubleClick={() => setSeatEdit({ stand: s.key, section: x.key })}>
-                        <i style={{ background: doc.zones.find((z) => z.key === x.zone)?.color || "#D5D9DF" }} /><span className="grow">Sektor {x.name}</span><small>{seatCount(x)}</small>
+                        <i style={{ background: doc.zones.find((z) => z.key === x.zone)?.color || "#D5D9DF" }} /><span className="grow">{tx("Sektor")}{" "}{x.name}</span><small>{seatCount(x)}</small>
                       </button>
                     ))}
                   </div>
                 ))}
               </div>
               <div className="stack" style={{ gap: 8, padding: 16 }}>
-                <button className="btn" onClick={() => setPanel("newStand")}><I.plus size={16} /> Tribuna qo‘shish</button>
+                <button className="btn" onClick={() => setPanel("newStand")}><I.plus size={16} />{" "}{tx("Tribuna qo‘shish")}</button>
                 <button className="btn" disabled={!stand} onClick={() => stand && change((l) => {
                   const s = l.stands.find((x) => x.key === stand.key)!;
                   const last = s.sections[s.sections.length - 1];
@@ -323,7 +324,7 @@ function StadiumEditor() {
                   s.sections.push(newSection(k, last?.rows.length || 6, last?.rows[0]?.seats || 10, last?.zone || "", last ? last.x + sectionSize(last).w + 14 : 0, last?.y || 0));
                   setTimeout(() => setSel({ stand: s.key, section: k }));
                   return l;
-                })}><I.plus size={16} /> Sektor qo‘shish</button>
+                })}><I.plus size={16} />{" "}{tx("Sektor qo‘shish")}</button>
               </div>
             </>
           ) : <Library venueId={venueId} layout={doc} onPick={(p) => { setPlacing(p); setSel(null); setSeatEdit(null); }} placingName={placing?.name} />}
@@ -358,7 +359,7 @@ function StadiumEditor() {
                 }
                 cleanRowZones(src); cleanRowZones(ns);
                 s.sections.push(ns);
-                setTimeout(() => toast(`Yangi sektor: ${k} (${ns.rows.reduce((n, r) => n + r.seats, 0)} o‘rin)`));
+                setTimeout(() => toast(tx("Yangi sektor: {0} ({1} o‘rin)", k, ns.rows.reduce((n, r) => n + r.seats, 0))));
                 return l;
               })} />
           ) : (
@@ -385,18 +386,18 @@ function StadiumEditor() {
                     setTimeout(() => setSel({ stand: ns.key }));
                     return l;
                   });
-                  toast(`«${placing.name}» qo‘yildi · +${standSeats(placing.stand)} o‘rin`);
+                  toast(tx("«{0}» qo‘yildi · +{1} o‘rin", placing.name, standSeats(placing.stand)));
                   setPlacing(null);
                 }} />
               {!diff && <div className="st-toolhint">
-                {placing ? "Sxemaga bosing — tribuna shu yerga qo‘yiladi · Esc — bekor" : mode === "zones" ? `Sektorni bosing — «${doc.zones.find((z) => z.key === activeZone)?.name || "zona"}» biriktiriladi` : mode === "preview" ? "Saytda chipta tanlash sahifasida shunday ko‘rinadi" : sel?.pitch ? "Burchak yoki chetidagi tutqichni torting · Alt — markaz joyida qoladi" : "Sektorni sudrang · ikki marta bosing — o‘rinlarni tahrirlash · maydonni bosing — o‘lchami · g‘ildirak — masshtab"}
+                {placing ? tx("Sxemaga bosing — tribuna shu yerga qo‘yiladi · Esc — bekor") : mode === "zones" ? tx("Sektorni bosing — «{0}» biriktiriladi", doc.zones.find((z) => z.key === activeZone)?.name || "zona") : mode === "preview" ? tx("Saytda chipta tanlash sahifasida shunday ko‘rinadi") : sel?.pitch ? tx("Burchak yoki chetidagi tutqichni torting · Alt — markaz joyida qoladi") : tx("Sektorni sudrang · ikki marta bosing — o‘rinlarni tahrirlash · maydonni bosing — o‘lchami · g‘ildirak — masshtab")}
               </div>}
               <div className="st-zoom">
                 <button onClick={() => zoomRef.current?.zoom(1.2)}>−</button>
-                <button onClick={() => zoomRef.current?.fit()}>Sig‘dirish</button>
+                <button onClick={() => zoomRef.current?.fit()}>{tx("Sig‘dirish")}</button>
                 <button onClick={() => zoomRef.current?.zoom(1 / 1.2)}>+</button>
               </div>
-              {diff && <div className="st-diffbar"><I.alert size={14} /> Solishtirish rejimi: sariq — o‘zgargan sektorlar <button className="btn btn-sm" onClick={() => setDiff(null)}>Yopish</button></div>}
+              {diff && <div className="st-diffbar"><I.alert size={14} />{" "}{tx("Solishtirish rejimi: sariq — o‘zgargan sektorlar")}{" "}<button className="btn btn-sm" onClick={() => setDiff(null)}>{tx("Yopish")}</button></div>}
             </>
           )}
         </main>
@@ -438,7 +439,7 @@ function StadiumEditor() {
                 return l;
               })}
               onDelete={async () => {
-                if (!(await confirm({ title: `Sektor ${section.name}ni o‘chirish?`, text: `${seatCount(section)} o‘rin o‘chiriladi.`, ok: "O‘chirish", danger: true }))) return;
+                if (!(await confirm({ title: tx("Sektor {0}ni o‘chirish?", section.name), text: tx("{0} o‘rin o‘chiriladi.", seatCount(section)), ok: tx("O‘chirish"), danger: true }))) return;
                 change((l) => { const s = l.stands.find((x) => x.key === stand.key)!; s.sections = s.sections.filter((x) => x.key !== section.key); return l; });
                 setSel({ stand: stand.key });
               }} />
@@ -446,15 +447,15 @@ function StadiumEditor() {
             <StandInspector s={stand} sold={stand.sections.some((x) => soldSecs.has(x.key))} upd={(fn) => updStand(stand.key, fn)}
               onSaveTpl={() => setSaveTpl({ kind: "stand", stand: stand.key })}
               onDelete={async () => {
-                if (!(await confirm({ title: `«${stand.name}» tribunasini o‘chirish?`, text: `${stand.sections.length} sektor, ${standSeats(stand)} o‘rin o‘chiriladi.`, ok: "O‘chirish", danger: true }))) return;
+                if (!(await confirm({ title: tx("«{0}» tribunasini o‘chirish?", stand.name), text: tx("{0} sektor, {1} o‘rin o‘chiriladi.", stand.sections.length, standSeats(stand)), ok: tx("O‘chirish"), danger: true }))) return;
                 change((l) => { l.stands = l.stands.filter((x) => x.key !== stand.key); return l; });
                 setSel(null);
               }} />
           ) : (
             <div className="card-pad stack">
-              <h3>Sxema</h3>
-              <div className="muted small">Tribuna yoki sektorni tanlang. Yangi tribunani shablondan yaratish yoki kutubxonadan qo‘yish mumkin.</div>
-              <KV k="Jami o‘rin" v={st.seats} /><KV k="Sotiladigan" v={st.sellable} /><KV k="Tribunalar" v={st.stands} /><KV k="Sektorlar" v={st.sections} />
+              <h3>{tx("Sxema")}</h3>
+              <div className="muted small">{tx("Tribuna yoki sektorni tanlang. Yangi tribunani shablondan yaratish yoki kutubxonadan qo‘yish mumkin.")}</div>
+              <KV k={tx("Jami o‘rin")} v={st.seats} /><KV k={tx("Sotiladigan")} v={st.sellable} /><KV k={tx("Tribunalar")} v={st.stands} /><KV k={tx("Sektorlar")} v={st.sections} />
               {(view?.warnings || []).length > 0 && <div className="tk-warn">{view!.warnings.slice(0, 6).map((w) => <div key={w}><I.alert size={13} /> {w}</div>)}</div>}
             </div>
           )}
@@ -462,13 +463,13 @@ function StadiumEditor() {
       </div>
 
       <footer className="st-status">
-        <b>Jami: {st.seats.toLocaleString("ru-RU")} o‘rin</b>
+        <b>{tx("Jami: {0} o‘rin", st.seats.toLocaleString("ru-RU"))}</b>
         {doc.zones.map((z) => <span key={z.key}><i style={{ background: z.color }} />{z.name} {st.by_zone[z.key] || 0}</span>)}
-        {st.by_zone[""] ? <span><i style={{ background: "#D5D9DF" }} />Zonasiz {st.by_zone[""]}</span> : null}
-        <span><i style={{ background: "#D5D9DF" }} />Bloklangan {st.blocked}</span>
-        <span>O‘chirilgan {st.removed}</span>
+        {st.by_zone[""] ? <span><i style={{ background: "#D5D9DF" }} />{tx("Zonasiz")}{" "}{st.by_zone[""]}</span> : null}
+        <span><i style={{ background: "#D5D9DF" }} />{tx("Bloklangan")}{" "}{st.blocked}</span>
+        <span>{tx("O‘chirilgan")}{" "}{st.removed}</span>
         <div className="grow" />
-        {(view?.warnings || []).length > 0 && <span className="warn-text"><I.alert size={14} /> {view!.warnings.length} ogohlantirish: {view!.warnings[0]}</span>}
+        {(view?.warnings || []).length > 0 && <span className="warn-text"><I.alert size={14} />{" "}{tx("{0} ogohlantirish:", view!.warnings.length)}{" "}{view!.warnings[0]}</span>}
       </footer>
 
       {saveTpl && <SaveTemplate layout={doc} target={saveTpl} onClose={() => setSaveTpl(null)} onSaved={(t, link) => {
@@ -483,15 +484,15 @@ function StadiumEditor() {
 function Num({ value, onChange, min = 0, max = 400, step = 1 }: { value: number; onChange: (n: number) => void; min?: number; max?: number; step?: number }) {
   return (
     <div className="num">
-      <button onClick={() => onChange(Math.max(min, value - step))} aria-label="Kamaytirish">−</button>
+      <button onClick={() => onChange(Math.max(min, value - step))} aria-label={tx("Kamaytirish")}>−</button>
       <input value={value} inputMode="numeric" onChange={(e) => { const n = parseInt(e.target.value || "0", 10); if (!isNaN(n)) onChange(Math.min(max, Math.max(min, n))); }} />
-      <button onClick={() => onChange(Math.min(max, value + step))} aria-label="Ko‘paytirish">+</button>
+      <button onClick={() => onChange(Math.min(max, value + step))} aria-label={tx("Ko‘paytirish")}>+</button>
     </div>
   );
 }
 
 /* ---------- pitch ---------- */
-const PITCH_SHAPES: [string, string, number][] = [["Mini-futbol", "2 : 1", 2], ["Futbol", "105 : 68", 105 / 68], ["Kvadrat", "1 : 1", 1]];
+const PITCH_SHAPES: [string, string, number][] = [[tx("Mini-futbol"), "2 : 1", 2], [tx("Futbol"), "105 : 68", 105 / 68], [tx("Kvadrat"), "1 : 1", 1]];
 function PitchInspector({ layout, push, setPush, onChange }: { layout: Layout; push: boolean; setPush: (b: boolean) => void; onChange: (r: Rect) => void }) {
   const p = layout.pitch;
   // number inputs keep the centre of the pitch in place
@@ -500,22 +501,22 @@ function PitchInspector({ layout, push, setPush, onChange }: { layout: Layout; p
   const scale = (k: number) => size(clamp(p.w * k), clamp(p.h * k));
   return (
     <div className="st-insp">
-      <div className="st-insp-head"><h3>Maydon</h3><small>O‘lcham sxema birligida: bitta o‘rin qadami — 10</small></div>
+      <div className="st-insp-head"><h3>{tx("Maydon")}</h3><small>{tx("O‘lcham sxema birligida: bitta o‘rin qadami — 10")}</small></div>
       <div className="form-grid">
-        <div className="field"><label>Uzunligi</label><Num value={Math.round(p.w)} onChange={(w) => size(w, p.h)} min={PITCH_MIN} max={PITCH_MAX} step={10} /></div>
-        <div className="field"><label>Eni</label><Num value={Math.round(p.h)} onChange={(h) => size(p.w, h)} min={PITCH_MIN} max={PITCH_MAX} step={10} /></div>
+        <div className="field"><label>{tx("Uzunligi")}</label><Num value={Math.round(p.w)} onChange={(w) => size(w, p.h)} min={PITCH_MIN} max={PITCH_MAX} step={10} /></div>
+        <div className="field"><label>{tx("Eni")}</label><Num value={Math.round(p.h)} onChange={(h) => size(p.w, h)} min={PITCH_MIN} max={PITCH_MAX} step={10} /></div>
       </div>
-      <div className="label">Kattalashtirish</div>
+      <div className="label">{tx("Kattalashtirish")}</div>
       <div className="seg block">
         {[[0.8, "−20%"], [1.1, "+10%"], [1.25, "+25%"], [1.5, "+50%"]].map(([k, l]) => <button key={l} onClick={() => scale(k as number)}>{l}</button>)}
       </div>
-      <div className="label">Proporsiya (uzunlik saqlanadi)</div>
+      <div className="label">{tx("Proporsiya (uzunlik saqlanadi)")}</div>
       <div className="seg block wrap">
         {PITCH_SHAPES.map(([n, r, k]) => <button key={n} className={Math.abs(p.w / p.h - k) < 0.02 ? "on" : ""} onClick={() => size(p.w, clamp(p.w / k))}>{n} · {r}</button>)}
       </div>
-      <label className="toggle-row"><span><b>Tribunalarni birga surish</b><small>Maydon kattalashsa, tribunalar chetlar bilan birga suriladi — oraliq saqlanadi</small></span>
+      <label className="toggle-row"><span><b>{tx("Tribunalarni birga surish")}</b><small>{tx("Maydon kattalashsa, tribunalar chetlar bilan birga suriladi — oraliq saqlanadi")}</small></span>
         <input type="checkbox" className="switch lime" checked={push} onChange={(e) => setPush(e.target.checked)} /></label>
-      <div className="tk-note">Sxemada maydonni bosing va burchak yoki chetidagi tutqichni torting. Alt tugmasi bilan — markaz joyida qoladi.</div>
+      <div className="tk-note">{tx("Sxemada maydonni bosing va burchak yoki chetidagi tutqichni torting. Alt tugmasi bilan — markaz joyida qoladi.")}</div>
     </div>
   );
 }
@@ -533,33 +534,33 @@ function SectionInspector({ layout, stand, s, sold, upd, onRename, onSeats, onSa
   });
   return (
     <div className="st-insp">
-      <div className="st-insp-head"><h3>Sektor {s.name}</h3><small>{stand.name} · {s.rows.length} qator · {seatCount(s)} o‘rin</small></div>
-      {sold && <div className="tk-note info">Bu sektorda sotilgan chiptalar bor: sotilgan o‘rinlarni o‘chirib bo‘lmaydi.</div>}
-      <Field label="Sektor nomi (kalit)" hint="Chiptada va saytda ko‘rinadi: A1, D2, VIP">
+      <div className="st-insp-head"><h3>{tx("Sektor")}{" "}{s.name}</h3><small>{stand.name}{" "}{tx("· {0} qator ·", s.rows.length)}{" "}{seatCount(s)}{" "}{tx("o‘rin")}</small></div>
+      {sold && <div className="tk-note info">{tx("Bu sektorda sotilgan chiptalar bor: sotilgan o‘rinlarni o‘chirib bo‘lmaydi.")}</div>}
+      <Field label={tx("Sektor nomi (kalit)")} hint={tx("Chiptada va saytda ko‘rinadi: A1, D2, VIP")}>
         <input className="input" value={key} maxLength={24} onChange={(e) => setKey(e.target.value.replace(/[^A-Za-z0-9_-]/g, ""))}
           onBlur={() => { if (key && key !== s.key && !layout.stands.some((st) => st.sections.some((x) => x.key.toLowerCase() === key.toLowerCase()))) onRename(key); else setKey(s.key); }} />
       </Field>
-      <div className="label">Zona</div>
+      <div className="label">{tx("Zona")}</div>
       <div className="seg block wrap">
         {layout.zones.map((z) => <button key={z.key} className={s.zone === z.key ? "on" : ""} onClick={() => upd((x) => { x.zone = z.key; cleanRowZones(x); })}><i style={{ background: z.color }} /> {z.name}</button>)}
       </div>
       <div className="form-grid">
-        <div className="field"><label>Qatorlar</label><Num value={rows} onChange={setRows} min={1} max={200} /></div>
-        <div className="field"><label>Har qatorda{!uniform && " (har xil)"}</label><Num value={perRow} onChange={(n) => upd((x) => x.rows.forEach((r) => { r.seats = n; r.removed = r.removed.filter((q) => q <= n); r.blocked = r.blocked.filter((q) => q <= n); }))} min={1} /></div>
+        <div className="field"><label>{tx("Qatorlar")}</label><Num value={rows} onChange={setRows} min={1} max={200} /></div>
+        <div className="field"><label>{tx("Har qatorda")}{!uniform && tx(" (har xil)")}</label><Num value={perRow} onChange={(n) => upd((x) => x.rows.forEach((r) => { r.seats = n; r.removed = r.removed.filter((q) => q <= n); r.blocked = r.blocked.filter((q) => q <= n); }))} min={1} /></div>
       </div>
-      <div className="label">O‘rin turi</div>
-      <div className="seg block"><button className={s.seat_mode === "numbered" ? "on" : ""} onClick={() => upd((x) => { x.seat_mode = "numbered"; })}>Raqamlangan</button><button className={s.seat_mode === "free" ? "on" : ""} disabled={hasCategories(s)} title={hasCategories(s) ? "Sektorda narx toifali o‘rinlar bor — ular faqat raqamlangan bo‘ladi" : undefined} onClick={() => upd((x) => { x.seat_mode = "free"; })}>Erkin</button></div>
-      {hasCategories(s) && <div className="tk-note">Narx toifali o‘rinlar bor — sektor raqamlangan. Toifalar «O‘rinlarni tahrirlash»da.</div>}
+      <div className="label">{tx("O‘rin turi")}</div>
+      <div className="seg block"><button className={s.seat_mode === "numbered" ? "on" : ""} onClick={() => upd((x) => { x.seat_mode = "numbered"; })}>{tx("Raqamlangan")}</button><button className={s.seat_mode === "free" ? "on" : ""} disabled={hasCategories(s)} title={hasCategories(s) ? tx("Sektorda narx toifali o‘rinlar bor — ular faqat raqamlangan bo‘ladi") : undefined} onClick={() => upd((x) => { x.seat_mode = "free"; })}>{tx("Erkin")}</button></div>
+      {hasCategories(s) && <div className="tk-note">{tx("Narx toifali o‘rinlar bor — sektor raqamlangan. Toifalar «O‘rinlarni tahrirlash»da.")}</div>}
       <div className="form-grid">
-        <Field label="Kirish (darvoza)"><input className="input" value={s.gate} maxLength={12} placeholder="3, V…" onChange={(e) => upd((x) => { x.gate = e.target.value; })} /></Field>
-        <Field label="Raqamlash"><select className="select" value={s.numbering} onChange={(e) => upd((x) => { x.numbering = e.target.value as "ltr" | "rtl"; })}><option value="ltr">Chapdan o‘ngga</option><option value="rtl">O‘ngdan chapga</option></select></Field>
+        <Field label={tx("Kirish (darvoza)")}><input className="input" value={s.gate} maxLength={12} placeholder={tx("3, V…")} onChange={(e) => upd((x) => { x.gate = e.target.value; })} /></Field>
+        <Field label={tx("Raqamlash")}><select className="select" value={s.numbering} onChange={(e) => upd((x) => { x.numbering = e.target.value as "ltr" | "rtl"; })}><option value="ltr">{tx("Chapdan o‘ngga")}</option><option value="rtl">{tx("O‘ngdan chapga")}</option></select></Field>
       </div>
-      <Field label={`Burilish: ${s.rotation}°`}><input type="range" min={-180} max={180} step={5} value={s.rotation} onChange={(e) => upd((x) => { x.rotation = Number(e.target.value); })} /></Field>
-      <label className="toggle-row"><span><b>O‘rtada yo‘lak</b><small>{s.aisle_after.length ? `${s.aisle_after.join(", ")}-o‘rindan keyin` : "Qatorni ikkiga bo‘ladi"}</small></span>
+      <Field label={tx("Burilish: {0}°", s.rotation)}><input type="range" min={-180} max={180} step={5} value={s.rotation} onChange={(e) => upd((x) => { x.rotation = Number(e.target.value); })} /></Field>
+      <label className="toggle-row"><span><b>{tx("O‘rtada yo‘lak")}</b><small>{s.aisle_after.length ? tx("{0}-o‘rindan keyin", s.aisle_after.join(", ")) : tx("Qatorni ikkiga bo‘ladi")}</small></span>
         <input type="checkbox" className="switch lime" checked={s.aisle_after.length > 0} onChange={(e) => upd((x) => { x.aisle_after = e.target.checked ? [Math.floor(maxOf(x) / 2)] : []; })} /></label>
-      <button className="btn btn-primary" onClick={onSeats}>O‘rinlarni tahrirlash</button>
-      <div className="row"><button className="btn grow" onClick={onDuplicate}>Nusxalash</button><button className="btn grow" onClick={onSaveTpl}>Shablon</button></div>
-      <button className="btn btn-danger" disabled={sold} onClick={onDelete}><I.trash size={16} /> O‘chirish</button>
+      <button className="btn btn-primary" onClick={onSeats}>{tx("O‘rinlarni tahrirlash")}</button>
+      <div className="row"><button className="btn grow" onClick={onDuplicate}>{tx("Nusxalash")}</button><button className="btn grow" onClick={onSaveTpl}>{tx("Shablon")}</button></div>
+      <button className="btn btn-danger" disabled={sold} onClick={onDelete}><I.trash size={16} />{" "}{tx("O‘chirish")}</button>
     </div>
   );
 }
@@ -569,19 +570,19 @@ function StandInspector({ s, sold, upd, onSaveTpl, onDelete }: { s: Stand; sold:
   const b = standBox(s);
   return (
     <div className="st-insp">
-      <div className="st-insp-head"><h3>{s.name || "Tribuna"}</h3><small>{s.sections.length} sektor · {standSeats(s)} o‘rin</small></div>
-      {s.template_id ? <div className="tk-note"><I.link size={13} /> Kutubxona shabloniga bog‘langan (v{s.template_version || 1})</div> : null}
-      <Field label="Nomi"><input className="input" value={s.name} onChange={(e) => upd((x) => { x.name = e.target.value; })} /></Field>
-      <div className="label">Joylashuvi</div>
+      <div className="st-insp-head"><h3>{s.name || tx("Tribuna")}</h3><small>{s.sections.length}{" "}{tx("sektor ·")}{" "}{standSeats(s)}{" "}{tx("o‘rin")}</small></div>
+      {s.template_id ? <div className="tk-note"><I.link size={13} />{" "}{tx("Kutubxona shabloniga bog‘langan (v")}{s.template_version || 1})</div> : null}
+      <Field label={tx("Nomi")}><input className="input" value={s.name} onChange={(e) => upd((x) => { x.name = e.target.value; })} /></Field>
+      <div className="label">{tx("Joylashuvi")}</div>
       <div className="seg block wrap">{["N", "S", "W", "E", "NW", "NE", "SW", "SE"].map((p) => <button key={p} className={s.position === p ? "on" : ""} onClick={() => upd((x) => { x.position = p; })}>{POS[p]}</button>)}</div>
-      <Field label={`Burilish: ${s.rotation}°`}><input type="range" min={-180} max={180} step={5} value={s.rotation} onChange={(e) => upd((x) => { x.rotation = Number(e.target.value); })} /></Field>
-      <div className="muted small">O‘lcham: {Math.round(b.w)} × {Math.round(b.h)} · sxemada sudrab joyini o‘zgartiring</div>
-      <button className="btn" onClick={onSaveTpl}>Shablon sifatida saqlash</button>
-      <button className="btn btn-danger" disabled={sold} onClick={onDelete}><I.trash size={16} /> Tribunani o‘chirish</button>
+      <Field label={tx("Burilish: {0}°", s.rotation)}><input type="range" min={-180} max={180} step={5} value={s.rotation} onChange={(e) => upd((x) => { x.rotation = Number(e.target.value); })} /></Field>
+      <div className="muted small">{tx("O‘lcham: {0} × {1} · sxemada sudrab joyini o‘zgartiring", Math.round(b.w), Math.round(b.h))}</div>
+      <button className="btn" onClick={onSaveTpl}>{tx("Shablon sifatida saqlash")}</button>
+      <button className="btn btn-danger" disabled={sold} onClick={onDelete}><I.trash size={16} />{" "}{tx("Tribunani o‘chirish")}</button>
     </div>
   );
 }
-const POS: Record<string, string> = { N: "Shimol", S: "Janub", W: "G‘arb", E: "Sharq", NW: "Sh-G‘", NE: "Sh-Sh", SW: "J-G‘", SE: "J-Sh" };
+const POS: Record<string, string> = { N: tx("Shimol"), S: tx("Janub"), W: tx("G‘arb"), E: tx("Sharq"), NW: tx("Sh-G‘"), NE: tx("Sh-Sh"), SW: tx("J-G‘"), SE: tx("J-Sh") };
 
 /* ---------- S4 · new stand ---------- */
 function NewStand({ layout, onCancel, onCreate }: { layout: Layout; onCancel: () => void; onCreate: (d: StandDraft) => void }) {
@@ -589,28 +590,28 @@ function NewStand({ layout, onCancel, onCreate }: { layout: Layout; onCancel: ()
   const total = d.sections * d.rows * d.seats;
   return (
     <div className="st-insp">
-      <div className="st-insp-head"><h3>Yangi tribuna</h3><small>Shablon tanlang — sektorlar avtomatik yaratiladi</small></div>
-      <Field label="Nomi"><input className="input" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
-      <div className="label">Joylashuvi</div>
+      <div className="st-insp-head"><h3>{tx("Yangi tribuna")}</h3><small>{tx("Shablon tanlang — sektorlar avtomatik yaratiladi")}</small></div>
+      <Field label={tx("Nomi")}><input className="input" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
+      <div className="label">{tx("Joylashuvi")}</div>
       <div className="seg block wrap">{["N", "S", "W", "E", "NW", "NE", "SW", "SE"].map((p) => <button key={p} className={d.position === p ? "on" : ""} onClick={() => setD({ ...d, position: p, shape: p.length === 2 ? "corner" : d.shape === "corner" ? "straight" : d.shape })}>{POS[p]}</button>)}</div>
-      <div className="label">Shakli</div>
+      <div className="label">{tx("Shakli")}</div>
       <div className="tk-shapes">
-        {([["straight", "To‘g‘ri", "M3 9h18M3 15h18"], ["arc", "Yoy", "M3 16a9 9 0 0118 0M6 16a6 6 0 0112 0"], ["corner", "Burchak", "M4 20V10a6 6 0 016-6h10M8 20v-8a4 4 0 014-4h8"]] as const).map(([k, l, p]) => (
+        {([["straight", tx("To‘g‘ri"), "M3 9h18M3 15h18"], ["arc", tx("Yoy"), "M3 16a9 9 0 0118 0M6 16a6 6 0 0112 0"], ["corner", tx("Burchak"), "M4 20V10a6 6 0 016-6h10M8 20v-8a4 4 0 014-4h8"]] as const).map(([k, l, p]) => (
           <button key={k} className={d.shape === k ? "on" : ""} onClick={() => setD({ ...d, shape: k })}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d={p} /></svg>{l}</button>
         ))}
       </div>
       <div className="form-grid three">
-        <div className="field"><label>Sektorlar</label><Num value={d.sections} onChange={(n) => setD({ ...d, sections: n })} min={1} max={20} /></div>
-        <div className="field"><label>Qatorlar</label><Num value={d.rows} onChange={(n) => setD({ ...d, rows: n })} min={1} max={60} /></div>
-        <div className="field"><label>O‘rin/qator</label><Num value={d.seats} onChange={(n) => setD({ ...d, seats: n })} min={1} max={60} /></div>
+        <div className="field"><label>{tx("Sektorlar")}</label><Num value={d.sections} onChange={(n) => setD({ ...d, sections: n })} min={1} max={20} /></div>
+        <div className="field"><label>{tx("Qatorlar")}</label><Num value={d.rows} onChange={(n) => setD({ ...d, rows: n })} min={1} max={60} /></div>
+        <div className="field"><label>{tx("O‘rin/qator")}</label><Num value={d.seats} onChange={(n) => setD({ ...d, seats: n })} min={1} max={60} /></div>
       </div>
-      <Field label="Sektor harfi" hint={`${d.prefix}1, ${d.prefix}2…`}><input className="input" value={d.prefix} maxLength={4} onChange={(e) => setD({ ...d, prefix: e.target.value.replace(/[^A-Za-z0-9]/g, "") })} /></Field>
-      <div className="label">Zona</div>
+      <Field label={tx("Sektor harfi")} hint={`${d.prefix}1, ${d.prefix}2…`}><input className="input" value={d.prefix} maxLength={4} onChange={(e) => setD({ ...d, prefix: e.target.value.replace(/[^A-Za-z0-9]/g, "") })} /></Field>
+      <div className="label">{tx("Zona")}</div>
       <div className="seg block wrap">{layout.zones.map((z) => <button key={z.key} className={d.zone === z.key ? "on" : ""} onClick={() => setD({ ...d, zone: z.key })}>{z.name}</button>)}</div>
-      <label className="toggle-row"><span><b>Sektorlar orasida yo‘lak</b><small>Har bir sektor alohida kirishga ega</small></span><input type="checkbox" className="switch lime" checked={d.aisle} onChange={(e) => setD({ ...d, aisle: e.target.checked })} /></label>
-      <div className="tk-sum"><b>Natija: {d.sections} sektor · {total} o‘rin</b><small>Yaratgandan keyin har bir sektorni alohida tahrirlash mumkin</small></div>
-      <button className="btn btn-primary" disabled={!d.prefix} onClick={() => onCreate(d)}>Tribunani yaratish</button>
-      <button className="btn btn-ghost" onClick={onCancel}>Bekor qilish</button>
+      <label className="toggle-row"><span><b>{tx("Sektorlar orasida yo‘lak")}</b><small>{tx("Har bir sektor alohida kirishga ega")}</small></span><input type="checkbox" className="switch lime" checked={d.aisle} onChange={(e) => setD({ ...d, aisle: e.target.checked })} /></label>
+      <div className="tk-sum"><b>{tx("Natija: {0} sektor · {1} o‘rin", d.sections, total)}</b><small>{tx("Yaratgandan keyin har bir sektorni alohida tahrirlash mumkin")}</small></div>
+      <button className="btn btn-primary" disabled={!d.prefix} onClick={() => onCreate(d)}>{tx("Tribunani yaratish")}</button>
+      <button className="btn btn-ghost" onClick={onCancel}>{tx("Bekor qilish")}</button>
     </div>
   );
 }
@@ -618,8 +619,8 @@ function NewStand({ layout, onCancel, onCreate }: { layout: Layout; onCancel: ()
 /* ---------- S5 · zones ---------- */
 function ZonesPanel({ layout, st, active, setActive, change }: { layout: Layout; st: ReturnType<typeof stats>; active: string; setActive: (k: string) => void; change: (fn: (l: Layout) => Layout) => void }) {
   const add = () => change((l) => {
-    let n = l.zones.length + 1, key = `zona${n}`;
-    while (l.zones.some((z) => z.key === key)) key = `zona${++n}`;
+    let n = l.zones.length + 1, key = tx("zona{0}", n);
+    while (l.zones.some((z) => z.key === key)) key = tx("zona{0}", ++n);
     l.zones.push({ key, name: `Zona ${n}`, kind: "oddiy", color: ZONE_COLORS[l.zones.length % ZONE_COLORS.length] });
     setTimeout(() => setActive(key));
     return l;
@@ -627,9 +628,9 @@ function ZonesPanel({ layout, st, active, setActive, change }: { layout: Layout;
   const upd = (key: string, fn: (z: Zone) => void) => change((l) => { const z = l.zones.find((x) => x.key === key); if (z) fn(z); return l; });
   return (
     <div className="st-insp">
-      <div className="st-insp-head"><h3>Zonalar</h3><small>Zona — saytdagi chipta turi. Narxlar har bir match uchun «Chiptalar» bo‘limida qo‘yiladi</small></div>
+      <div className="st-insp-head"><h3>{tx("Zonalar")}</h3><small>{tx("Zona — saytdagi chipta turi. Narxlar har bir match uchun «Chiptalar» bo‘limida qo‘yiladi")}</small></div>
       {layout.zones.map((z) => {
-        const secs = layout.stands.flatMap((s) => s.sections.flatMap((x) => x.zone === z.key ? [x.name] : x.rows.some((r) => r.zone_seats?.[z.key]?.length) ? [`${x.name} (qisman)`] : []));
+        const secs = layout.stands.flatMap((s) => s.sections.flatMap((x) => x.zone === z.key ? [x.name] : x.rows.some((r) => r.zone_seats?.[z.key]?.length) ? [tx("{0} (qisman)", x.name)] : []));
         return (
           <div key={z.key} className={`tk-zone${active === z.key ? " on" : ""}`} onClick={() => setActive(z.key)}>
             <div className="row">
@@ -638,15 +639,15 @@ function ZonesPanel({ layout, st, active, setActive, change }: { layout: Layout;
               <b className="small">{st.by_zone[z.key] || 0}</b>
             </div>
             <div className="row small">
-              <label className="row"><input type="checkbox" checked={z.kind === "vip"} onChange={(e) => upd(z.key, (x) => { x.kind = e.target.checked ? "vip" : "oddiy"; })} /> VIP (grafit chipta)</label>
-              <span className="grow muted">{secs.length ? secs.join(", ") : "sektor yo‘q"}</span>
-              {!secs.length && <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); change((l) => { l.zones = l.zones.filter((x) => x.key !== z.key); dropZoneSeats(l, (k) => k !== z.key); return l; }); }}>O‘chirish</button>}
+              <label className="row"><input type="checkbox" checked={z.kind === "vip"} onChange={(e) => upd(z.key, (x) => { x.kind = e.target.checked ? "vip" : "oddiy"; })} />{" "}{tx("VIP (grafit chipta)")}</label>
+              <span className="grow muted">{secs.length ? secs.join(", ") : tx("sektor yo‘q")}</span>
+              {!secs.length && <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); change((l) => { l.zones = l.zones.filter((x) => x.key !== z.key); dropZoneSeats(l, (k) => k !== z.key); return l; }); }}>{tx("O‘chirish")}</button>}
             </div>
           </div>
         );
       })}
-      <button className="btn" onClick={add}><I.plus size={16} /> Zona qo‘shish</button>
-      <div className="tk-note">Nashr qilingan sxema faqat yangi sotuvlarga qo‘llanadi. Sotilgan o‘rinli sektorni o‘chirib yoki boshqa zonaga o‘tkazib bo‘lmaydi.</div>
+      <button className="btn" onClick={add}><I.plus size={16} />{" "}{tx("Zona qo‘shish")}</button>
+      <div className="tk-note">{tx("Nashr qilingan sxema faqat yangi sotuvlarga qo‘llanadi. Sotilgan o‘rinli sektorni o‘chirib yoki boshqa zonaga o‘tkazib bo‘lmaydi.")}</div>
     </div>
   );
 }
@@ -668,29 +669,29 @@ function Library({ venueId, layout, onPick, placingName }: { venueId: number; la
   const asStand = (t: Template): Stand => t.kind === "stand" ? (t.doc as Stand) : { key: "t", name: t.name, position: "N", shape: "straight", x: 0, y: 0, rotation: 0, sections: [{ ...(t.doc as Section), x: 0, y: 0 }] };
   return (
     <div className="st-lib">
-      <input className="input" placeholder="Shablon qidirish…" value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="row small">{(["all", "stand", "section"] as const).map((k) => <button key={k} className={`chip${kind === k ? " on" : ""}`} onClick={() => setKind(k)}>{{ all: "Hammasi", stand: "Tribuna", section: "Sektor" }[k]}</button>)}</div>
-      <div className="st-lib-group">Mening va jamoa shablonlari <small>{tpls.length}</small></div>
-      {tpls.length === 0 && <div className="muted small">Tribuna yoki sektorni tanlab «Shablon sifatida saqlash».</div>}
+      <input className="input" placeholder={tx("Shablon qidirish…")} value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="row small">{(["all", "stand", "section"] as const).map((k) => <button key={k} className={`chip${kind === k ? " on" : ""}`} onClick={() => setKind(k)}>{{ all: tx("Hammasi"), stand: tx("Tribuna"), section: tx("Sektor") }[k]}</button>)}</div>
+      <div className="st-lib-group">{tx("Mening va jamoa shablonlari")}{" "}<small>{tpls.length}</small></div>
+      {tpls.length === 0 && <div className="muted small">{tx("Tribuna yoki sektorni tanlab «Shablon sifatida saqlash».")}</div>}
       {tpls.map((t) => (
         <div key={t.id} className={`st-lib-item${placingName === t.name ? " on" : ""}`} onClick={() => pick(asStand(t), t.zones, t.name, t.kind === "stand" ? { id: t.id, version: t.version } : undefined)}>
           <Thumb stand={asStand(t)} />
-          <span className="grow"><b>{t.name}</b><small>{t.kind === "stand" ? "Tribuna" : "Sektor"} · {t.seats} o‘rin{t.linked_in ? ` · ${t.linked_in} bog‘langan` : ""}{t.visibility === "private" ? " · faqat menga" : ""}</small></span>
-          {t.mine && <button className="btn btn-ghost btn-icon btn-sm" title="O‘chirish" onClick={async (e) => {
+          <span className="grow"><b>{t.name}</b><small>{t.kind === "stand" ? tx("Tribuna") : tx("Sektor")}{" "}{tx("· {0} o‘rin", t.seats)}{t.linked_in ? tx(" · {0} bog‘langan", t.linked_in) : ""}{t.visibility === "private" ? tx(" · faqat menga") : ""}</small></span>
+          {t.mine && <button className="btn btn-ghost btn-icon btn-sm" title={tx("O‘chirish")} onClick={async (e) => {
             e.stopPropagation();
-            if (!(await confirm({ title: `«${t.name}» shablonini o‘chirish?`, ok: "O‘chirish", danger: true }))) return;
-            await api.del(`/admin/layout-templates/${t.id}`); toast("O‘chirildi"); reload();
+            if (!(await confirm({ title: tx("«{0}» shablonini o‘chirish?", t.name), ok: tx("O‘chirish"), danger: true }))) return;
+            await api.del(`/admin/layout-templates/${t.id}`); toast(tx("O‘chirildi")); reload();
           }}><I.trash size={14} /></button>}
         </div>
       ))}
-      {others.length > 0 && <div className="st-lib-group">Boshqa sxemalardan <small>{others.length}</small></div>}
+      {others.length > 0 && <div className="st-lib-group">{tx("Boshqa sxemalardan")}{" "}<small>{others.length}</small></div>}
       {others.map((s) => (
         <div key={`${s.layout_id}-${s.stand.key}`} className="st-lib-item" onClick={() => pick(s.stand, s.zones, s.name)}>
           <Thumb stand={s.stand} />
-          <span className="grow"><b>{s.name || "Tribuna"}</b><small>{s.venue_name} v{s.version} · {s.seats} o‘rin</small></span>
+          <span className="grow"><b>{s.name || tx("Tribuna")}</b><small>{s.venue_name}{" "}{tx("v{0} · {1} o‘rin", s.version, s.seats)}</small></span>
         </div>
       ))}
-      <div className="muted small" style={{ padding: "8px 4px" }}>Shablonni tanlang va sxemaga bosing</div>
+      <div className="muted small" style={{ padding: "8px 4px" }}>{tx("Shablonni tanlang va sxemaga bosing")}</div>
     </div>
   );
 }
@@ -704,16 +705,16 @@ function PlaceSettings({ p, onChange, total }: { p: PlaceState; onChange: (p: Pl
   const n = standSeats(p.stand);
   return (
     <div className="st-insp">
-      <div className="st-insp-head"><h3>Shablonni qo‘yish</h3><small>{p.name} · {p.stand.sections.length} sektor</small></div>
-      <Field label="Tribuna nomi"><input className="input" value={p.name} onChange={(e) => onChange({ ...p, name: e.target.value })} /></Field>
-      <Field label="Sektor prefiksi" hint={p.prefix ? `${p.prefix}1, ${p.prefix}2…` : "Asl nomlar saqlanadi (takrorlansa -2 qo‘shiladi)"}><input className="input" value={p.prefix} maxLength={4} onChange={(e) => onChange({ ...p, prefix: e.target.value.replace(/[^A-Za-z0-9]/g, "") })} /></Field>
-      <Field label={`Burilish: ${p.stand.rotation}°`}><input type="range" min={-180} max={180} step={5} value={p.stand.rotation} onChange={(e) => onChange({ ...p, stand: { ...p.stand, rotation: Number(e.target.value) } })} /></Field>
-      <div className="label">Nusxa turi</div>
-      <label className={`tk-choice${!p.linked ? " on" : ""}`}><input type="radio" checked={!p.linked} onChange={() => onChange({ ...p, linked: false })} /><span><b>Mustaqil nusxa</b><small>Bu sxemada erkin tahrirlanadi</small></span></label>
-      <label className={`tk-choice${p.linked ? " on" : ""}${!p.canLink ? " off" : ""}`}><input type="radio" disabled={!p.canLink} checked={p.linked} onChange={() => onChange({ ...p, linked: true })} /><span><b>Bog‘langan nusxa</b><small>{p.canLink ? "Shablon raqami saqlanadi — keyin yangilashni ko‘rasiz" : "Faqat kutubxonadagi tribuna shablonlari uchun"}</small></span></label>
-      <div className="tk-sum"><b>+{n} o‘rin → jami {(total + n).toLocaleString("ru-RU")}</b><small>Bloklangan o‘rinlar, yo‘laklar va kirishlar shablondan olinadi</small></div>
-      <div className="muted small">Endi sxemaning kerakli joyiga bosing.</div>
-      <button className="btn btn-ghost" onClick={() => onChange(null)}>Bekor qilish (Esc)</button>
+      <div className="st-insp-head"><h3>{tx("Shablonni qo‘yish")}</h3><small>{p.name}{" "}{tx("· {0} sektor", p.stand.sections.length)}</small></div>
+      <Field label={tx("Tribuna nomi")}><input className="input" value={p.name} onChange={(e) => onChange({ ...p, name: e.target.value })} /></Field>
+      <Field label={tx("Sektor prefiksi")} hint={p.prefix ? `${p.prefix}1, ${p.prefix}2…` : tx("Asl nomlar saqlanadi (takrorlansa -2 qo‘shiladi)")}><input className="input" value={p.prefix} maxLength={4} onChange={(e) => onChange({ ...p, prefix: e.target.value.replace(/[^A-Za-z0-9]/g, "") })} /></Field>
+      <Field label={tx("Burilish: {0}°", p.stand.rotation)}><input type="range" min={-180} max={180} step={5} value={p.stand.rotation} onChange={(e) => onChange({ ...p, stand: { ...p.stand, rotation: Number(e.target.value) } })} /></Field>
+      <div className="label">{tx("Nusxa turi")}</div>
+      <label className={`tk-choice${!p.linked ? " on" : ""}`}><input type="radio" checked={!p.linked} onChange={() => onChange({ ...p, linked: false })} /><span><b>{tx("Mustaqil nusxa")}</b><small>{tx("Bu sxemada erkin tahrirlanadi")}</small></span></label>
+      <label className={`tk-choice${p.linked ? " on" : ""}${!p.canLink ? " off" : ""}`}><input type="radio" disabled={!p.canLink} checked={p.linked} onChange={() => onChange({ ...p, linked: true })} /><span><b>{tx("Bog‘langan nusxa")}</b><small>{p.canLink ? tx("Shablon raqami saqlanadi — keyin yangilashni ko‘rasiz") : tx("Faqat kutubxonadagi tribuna shablonlari uchun")}</small></span></label>
+      <div className="tk-sum"><b>{tx("+{0} o‘rin → jami", n)}{" "}{(total + n).toLocaleString("ru-RU")}</b><small>{tx("Bloklangan o‘rinlar, yo‘laklar va kirishlar shablondan olinadi")}</small></div>
+      <div className="muted small">{tx("Endi sxemaning kerakli joyiga bosing.")}</div>
+      <button className="btn btn-ghost" onClick={() => onChange(null)}>{tx("Bekor qilish (Esc)")}</button>
     </div>
   );
 }
@@ -723,7 +724,7 @@ function SaveTemplate({ layout, target, onClose, onSaved }: { layout: Layout; ta
   const toast = useToast();
   const st = layout.stands.find((s) => s.key === target.stand)!;
   const sec = target.section ? st.sections.find((x) => x.key === target.section) : undefined;
-  const [name, setName] = useState(sec ? `Sektor ${sec.name}` : st.name);
+  const [name, setName] = useState(sec ? tx("Sektor {0}", sec.name) : st.name);
   const [desc, setDesc] = useState("");
   const [opt, setOpt] = useState({ zones: true, blocked: true, gates: true, link: false });
   const [vis, setVis] = useState<"all" | "private">("all");
@@ -736,23 +737,23 @@ function SaveTemplate({ layout, target, onClose, onSaved }: { layout: Layout; ta
     const usedZones = new Set((sec ? [sec] : st.sections).flatMap((s) => [s.zone, ...s.rows.flatMap((r) => Object.keys(r.zone_seats || {}))]));
     try {
       const t = await api.post<{ id: number }>("/admin/layout-templates", { name, description: desc, kind: target.kind, doc, zones: opt.zones ? layout.zones.filter((z) => usedZones.has(z.key)) : [], visibility: vis });
-      toast("Kutubxonaga saqlandi");
+      toast(tx("Kutubxonaga saqlandi"));
       onSaved(t, opt.link);
-    } catch (e) { toast(e instanceof ApiError ? e.message : "Xato", "error"); } finally { setBusy(false); }
+    } catch (e) { toast(e instanceof ApiError ? e.message : tx("Xato"), "error"); } finally { setBusy(false); }
   };
   return (
-    <Modal title="Shablon sifatida saqlash" onClose={onClose} footer={<><button className="btn btn-ghost" onClick={onClose}>Bekor qilish</button><button className="btn btn-primary" disabled={busy || !name.trim()} onClick={save}>Kutubxonaga saqlash</button></>}>
+    <Modal title={tx("Shablon sifatida saqlash")} onClose={onClose} footer={<><button className="btn btn-ghost" onClick={onClose}>{tx("Bekor qilish")}</button><button className="btn btn-primary" disabled={busy || !name.trim()} onClick={save}>{tx("Kutubxonaga saqlash")}</button></>}>
       <div className="stack">
-        <div className="tk-sum row"><Thumb stand={sec ? { ...st, sections: [sec] } : st} /><span><b>{sec ? `Sektor ${sec.name}` : st.name}</b><small>{sec ? "1 sektor" : `${st.sections.length} sektor`} · {seats} o‘rin</small></span></div>
-        <Field label="Shablon nomi"><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-        <Field label="Izoh" hint="Kutubxonada nom ostida ko‘rinadi"><input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} /></Field>
-        <div className="label">Nimalar saqlanadi</div>
-        <label className="toggle-row"><span><b>Zonalar</b></span><input type="checkbox" className="switch lime" checked={opt.zones} onChange={(e) => setOpt({ ...opt, zones: e.target.checked })} /></label>
-        <label className="toggle-row"><span><b>Bloklangan va o‘chirilgan o‘rinlar</b></span><input type="checkbox" className="switch lime" checked={opt.blocked} onChange={(e) => setOpt({ ...opt, blocked: e.target.checked })} /></label>
-        <label className="toggle-row"><span><b>Kirishlar</b></span><input type="checkbox" className="switch lime" checked={opt.gates} onChange={(e) => setOpt({ ...opt, gates: e.target.checked })} /></label>
-        {target.kind === "stand" && <label className="toggle-row"><span><b>Joriy tribunani shablonga bog‘lash</b><small>Shablon keyin o‘zgarsa, shu yerda belgi ko‘rinadi</small></span><input type="checkbox" className="switch lime" checked={opt.link} onChange={(e) => setOpt({ ...opt, link: e.target.checked })} /></label>}
-        <div className="label">Kimga ko‘rinadi</div>
-        <div className="seg block"><button className={vis === "private" ? "on" : ""} onClick={() => setVis("private")}>Faqat menga</button><button className={vis === "all" ? "on" : ""} onClick={() => setVis("all")}>Barcha adminlarga</button></div>
+        <div className="tk-sum row"><Thumb stand={sec ? { ...st, sections: [sec] } : st} /><span><b>{sec ? tx("Sektor {0}", sec.name) : st.name}</b><small>{sec ? tx("1 sektor") : tx("{0} sektor", st.sections.length)}{" "}{tx("· {0} o‘rin", seats)}</small></span></div>
+        <Field label={tx("Shablon nomi")}><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        <Field label={tx("Izoh")} hint={tx("Kutubxonada nom ostida ko‘rinadi")}><input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} /></Field>
+        <div className="label">{tx("Nimalar saqlanadi")}</div>
+        <label className="toggle-row"><span><b>{tx("Zonalar")}</b></span><input type="checkbox" className="switch lime" checked={opt.zones} onChange={(e) => setOpt({ ...opt, zones: e.target.checked })} /></label>
+        <label className="toggle-row"><span><b>{tx("Bloklangan va o‘chirilgan o‘rinlar")}</b></span><input type="checkbox" className="switch lime" checked={opt.blocked} onChange={(e) => setOpt({ ...opt, blocked: e.target.checked })} /></label>
+        <label className="toggle-row"><span><b>{tx("Kirishlar")}</b></span><input type="checkbox" className="switch lime" checked={opt.gates} onChange={(e) => setOpt({ ...opt, gates: e.target.checked })} /></label>
+        {target.kind === "stand" && <label className="toggle-row"><span><b>{tx("Joriy tribunani shablonga bog‘lash")}</b><small>{tx("Shablon keyin o‘zgarsa, shu yerda belgi ko‘rinadi")}</small></span><input type="checkbox" className="switch lime" checked={opt.link} onChange={(e) => setOpt({ ...opt, link: e.target.checked })} /></label>}
+        <div className="label">{tx("Kimga ko‘rinadi")}</div>
+        <div className="seg block"><button className={vis === "private" ? "on" : ""} onClick={() => setVis("private")}>{tx("Faqat menga")}</button><button className={vis === "all" ? "on" : ""} onClick={() => setVis("all")}>{tx("Barcha adminlarga")}</button></div>
       </div>
     </Modal>
   );
@@ -769,33 +770,33 @@ function Versions({ venue, current, onClose, onDiff, onReload }: { venue: Venue;
     if (!current) return;
     const d = await api.get<{ sections: { key: string; change: string; seats: number; note: string }[]; seats_delta: number }>(`/admin/layouts/${id}/diff?with=${current.id}`);
     setCmp(id);
-    onDiff(Object.fromEntries(d.sections.map((x) => [x.key, x.change === "added" ? "yangi" : x.change === "removed" ? "o‘chirilgan" : [x.seats ? (x.seats > 0 ? `+${x.seats}` : `${x.seats}`) : "", x.note].filter(Boolean).join(" ")])));
-    setSummary(`${d.sections.length} sektor o‘zgargan · ${d.seats_delta >= 0 ? "+" : ""}${d.seats_delta} o‘rin`);
+    onDiff(Object.fromEntries(d.sections.map((x) => [x.key, x.change === "added" ? tx("yangi") : x.change === "removed" ? tx("o‘chirilgan") : [x.seats ? (x.seats > 0 ? `+${x.seats}` : `${x.seats}`) : "", x.note].filter(Boolean).join(" ")])));
+    setSummary(tx("{0} sektor o‘zgargan · {1}{2} o‘rin", d.sections.length, d.seats_delta >= 0 ? "+" : "", d.seats_delta));
   };
   const restore = async (id: number, v: number) => {
-    if (!(await confirm({ title: `v${v} ni tiklash?`, text: "Qoralama shu versiya bilan almashtiriladi. Nashr qilingan versiyalar va matchlar o‘zgarmaydi.", ok: "Tiklash" }))) return;
-    try { await api.post(`/admin/venues/${venue.id}/draft/restore/${id}`); toast(`v${v} qoralamaga tiklandi`); onDiff(null); onReload(); } catch (e) { toast(e instanceof ApiError ? e.message : "Xato", "error"); }
+    if (!(await confirm({ title: tx("v{0} ni tiklash?", v), text: tx("Qoralama shu versiya bilan almashtiriladi. Nashr qilingan versiyalar va matchlar o‘zgarmaydi."), ok: tx("Tiklash") }))) return;
+    try { await api.post(`/admin/venues/${venue.id}/draft/restore/${id}`); toast(tx("v{0} qoralamaga tiklandi", v)); onDiff(null); onReload(); } catch (e) { toast(e instanceof ApiError ? e.message : tx("Xato"), "error"); }
   };
   return (
     <div className="st-insp">
-      <div className="st-insp-head row"><span className="grow"><h3>Versiyalar</h3><small>{venue.name} · {venue.versions?.length || 0} versiya</small></span><button className="btn btn-ghost btn-icon" onClick={() => { onDiff(null); onClose(); }}><I.x size={16} /></button></div>
+      <div className="st-insp-head row"><span className="grow"><h3>{tx("Versiyalar")}</h3><small>{venue.name} · {venue.versions?.length || 0}{" "}{tx("versiya")}</small></span><button className="btn btn-ghost btn-icon" onClick={() => { onDiff(null); onClose(); }}><I.x size={16} /></button></div>
       {summary && <div className="tk-note warn">{summary}</div>}
       {(venue.versions || []).map((v) => (
         <div key={v.id} className={`tk-ver${cmp === v.id ? " on" : ""}`}>
-          <div className="row"><b>v{v.version}</b><span className={`badge ${v.status === "published" ? "ok" : v.status === "draft" ? "warn" : ""}`}>{v.status === "published" ? "Nashr qilingan" : v.status === "draft" ? "Qoralama" : "Arxiv"}</span><span className="grow" />{current?.id === v.id && <small className="muted">hozir</small>}</div>
-          <small className="muted">{fmtDateTime(v.published_at || v.updated_at)} · {v.created_by || "—"} · {v.seats} o‘rin</small>
+          <div className="row"><b>v{v.version}</b><span className={`badge ${v.status === "published" ? "ok" : v.status === "draft" ? "warn" : ""}`}>{v.status === "published" ? tx("Nashr qilingan") : v.status === "draft" ? tx("Qoralama") : tx("Arxiv")}</span><span className="grow" />{current?.id === v.id && <small className="muted">{tx("hozir")}</small>}</div>
+          <small className="muted">{fmtDateTime(v.published_at || v.updated_at)} · {v.created_by || "—"}{" "}{tx("· {0} o‘rin", v.seats)}</small>
           {v.note && <div className="small">{v.note}</div>}
-          {v.matches > 0 && <small className="muted">{v.matches} ta match ishlatadi</small>}
+          {v.matches > 0 && <small className="muted">{v.matches}{" "}{tx("ta match ishlatadi")}</small>}
           {current?.id !== v.id && (
             <div className="row">
-              <button className="btn btn-sm grow" onClick={() => compare(v.id)}>Solishtirish</button>
-              <button className="btn btn-sm grow" onClick={() => restore(v.id, v.version)}>Tiklash</button>
-              <button className="btn btn-sm" title="Shu versiyadan yangi stadion" onClick={() => nav(`/stadiums/new?layout=${v.id}`)}>Nusxa</button>
+              <button className="btn btn-sm grow" onClick={() => compare(v.id)}>{tx("Solishtirish")}</button>
+              <button className="btn btn-sm grow" onClick={() => restore(v.id, v.version)}>{tx("Tiklash")}</button>
+              <button className="btn btn-sm" title={tx("Shu versiyadan yangi stadion")} onClick={() => nav(`/stadiums/new?layout=${v.id}`)}>{tx("Nusxa")}</button>
             </div>
           )}
         </div>
       ))}
-      <div className="muted small">Tiklash — qoralamani almashtiradi. Nashr qilingan versiyalar o‘zgarmaydi: matchlar o‘z versiyasida qoladi.</div>
+      <div className="muted small">{tx("Tiklash — qoralamani almashtiradi. Nashr qilingan versiyalar o‘zgarmaydi: matchlar o‘z versiyasida qoladi.")}</div>
     </div>
   );
 }

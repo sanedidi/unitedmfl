@@ -1,3 +1,4 @@
+import { useT } from "@/lib/i18n";
 export type TeamRef = {
   id: number;
   name: string;
@@ -145,7 +146,10 @@ export type StandingRow = {
 
 export type GroupInfo = { name: string; ord: number; confirmed: boolean };
 /** Group heading: the admin's name, or «Guruh A» for older data. */
-export const groupName = (code: string, name?: string) => name || (code ? `Guruh ${code}` : "Guruhsiz");
+export const groupName = (code: string, name?: string) => {
+  const tx = useT();
+  return (name || (code ? `Guruh ${code}` : tx("Guruhsiz")));
+};
 /** Standings group keys in the admin's order. */
 export const groupKeys = (st: Pick<Standings, "groups" | "group_info">) =>
   Object.keys(st.groups).sort((a, b) => (st.group_info?.[a]?.ord ?? 999) - (st.group_info?.[b]?.ord ?? 999) || a.localeCompare(b));

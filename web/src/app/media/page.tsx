@@ -8,17 +8,21 @@ import { JsonLd } from "@/components/JsonLd";
 import { abs, pageMeta } from "@/lib/seo";
 import { youtubeId } from "@/lib/format";
 
+import { getT } from "@/lib/i18n/server";
+import { lazyT } from "@/lib/i18n";
 const NO_FEED: Feed = { username: "", posts: [] };
 const loadFeed = () => safe(api<Feed>("/instagram?limit=12", { revalidate: 300 }), NO_FEED);
 
 export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getT();
   const [videos, feed] = await Promise.all([safe(api<Video[]>("/videos?limit=100"), []), loadFeed()]);
-  return pageMeta({ title: "Media — match sharhlari va videolar", description: "United MFL videolari va Instagram: match sharhlari, intervyular, anonslar va to‘liq o‘yinlar.", path: "/media", noindex: videos.length === 0 && feed.posts.length === 0 });
+  return pageMeta({ title: tx("Media — match sharhlari va videolar"), description: tx("United MFL videolari va Instagram: match sharhlari, intervyular, anonslar va to‘liq o‘yinlar."), path: "/media", noindex: videos.length === 0 && feed.posts.length === 0 });
 }
 
-const KIND: Record<string, string> = { highlight: "Sharhlar", interview: "Intervyular", announcement: "Anonslar", full: "To‘liq o‘yinlar" };
+const KIND: Record<string, string> = lazyT({ highlight: "Sharhlar", interview: "Intervyular", announcement: "Anonslar", full: "To‘liq o‘yinlar" });
 
 export default async function MediaPage() {
+  const tx = await getT();
   const [videos, feed] = await Promise.all([safe(api<Video[]>("/videos?limit=100"), []), loadFeed()]);
   const kinds = [...new Set(videos.map((v) => v.kind))];
   // VideoObject only for videos with a real upload date and thumbnail
@@ -33,10 +37,10 @@ export default async function MediaPage() {
   }).filter(Boolean);
   return (
     <>
-      <PageTitle overline="United MFL" title="Media" lead="Match sharhlari, gollar, kadrlar ortidagi videolar va Instagram postlari." />
+      <PageTitle overline="United MFL" title={tx("Media")} lead={tx("Match sharhlari, gollar, kadrlar ortidagi videolar va Instagram postlari.")} />
       <div className="container">
         <InstagramFeed feed={feed} />
-        {videos.length === 0 && feed.posts.length === 0 && <div className="empty" style={{ marginTop: 32 }}>Videolar tez orada qo‘shiladi.</div>}
+        {videos.length === 0 && feed.posts.length === 0 && <div className="empty" style={{ marginTop: 32 }}>{tx("Videolar tez orada qo‘shiladi.")}</div>}
         {kinds.map((k) => (
           <section key={k} style={{ marginTop: 40 }}>
             <h2 className="h3" style={{ marginBottom: 16 }}>{KIND[k] || k}</h2>

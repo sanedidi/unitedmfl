@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Calendar, Clock, Pin } from "./Icons";
 import { HERO_LAYOUTS, type Banner, type HeroLayout } from "@/lib/types";
 
+import { useT } from "@/lib/i18n";
 const INTERVAL = 6000;
 
 /**
@@ -44,9 +45,11 @@ function HeroPicture({ desktop, mobile, alt, first, onRatio }: { desktop: string
  * translucent surface under the text, so it stays readable on any photo.
  * `layout` overrides the banner's own choice (used by /internal/hero).
  */
-export function HeroCarousel({ banners, dates, season = "United MFL 2026", layout: force, label = "Asosiy e’lonlar" }: {
+export function HeroCarousel({ banners, dates, season = "United MFL 2026", layout: force, label: labelProp }: {
   banners: Banner[]; dates: Record<number, string>; season?: string; layout?: HeroLayout; label?: string;
 }) {
+  const tx = useT();
+  const label = labelProp ?? tx("Asosiy e’lonlar");
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   // Autoplay starts after the visitor's first interaction: rotating slides before
@@ -141,16 +144,16 @@ export function HeroCarousel({ banners, dates, season = "United MFL 2026", layou
             <div className="hero-ctas">
               {b.cta_url && (
                 <a className="btn btn-primary btn-lg" href={b.cta_url} {...(ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-                  {b.cta_label || "Batafsil"}
+                  {b.cta_label || tx("Batafsil")}
                 </a>
               )}
-              <Link className="btn btn-ghost btn-lg" href="/matchlar">Matchlar taqvimi</Link>
+              <Link className="btn btn-ghost btn-lg" href="/matchlar">{tx("Matchlar taqvimi")}</Link>
             </div>
           </div>
 
           {n > 1 && (
             <>
-              <div className="hero-tabs" role="tablist" aria-label="Slaydlar" style={{ ["--n" as string]: Math.min(n, 4) }}>
+              <div className="hero-tabs" role="tablist" aria-label={tx("Slaydlar")} style={{ ["--n" as string]: Math.min(n, 4) }}>
                 {banners.slice(0, 4).map((s, k) => (
                   <button key={s.id} role="tab" aria-selected={k === i} className={`hero-tab${k === i ? " active" : ""}`} onClick={() => go(k)}>
                     {k === i && <span className="progress" style={{ width: engaged && !paused ? `${(tick / INTERVAL) * 100}%` : "100%" }} />}

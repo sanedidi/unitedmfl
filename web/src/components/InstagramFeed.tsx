@@ -3,6 +3,7 @@ import { Instagram, Play } from "./Icons";
 import { fmtDate } from "@/lib/format";
 import { sized } from "@/lib/img";
 
+import { useT } from "@/lib/i18n";
 /** Carousel marker: two stacked squares. */
 const Stack = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -17,25 +18,26 @@ function caption(p: InstagramPost) {
 }
 
 function label(p: InstagramPost) {
+  const tx = useT();
   if (p.is_reel) return "Reels";
-  if (p.media_type === "VIDEO") return "Video";
-  if (p.media_type === "CAROUSEL_ALBUM") return "Albom";
-  return "Post";
+  if (p.media_type === "VIDEO") return tx("Video");
+  if (p.media_type === "CAROUSEL_ALBUM") return tx("Albom");
+  return tx("Post");
 }
 
 export function InstagramFeed({ feed }: { feed: Feed }) {
+  const tx = useT();
   if (!feed.username || feed.posts.length === 0) return null;
   const profile = `https://www.instagram.com/${feed.username}/`;
   return (
     <section className="ig-feed" aria-labelledby="ig-title">
       <div className="ig-head">
         <div>
-          <div className="overline">Instagram</div>
+          <div className="overline">{tx("Instagram")}</div>
           <h2 className="h3" id="ig-title">@{feed.username}</h2>
         </div>
         <a className="btn btn-ghost btn-sm" href={profile} target="_blank" rel="noopener noreferrer">
-          <Instagram /> Obuna bo‘lish
-        </a>
+          <Instagram />{" "}{tx("Obuna bo‘lish")}</a>
       </div>
       <ul className="ig-grid">
         {feed.posts.map((p) => {
@@ -44,7 +46,7 @@ export function InstagramFeed({ feed }: { feed: Feed }) {
           return (
             <li key={p.id}>
               <a className="ig-tile" href={p.permalink} target="_blank" rel="noopener noreferrer"
-                 aria-label={`${label(p)}, ${fmtDate(p.posted_at)}${text ? `: ${text}` : ""} — Instagram’da ochish`}>
+                 aria-label={tx("{0}, {1}{2} — Instagram’da ochish", label(p), fmtDate(p.posted_at), text ? `: ${text}` : "")}>
                 <img {...sized(p.image_url, 384)} alt="" loading="lazy" decoding="async" width={540} height={540} />
                 {video && <span className="ig-mark"><Play size={14} /></span>}
                 {!video && p.media_type === "CAROUSEL_ALBUM" && <span className="ig-mark"><Stack /></span>}
@@ -58,7 +60,7 @@ export function InstagramFeed({ feed }: { feed: Feed }) {
         })}
       </ul>
       <div className="ig-more">
-        <a className="link-more" href={profile} target="_blank" rel="noopener noreferrer">Instagram’da barchasi →</a>
+        <a className="link-more" href={profile} target="_blank" rel="noopener noreferrer">{tx("Instagram’da barchasi →")}</a>
       </div>
     </section>
   );

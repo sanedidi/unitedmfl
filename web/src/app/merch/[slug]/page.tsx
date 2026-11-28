@@ -12,24 +12,27 @@ import { cache } from "react";
 import { abs, breadcrumbLd, clip, orgRef, pageMeta, productPath } from "@/lib/seo";
 import { sized } from "@/lib/img";
 
+import { getT } from "@/lib/i18n/server";
 type Variant = { id: number; size: string; sku: string; stock: number | null; available: boolean };
 type P = Promise<{ slug: string }>;
 const load = cache(async (slug: string) => apiOrNull<{ product: Product; variants: Variant[] }>(`/products/${encodeURIComponent(slug)}`));
 
 export async function generateMetadata({ params }: { params: P }): Promise<Metadata> {
+  const tx = await getT();
   const d = await load((await params).slug);
-  if (!d) return { title: "Mahsulot topilmadi", robots: { index: false } };
+  if (!d) return { title: tx("Mahsulot topilmadi"), robots: { index: false } };
   const p = d.product;
   const price = fmtUZS(p.sale_price_uzs ?? p.price_uzs);
   return pageMeta({
     title: `${p.name} — ${price}`,
-    description: clip(`${p.name}${p.category ? ` (${p.category.toLowerCase()})` : ""} — United MFL rasmiy mahsuloti. Narxi: ${price}.${p.description ? ` ${p.description.replace(/[#*>\[\]()_-]/g, " ")}` : ""}`),
+    description: clip(tx("{0}{1} — United MFL rasmiy mahsuloti. Narxi: {2}.{3}", p.name, p.category ? ` (${p.category.toLowerCase()})` : "", price, p.description ? ` ${p.description.replace(/[#*>\[\]()_-]/g, " ")}` : "")),
     path: productPath(p),
     image: p.images?.[0] || null,
   });
 }
 
 export default async function ProductPage({ params }: { params: P }) {
+  const tx = await getT();
   const d = await load((await params).slug);
   if (!d) notFound();
   const { product: p, variants } = d;
@@ -51,11 +54,11 @@ export default async function ProductPage({ params }: { params: P }) {
   };
   return (
     <div className="container">
-      <nav className="crumbs" aria-label="Breadcrumb"><Link href="/merch">Merch</Link><ChevronRight size={12} /><b>{p.name}</b></nav>
+      <nav className="crumbs" aria-label="Breadcrumb"><Link href="/merch">{tx("Merch")}</Link><ChevronRight size={12} /><b>{p.name}</b></nav>
       <div className="grid grid-2" style={{ alignItems: "start", gap: 40 }}>
         <div className="stack">
           <div className="card product-img" style={{ borderRadius: 24 }}>
-            {p.images?.[0] ? <Img src={p.images[0]} alt={p.name} sizes="(max-width: 720px) 100vw, 620px" priority /> : <div className="ph" style={{ fontSize: 64 }} aria-hidden>MFL</div>}
+            {p.images?.[0] ? <Img src={p.images[0]} alt={p.name} sizes="(max-width: 720px) 100vw, 620px" priority /> : <div className="ph" style={{ fontSize: 64 }} aria-hidden>{tx("MFL")}</div>}
           </div>
           {p.images?.length > 1 && (
             <div className="grid grid-4" style={{ gap: 10 }}>{p.images.slice(1, 5).map((src) => <img key={src} {...sized(src, 384)} alt="" loading="lazy" decoding="async" style={{ borderRadius: 12, aspectRatio: "1", objectFit: "cover" }} />)}</div>
@@ -69,31 +72,31 @@ export default async function ProductPage({ params }: { params: P }) {
             <div className="row" style={{ gap: 10, marginTop: -8, flexWrap: "wrap" }}>
               {sale && <s className="muted" style={{ fontSize: 16 }}>{fmtUZS(p.price_uzs)}</s>}
               {sale && p.discount_pct ? <span className="badge badge-stage">−{p.discount_pct}%</span> : null}
-              {p.wb_price && <span className="muted" style={{ fontSize: 13 }}>Wildberries narxi</span>}
+              {p.wb_price && <span className="muted" style={{ fontSize: 13 }}>{tx("Wildberries narxi")}</span>}
             </div>
           )}
           {variants.length > 0 && !(variants.length === 1 && /^(yagona|—|-)$/i.test(variants[0].size)) && (
             <div>
-              <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>O‘lcham</div>
-              <div className="chips">{variants.map((v) => <span key={v.id} className="chip" title={!v.available || v.stock === 0 ? "Tugagan" : undefined} style={!v.available || v.stock === 0 ? { opacity: .4, textDecoration: "line-through" } : undefined}>{v.size}</span>)}</div>
+              <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{tx("O‘lcham")}</div>
+              <div className="chips">{variants.map((v) => <span key={v.id} className="chip" title={!v.available || v.stock === 0 ? tx("Tugagan") : undefined} style={!v.available || v.stock === 0 ? { opacity: .4, textDecoration: "line-through" } : undefined}>{v.size}</span>)}</div>
             </div>
           )}
-          {soldOut ? <span className="badge badge-muted" style={{ alignSelf: "flex-start" }}>Vaqtincha tugagan</span> : wbUrl ? (
+          {soldOut ? <span className="badge badge-muted" style={{ alignSelf: "flex-start" }}>{tx("Vaqtincha tugagan")}</span> : wbUrl ? (
             <div className="stack" style={{ gap: 10 }}>
-              <a className="btn btn-primary btn-lg" href={wbUrl} target="_blank" rel="noopener noreferrer" style={{ justifyContent: "center" }}>Wildberries’da sotib olish</a>
-              <span className="muted" style={{ fontSize: 13 }}>Tugma mahsulotning Wildberries sahifasini yangi oynada ochadi. To‘lov va yetkazib berish — Wildberries orqali.</span>
+              <a className="btn btn-primary btn-lg" href={wbUrl} target="_blank" rel="noopener noreferrer" style={{ justifyContent: "center" }}>{tx("Wildberries’da sotib olish")}</a>
+              <span className="muted" style={{ fontSize: 13 }}>{tx("Tugma mahsulotning Wildberries sahifasini yangi oynada ochadi. To‘lov va yetkazib berish — Wildberries orqali.")}</span>
             </div>
           ) : buy ? (
-            <a className="btn btn-primary" href={buy} target="_blank" rel="noopener noreferrer" style={{ alignSelf: "flex-start" }}>Sotib olish</a>
+            <a className="btn btn-primary" href={buy} target="_blank" rel="noopener noreferrer" style={{ alignSelf: "flex-start" }}>{tx("Sotib olish")}</a>
           ) : (
-            <Link className="btn btn-primary" href="/biz-haqimizda#aloqa" style={{ alignSelf: "flex-start" }}>Buyurtma berish</Link>
+            <Link className="btn btn-primary" href="/biz-haqimizda#aloqa" style={{ alignSelf: "flex-start" }}>{tx("Buyurtma berish")}</Link>
           )}
           {p.description && <Prose text={p.description} />}
           {wbUrl && (
             <dl className="kv card" style={{ padding: "4px 20px" }}>
-              <dt>Yetkazib berish</dt><dd>WB topshirish punktlari · 1–3 kun</dd>
-              <dt>To‘lov</dt><dd>Wildberries orqali</dd>
-              <dt>Mavjudligi</dt><dd style={{ color: soldOut ? "var(--text-muted)" : "var(--win, #1E8E3E)" }}>{soldOut ? "Vaqtincha tugagan" : p.wb_stock != null ? `Bor · ${p.wb_stock} dona` : "Bor"}</dd>
+              <dt>{tx("Yetkazib berish")}</dt><dd>{tx("WB topshirish punktlari · 1–3 kun")}</dd>
+              <dt>{tx("To‘lov")}</dt><dd>{tx("Wildberries orqali")}</dd>
+              <dt>{tx("Mavjudligi")}</dt><dd style={{ color: soldOut ? "var(--text-muted)" : "var(--win, #1E8E3E)" }}>{soldOut ? tx("Vaqtincha tugagan") : p.wb_stock != null ? tx("Bor · {0} dona", p.wb_stock) : tx("Bor")}</dd>
             </dl>
           )}
         </div>

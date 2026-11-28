@@ -8,6 +8,7 @@ import { fmtDateTime } from "@/lib/format";
 import { blockLabel, fmtDur, shortLocal, tashkentMs, toLocal, type Block, type Layout, type MatchTime } from "@/lib/layout";
 import { BI, Seg, type Device } from "./shared";
 
+import { tx } from "@/lib/i18n";
 export type HpState = {
   draft: { config: Layout; base_version: number | null; updated_at: string; updated_by: string; exists: boolean };
   dirty: boolean;
@@ -25,7 +26,7 @@ export function HistoryDrawer({ onClose, onState, dirty }: { onClose: () => void
   const confirm = useConfirm();
   const [busy, setBusy] = useState(0);
   const restore = async (v: Version) => {
-    if (!(await confirm({ title: `v${v.version} ni tiklash`, text: `Qoralama v${v.version} holatiga qaytadi${dirty ? " — nashr qilinmagan o‘zgarishlar yo‘qoladi" : ""}. Saytdagi sahifa «Nashr qilish» bosilmaguncha o‘zgarmaydi.`, ok: "Tiklash" }))) return;
+    if (!(await confirm({ title: tx("v{0} ni tiklash", v.version), text: tx("Qoralama v{0} holatiga qaytadi{1}. Saytdagi sahifa «Nashr qilish» bosilmaguncha o‘zgarmaydi.", v.version, dirty ? " — nashr qilinmagan o‘zgarishlar yo‘qoladi" : ""), ok: tx("Tiklash") }))) return;
     setBusy(v.version);
     try {
       onState(await api.post<HpState>(`/admin/homepage/versions/${v.version}/restore`));
@@ -35,36 +36,36 @@ export function HistoryDrawer({ onClose, onState, dirty }: { onClose: () => void
     }
   };
   const cancel = async (v: Version) => {
-    if (!(await confirm({ title: "Rejalashtirilgan nashrni bekor qilish", text: `v${v.version} ${fmtDateTime(v.publish_at)} da saytga chiqmaydi.`, ok: "Bekor qilish", danger: true }))) return;
+    if (!(await confirm({ title: tx("Rejalashtirilgan nashrni bekor qilish"), text: tx("v{0} {1} da saytga chiqmaydi.", v.version, fmtDateTime(v.publish_at)), ok: tx("Bekor qilish"), danger: true }))) return;
     await api.del(`/admin/homepage/versions/${v.version}`);
     reload();
   };
   const discard = async () => {
-    if (!(await confirm({ title: "Qoralamani bekor qilish", text: "Barcha nashr qilinmagan o‘zgarishlar o‘chadi, konstruktor saytdagi holatga qaytadi.", ok: "Bekor qilish", danger: true }))) return;
+    if (!(await confirm({ title: tx("Qoralamani bekor qilish"), text: tx("Barcha nashr qilinmagan o‘zgarishlar o‘chadi, konstruktor saytdagi holatga qaytadi."), ok: tx("Bekor qilish"), danger: true }))) return;
     onState(await api.del<HpState>("/admin/homepage/draft"));
     onClose();
   };
   return (
-    <Drawer title="Tarix va versiyalar" onClose={onClose}>
-      <p className="muted small" style={{ marginTop: 0 }}>Qoralama har bir o‘zgarishdan keyin avtomatik saqlanadi. Har bir nashr — alohida versiya; tiklash yangi qoralama yaratadi.</p>
+    <Drawer title={tx("Tarix va versiyalar")} onClose={onClose}>
+      <p className="muted small" style={{ marginTop: 0 }}>{tx("Qoralama har bir o‘zgarishdan keyin avtomatik saqlanadi. Har bir nashr — alohida versiya; tiklash yangi qoralama yaratadi.")}</p>
       {dirty && (
         <div className="hb-ver current">
           <i className="draft" />
-          <div className="grow"><b>Hozir · qoralama</b><small>Nashr qilinmagan o‘zgarishlar bor</small></div>
-          <button className="btn btn-sm btn-danger" onClick={discard}>Bekor qilish</button>
+          <div className="grow"><b>{tx("Hozir · qoralama")}</b><small>{tx("Nashr qilinmagan o‘zgarishlar bor")}</small></div>
+          <button className="btn btn-sm btn-danger" onClick={discard}>{tx("Bekor qilish")}</button>
         </div>
       )}
-      {error ? <p className="alert danger">Yuklab bo‘lmadi</p> : loading ? <p className="muted">Yuklanmoqda…</p> : !data?.length ? <p className="muted">Hali nashr qilinmagan — saytda standart tartib.</p> : data.map((v) => (
+      {error ? <p className="alert danger">{tx("Yuklab bo‘lmadi")}</p> : loading ? <p className="muted">{tx("Yuklanmoqda…")}</p> : !data?.length ? <p className="muted">{tx("Hali nashr qilinmagan — saytda standart tartib.")}</p> : data.map((v) => (
         <div key={v.version} className={`hb-ver${v.live ? " live" : ""}`}>
           <i className={v.live ? "live" : v.scheduled ? "draft" : ""} />
           <div className="grow">
-            <b>v{v.version}{v.live && " · saytda"}{v.scheduled && " · rejalashtirilgan"}</b>
-            <small>{v.scheduled ? `${fmtDateTime(v.publish_at)} da chiqadi` : fmtDateTime(v.publish_at)}{v.summary ? ` · ${v.summary}` : ""}</small>
+            <b>v{v.version}{v.live && tx(" · saytda")}{v.scheduled && tx(" · rejalashtirilgan")}</b>
+            <small>{v.scheduled ? tx("{0} da chiqadi", fmtDateTime(v.publish_at)) : fmtDateTime(v.publish_at)}{v.summary ? ` · ${v.summary}` : ""}</small>
             {v.changes?.length > 0 && <small className="muted">{v.changes.slice(0, 3).join(" · ")}{v.changes.length > 3 ? ` +${v.changes.length - 3}` : ""}</small>}
             <small className="muted">{v.by || "—"}</small>
           </div>
-          {v.scheduled ? <button className="btn btn-sm" onClick={() => cancel(v)}>Bekor qilish</button>
-            : <button className="btn btn-sm" disabled={busy === v.version} onClick={() => restore(v)}><I.refresh size={14} /> Tiklash</button>}
+          {v.scheduled ? <button className="btn btn-sm" onClick={() => cancel(v)}>{tx("Bekor qilish")}</button>
+            : <button className="btn btn-sm" disabled={busy === v.version} onClick={() => restore(v)}><I.refresh size={14} />{" "}{tx("Tiklash")}</button>}
         </div>
       ))}
     </Drawer>
@@ -82,26 +83,26 @@ export function PublishModal({ changes, onClose, onPublish, onPreview, busy, nex
   const atMs = tashkentMs(at);
   const bad = when === "later" && !(atMs > Date.now());
   return (
-    <Modal title="O‘zgarishlarni nashr qilish" onClose={onClose} footer={<>
-      <button className="btn btn-ghost" onClick={onClose}>Bekor qilish</button>
-      <button className="btn" onClick={onPreview}><I.eye size={16} /> Avval ko‘rish</button>
-      <button className="btn btn-primary" disabled={busy || bad} onClick={() => onPublish(summary.trim(), when === "later" ? new Date(atMs).toISOString() : null)}>{busy ? "Nashr qilinmoqda…" : when === "later" ? "Rejalashtirish" : "Nashr qilish"}</button>
+    <Modal title={tx("O‘zgarishlarni nashr qilish")} onClose={onClose} footer={<>
+      <button className="btn btn-ghost" onClick={onClose}>{tx("Bekor qilish")}</button>
+      <button className="btn" onClick={onPreview}><I.eye size={16} />{" "}{tx("Avval ko‘rish")}</button>
+      <button className="btn btn-primary" disabled={busy || bad} onClick={() => onPublish(summary.trim(), when === "later" ? new Date(atMs).toISOString() : null)}>{busy ? tx("Nashr qilinmoqda…") : when === "later" ? tx("Rejalashtirish") : tx("Nashr qilish")}</button>
     </>}>
-      <p className="sec" style={{ marginTop: 0 }}>Bosh sahifa v{nextVersion} sifatida saytga chiqadi. Avvalgi versiya tarixda qoladi va bir bosishda tiklanadi.</p>
+      <p className="sec" style={{ marginTop: 0 }}>{tx("Bosh sahifa v{0} sifatida saytga chiqadi. Avvalgi versiya tarixda qoladi va bir bosishda tiklanadi.", nextVersion)}</p>
       <div className="hb-changes">
-        {changes.length ? changes.map((c, i) => <div key={i}><I.check size={14} /> {c}</div>) : <div className="muted">O‘zgarishlar yo‘q</div>}
+        {changes.length ? changes.map((c, i) => <div key={i}><I.check size={14} /> {c}</div>) : <div className="muted">{tx("O‘zgarishlar yo‘q")}</div>}
       </div>
       <div className="field" style={{ marginTop: 16 }}>
-        <label>Izoh (ixtiyoriy)</label>
-        <input className="input" value={summary} maxLength={300} placeholder="Masalan: Yarim final banneri" onChange={(e) => setSummary(e.target.value)} />
+        <label>{tx("Izoh (ixtiyoriy)")}</label>
+        <input className="input" value={summary} maxLength={300} placeholder={tx("Masalan: Yarim final banneri")} onChange={(e) => setSummary(e.target.value)} />
       </div>
       <div className="field" style={{ marginTop: 16 }}>
-        <label>Qachon</label>
-        <Seg full value={when} onChange={setWhen} options={[{ key: "now", label: "Hozir" }, { key: "later", label: "Rejalashtirish…" }]} />
+        <label>{tx("Qachon")}</label>
+        <Seg full value={when} onChange={setWhen} options={[{ key: "now", label: tx("Hozir") }, { key: "later", label: tx("Rejalashtirish…") }]} />
         {when === "later" && (
           <>
             <input className="input" type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} style={{ marginTop: 8 }} aria-invalid={bad} />
-            <span className="hint">Toshkent vaqti. {bad ? "Kelajakdagi vaqtni tanlang." : `Sayt ${fmtDur(atMs - Date.now())}dan keyin yangilanadi.`}</span>
+            <span className="hint">{tx("Toshkent vaqti.")}{" "}{bad ? tx("Kelajakdagi vaqtni tanlang.") : tx("Sayt {0}dan keyin yangilanadi.", fmtDur(atMs - Date.now()))}</span>
           </>
         )}
       </div>
@@ -119,18 +120,18 @@ export function PreviewModal({ token, at, onClose, device: initial }: { token: s
   const w = WIDTH[device];
   return (
     <div className="overlay hb-preview" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="hb-preview-box" role="dialog" aria-modal="true" aria-label="Oldindan ko‘rish">
+      <div className="hb-preview-box" role="dialog" aria-modal="true" aria-label={tx("Oldindan ko‘rish")}>
         <div className="hb-preview-bar">
-          <b>Oldindan ko‘rish</b>
-          {at && <span className="hb-tt on small"><BI.clock size={14} /> {shortLocal(toLocal(at))} holatida</span>}
+          <b>{tx("Oldindan ko‘rish")}</b>
+          {at && <span className="hb-tt on small"><BI.clock size={14} /> {shortLocal(toLocal(at))}{" "}{tx("holatida")}</span>}
           <span className="grow" />
           <Seg value={device} onChange={setDevice} options={[{ key: "desktop", label: <><BI.monitor size={14} /> 1440</> }, { key: "tablet", label: <><BI.tablet size={14} /> 768</> }, { key: "mobile", label: <><BI.phone size={14} /> 390</> }]} />
-          <a className="btn btn-sm" href={url} target="_blank" rel="noopener noreferrer"><I.globe size={14} /> Yangi oynada</a>
-          <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label="Yopish"><I.x /></button>
+          <a className="btn btn-sm" href={url} target="_blank" rel="noopener noreferrer"><I.globe size={14} />{" "}{tx("Yangi oynada")}</a>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label={tx("Yopish")}><I.x /></button>
         </div>
         <div className="hb-preview-stage">
           <div className="hb-preview-frame" style={{ ["--w" as string]: `${w}px` }}>
-            <iframe key={device} title="Bosh sahifa qoralamasi" src={url} style={{ width: w }} />
+            <iframe key={device} title={tx("Bosh sahifa qoralamasi")} src={url} style={{ width: w }} />
           </div>
         </div>
       </div>
@@ -189,21 +190,21 @@ export function TimelinePanel({ layout, matches, realNow, at, onPick, onAt, onCl
   return (
     <div className="hb-timeline">
       <div className="hb-tl-head">
-        <BI.clock size={16} /><b>Vaqt jadvali</b><span className="muted small">{items.length ? `${items.length} ta blok vaqtga bog‘langan` : "Vaqtga bog‘langan bloklar yo‘q — blokning «Vaqt» bo‘limida sozlang"}</span>
+        <BI.clock size={16} /><b>{tx("Vaqt jadvali")}</b><span className="muted small">{items.length ? tx("{0} ta blok vaqtga bog‘langan", items.length) : tx("Vaqtga bog‘langan bloklar yo‘q — blokning «Vaqt» bo‘limida sozlang")}</span>
         <span className="grow" />
-        <Seg value={range} onChange={setRange} options={[{ key: 7, label: "Hafta" }, { key: 30, label: "Oy" }, { key: 90, label: "Mavsum" }]} />
-        <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label="Yopish"><I.x /></button>
+        <Seg value={range} onChange={setRange} options={[{ key: 7, label: tx("Hafta") }, { key: 30, label: tx("Oy") }, { key: 90, label: tx("Mavsum") }]} />
+        <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label={tx("Yopish")}><I.x /></button>
       </div>
       <div className="hb-tl-grid">
         <div className="hb-tl-axis">
           <span />
-          <div className="hb-tl-track" onClick={pick} title="Bosing — sahifani shu vaqtda ko‘rish">
+          <div className="hb-tl-track" onClick={pick} title={tx("Bosing — sahifani shu vaqtda ko‘rish")}>
             {ticks.map((t) => <span key={t} className="tick" style={{ left: x(t) }}>{shortLocal(toLocal(t)).split(" ")[0]}</span>)}
           </div>
         </div>
         {items.map((b) => (
           <div key={b.id} className="hb-tl-row">
-            <button className="hb-tl-name" onClick={() => onPick(b.id)}><b>{blockLabel(b)}</b><small>{b.schedule!.mode === "range" ? "Muddat" : b.schedule!.mode === "weekly" ? "Takroriy" : "Matchga bog‘liq"}{b.alt ? ` · o‘rniga ${blockLabel(b.alt)}` : ""}</small></button>
+            <button className="hb-tl-name" onClick={() => onPick(b.id)}><b>{blockLabel(b)}</b><small>{b.schedule!.mode === "range" ? tx("Muddat") : b.schedule!.mode === "weekly" ? tx("Takroriy") : tx("Matchga bog‘liq")}{b.alt ? tx(" · o‘rniga {0}", blockLabel(b.alt)) : ""}</small></button>
             <div className="hb-tl-track" onClick={pick}>
               {bars(b, from, to, matches).filter((z) => z.to > from && z.from < to).map((z, i) => (
                 <i key={i} className={`bar m-${b.schedule!.mode}`} style={{ left: x(z.from), width: `calc(${x(z.to)} - ${x(z.from)})` }} title={`${shortLocal(toLocal(z.from))} — ${shortLocal(toLocal(z.to))}`} />
@@ -214,7 +215,7 @@ export function TimelinePanel({ layout, matches, realNow, at, onPick, onAt, onCl
         <div className="hb-tl-lines">
           <span />
           <div>
-            <i className="now" style={{ left: x(realNow) }}><em>Hozir</em></i>
+            <i className="now" style={{ left: x(realNow) }}><em>{tx("Hozir")}</em></i>
             {at && <i className="at" style={{ left: x(at) }}><em>{shortLocal(toLocal(at))}</em></i>}
           </div>
         </div>

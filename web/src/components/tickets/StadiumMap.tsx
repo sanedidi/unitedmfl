@@ -2,13 +2,15 @@
 import { useMemo } from "react";
 import { layoutBox, sectionMatrix, sectionSize, seatPaths, type Layout, type ZoneOffer } from "@/lib/tickets";
 
+import { useT } from "@/lib/i18n";
 /** Read-only stadium map for the checkout: sections coloured by zone, click a section to pick its zone. */
 export function StadiumMap({ layout, offers, selected, onPick }: { layout: Layout; offers: ZoneOffer[]; selected: Set<string>; onPick?: (zone: string) => void }) {
+  const tx = useT();
   const box = useMemo(() => layoutBox(layout), [layout]);
   const byZone = useMemo(() => Object.fromEntries(offers.map((o) => [o.zone_key, o])), [offers]);
   const p = layout.pitch;
   return (
-    <svg className="tk-map" viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} role="img" aria-label="Stadion sxemasi">
+    <svg className="tk-map" viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} role="img" aria-label={tx("Stadion sxemasi")}>
       <rect x={p.x} y={p.y} width={p.w} height={p.h} rx={4} fill="#2E6B45" />
       <g fill="none" stroke="#fff" strokeOpacity={.85} strokeWidth={1.4}>
         <rect x={p.x + 8} y={p.y + 8} width={p.w - 16} height={p.h - 16} />
@@ -33,7 +35,7 @@ export function StadiumMap({ layout, offers, selected, onPick }: { layout: Layou
         const c = { x: m[0] * w / 2 + m[2] * h / 2 + m[4], y: m[1] * w / 2 + m[3] * h / 2 + m[5] };
         return (
           <g key={`${st.key}-${s.key}`} className={`tk-sec${off ? " off" : ""}`}>
-            <title>{`${s.name}${zonesHere.map((z) => byZone[z] ? ` · ${byZone[z].title}${byZone[z].left === 0 ? " (sotilgan)" : ""}` : "").join("")}`}</title>
+            <title>{`${s.name}${zonesHere.map((z) => byZone[z] ? ` · ${byZone[z].title}${byZone[z].left === 0 ? tx(" (sotilgan)") : ""}` : "").join("")}`}</title>
             <g transform={`matrix(${m.join(" ")})`}>
               <rect x={-4} y={-4} width={w + 8} height={h + 8} rx={4} fill={anyOn ? "rgba(145,218,39,.18)" : "transparent"} stroke={anyOn ? "#76B91A" : "transparent"} strokeWidth={1.5}
                 onClick={() => main && main.left > 0 && onPick?.(s.zone)} />

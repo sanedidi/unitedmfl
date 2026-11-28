@@ -7,42 +7,44 @@ import { ROLE_LABEL, initials } from "@/lib/format";
 import { Logo } from "./Logo";
 import { OnlinePill } from "./SiteVisits";
 
+import { tx } from "@/lib/i18n";
+import { LangSwitch } from "./LangSwitch";
 export type Item = { to: string; label: string; icon: ReactNode; perm: string; count?: "protocols" | "requests" | "applications" };
 export const NAV: { group?: string; items: Item[] }[] = [
-  { items: [{ to: "/", label: "Dashboard", icon: <I.grid />, perm: "dashboard" }] },
-  { group: "Turnir", items: [
-    { to: "/matches", label: "Matchlar", icon: <I.calendar />, perm: "matches" },
-    { to: "/protocols", label: "Protokollar", icon: <I.doc />, perm: "protocols", count: "protocols" },
-    { to: "/live", label: "Live-pult", icon: <I.radio />, perm: "live" },
-    { to: "/teams", label: "Jamoalar", icon: <I.shirt />, perm: "teams" },
-    { to: "/applications", label: "Arizalar", icon: <I.link />, perm: "applications", count: "applications" },
-    { to: "/groups", label: "Guruhlar", icon: <I.grid />, perm: "groups" },
-    { to: "/players", label: "O‘yinchilar", icon: <I.user />, perm: "players" },
-    { to: "/standings", label: "Turnir jadvali", icon: <I.table />, perm: "standings" },
-    { to: "/seasons", label: "Mavsumlar", icon: <I.trophy />, perm: "seasons" },
+  { items: [{ to: "/", label: tx("Dashboard"), icon: <I.grid />, perm: "dashboard" }] },
+  { group: tx("Turnir"), items: [
+    { to: "/matches", label: tx("Matchlar"), icon: <I.calendar />, perm: "matches" },
+    { to: "/protocols", label: tx("Protokollar"), icon: <I.doc />, perm: "protocols", count: "protocols" },
+    { to: "/live", label: tx("Live-pult"), icon: <I.radio />, perm: "live" },
+    { to: "/teams", label: tx("Jamoalar"), icon: <I.shirt />, perm: "teams" },
+    { to: "/applications", label: tx("Arizalar"), icon: <I.link />, perm: "applications", count: "applications" },
+    { to: "/groups", label: tx("Guruhlar"), icon: <I.grid />, perm: "groups" },
+    { to: "/players", label: tx("O‘yinchilar"), icon: <I.user />, perm: "players" },
+    { to: "/standings", label: tx("Turnir jadvali"), icon: <I.table />, perm: "standings" },
+    { to: "/seasons", label: tx("Mavsumlar"), icon: <I.trophy />, perm: "seasons" },
   ] },
-  { group: "Kontent", items: [
-    { to: "/homepage", label: "Bosh sahifa", icon: <I.globe />, perm: "homepage" },
-    { to: "/news", label: "Yangiliklar", icon: <I.news />, perm: "news" },
-    { to: "/banners", label: "Hero-bannerlar", icon: <I.image />, perm: "banners" },
-    { to: "/videos", label: "Videolar", icon: <I.play />, perm: "videos" },
-    { to: "/partners", label: "Hamkorlar", icon: <I.link />, perm: "partners" },
+  { group: tx("Kontent"), items: [
+    { to: "/homepage", label: tx("Bosh sahifa"), icon: <I.globe />, perm: "homepage" },
+    { to: "/news", label: tx("Yangiliklar"), icon: <I.news />, perm: "news" },
+    { to: "/banners", label: tx("Hero-bannerlar"), icon: <I.image />, perm: "banners" },
+    { to: "/videos", label: tx("Videolar"), icon: <I.play />, perm: "videos" },
+    { to: "/partners", label: tx("Hamkorlar"), icon: <I.link />, perm: "partners" },
     { to: "/instagram", label: "Instagram", icon: <I.camera />, perm: "instagram" },
   ] },
-  { group: "Do‘kon va aloqa", items: [
-    { to: "/tickets", label: "Chiptalar", icon: <I.ticket />, perm: "tickets" },
-    { to: "/stadiums", label: "Stadionlar", icon: <I.stadium />, perm: "stadiums" },
-    { to: "/scan", label: "Kirish nazorati", icon: <I.qr />, perm: "scan" },
-    { to: "/products", label: "Merch", icon: <I.bag />, perm: "merch" },
-    { to: "/requests", label: "Murojaatlar", icon: <I.inbox />, perm: "requests", count: "requests" },
+  { group: tx("Do‘kon va aloqa"), items: [
+    { to: "/tickets", label: tx("Chiptalar"), icon: <I.ticket />, perm: "tickets" },
+    { to: "/stadiums", label: tx("Stadionlar"), icon: <I.stadium />, perm: "stadiums" },
+    { to: "/scan", label: tx("Kirish nazorati"), icon: <I.qr />, perm: "scan" },
+    { to: "/products", label: tx("Merch"), icon: <I.bag />, perm: "merch" },
+    { to: "/requests", label: tx("Murojaatlar"), icon: <I.inbox />, perm: "requests", count: "requests" },
   ] },
-  { group: "Tizim", items: [
-    { to: "/ai", label: "AI-servis", icon: <I.sparkles />, perm: "ai" },
-    { to: "/telegram-stickers", label: "Telegram stikerlar", icon: <I.telegram />, perm: "stickers" },
+  { group: tx("Tizim"), items: [
+    { to: "/ai", label: tx("AI-servis"), icon: <I.sparkles />, perm: "ai" },
+    { to: "/telegram-stickers", label: tx("Telegram stikerlar"), icon: <I.telegram />, perm: "stickers" },
     { to: "/wildberries", label: "Wildberries", icon: <I.swap />, perm: "wildberries" },
-    { to: "/users", label: "Foydalanuvchilar", icon: <I.users />, perm: "users" },
-    { to: "/roles", label: "Rollar va huquqlar", icon: <I.lock />, perm: "roles" },
-    { to: "/audit", label: "Audit jurnali", icon: <I.log />, perm: "audit" },
+    { to: "/users", label: tx("Foydalanuvchilar"), icon: <I.users />, perm: "users" },
+    { to: "/roles", label: tx("Rollar va huquqlar"), icon: <I.lock />, perm: "roles" },
+    { to: "/audit", label: tx("Audit jurnali"), icon: <I.log />, perm: "audit" },
   ] },
 ];
 
@@ -76,7 +78,7 @@ export function Layout() {
       <aside className={`sidebar${open ? " open" : ""}`}>
         <div className="sb-brand">
           <Logo size={36} />
-          <span className="tagline">Admin</span>
+          <span className="tagline">{tx("Admin")}</span>
         </div>
         {NAV.map((g, i) => {
           const items = g.items.filter((it) => can(it.perm));
@@ -95,18 +97,19 @@ export function Layout() {
         })}
         <div className="sb-user">
           <span className="avatar">{initials(user?.name || "?")}</span>
-          <div className="grow"><b>{user?.name}</b><small>{user?.role_name || ROLE_LABEL[user?.role || ""] || user?.role}</small></div>
-          <button className="btn btn-ghost btn-icon" title="Chiqish" aria-label="Chiqish" onClick={logout}><I.logout /></button>
+          <div className="grow"><b>{user?.name}</b><small>{user?.role_name ? tx(user.role_name) : ROLE_LABEL[user?.role || ""] || user?.role}</small></div>
+          <button className="btn btn-ghost btn-icon" title={tx("Chiqish")} aria-label={tx("Chiqish")} onClick={logout}><I.logout /></button>
         </div>
       </aside>
       <div className="main">
         <header className="topbar">
-          <button className="btn btn-ghost btn-icon menu-toggle" aria-label="Menyu" onClick={() => setOpen(true)}><I.menu /></button>
+          <button className="btn btn-ghost btn-icon menu-toggle" aria-label={tx("Menyu")} onClick={() => setOpen(true)}><I.menu /></button>
           <Logo size={30} className="mobile-brand" />
           <div className="grow" />
           {can("dashboard") && <OnlinePill />}
-          <span className="env hide-mobile">Mavsum 2026</span>
-          <a className="btn btn-sm" href={SITE_URL} target="_blank" rel="noopener noreferrer"><I.globe size={16} /> <span className="hide-mobile">Saytni ochish</span></a>
+          <span className="env hide-mobile">{tx("Mavsum 2026")}</span>
+          <LangSwitch />
+          <a className="btn btn-sm" href={SITE_URL} target="_blank" rel="noopener noreferrer"><I.globe size={16} /> <span className="hide-mobile">{tx("Saytni ochish")}</span></a>
         </header>
         <div className="content"><Outlet /></div>
       </div>

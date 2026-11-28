@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 
+import { tx } from "@/lib/i18n";
 // Player photos on the application review page: a 40 px thumbnail in the
 // roster and a viewer that opens it large (← → to the next player, Esc).
 
@@ -23,9 +24,9 @@ function thumb(src: string, width: 64 | 128 | 256): string {
 export function PhotoThumb({ src, name, onOpen }: { src: string; name: string; onOpen: () => void }) {
   const [url, setUrl] = useState(() => thumb(src, 128));
   useEffect(() => setUrl(thumb(src, 128)), [src]);
-  if (!src) return <span className="pl-photo empty" title="Foto yuklanmagan" aria-label="Foto yuklanmagan"><I.user size={18} /></span>;
+  if (!src) return <span className="pl-photo empty" title={tx("Foto yuklanmagan")} aria-label={tx("Foto yuklanmagan")}><I.user size={18} /></span>;
   return (
-    <button type="button" className="pl-photo" onClick={onOpen} title="Fotoni kattalashtirish" aria-label={`${name} — fotoni kattalashtirish`}>
+    <button type="button" className="pl-photo" onClick={onOpen} title={tx("Fotoni kattalashtirish")} aria-label={tx("{0} — fotoni kattalashtirish", name)}>
       {/* falls back to the original when the site's optimizer is not reachable */}
       <img src={url} alt="" loading="lazy" decoding="async" onError={() => { if (url !== src) setUrl(src); }} />
     </button>
@@ -55,22 +56,22 @@ export function PhotoViewer({ items, start, onClose }: { items: PhotoItem[]; sta
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal photo-viewer" role="dialog" aria-modal="true" aria-label={it.name}>
-        <div className="modal-head"><h2>{it.name}</h2><button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Yopish"><I.x /></button></div>
+        <div className="modal-head"><h2>{it.name}</h2><button className="btn btn-ghost btn-icon" onClick={onClose} aria-label={tx("Yopish")}><I.x /></button></div>
         <div className="modal-body stack" style={{ gap: 12, padding: "20px 24px" }}>
           <div className="pv-stage">
             <img key={it.src} src={it.src} alt={it.name} />
             {n > 1 && <>
-              <button type="button" className="pv-nav prev" onClick={() => setI((i - 1 + n) % n)} aria-label="Oldingi o‘yinchi"><span style={{ display: "inline-flex", transform: "rotate(90deg)" }}><I.down size={20} /></span></button>
-              <button type="button" className="pv-nav next" onClick={() => setI((i + 1) % n)} aria-label="Keyingi o‘yinchi"><span style={{ display: "inline-flex", transform: "rotate(-90deg)" }}><I.down size={20} /></span></button>
+              <button type="button" className="pv-nav prev" onClick={() => setI((i - 1 + n) % n)} aria-label={tx("Oldingi o‘yinchi")}><span style={{ display: "inline-flex", transform: "rotate(90deg)" }}><I.down size={20} /></span></button>
+              <button type="button" className="pv-nav next" onClick={() => setI((i + 1) % n)} aria-label={tx("Keyingi o‘yinchi")}><span style={{ display: "inline-flex", transform: "rotate(-90deg)" }}><I.down size={20} /></span></button>
             </>}
             <span className="pv-count tnum">{i + 1} / {n}</span>
           </div>
           <div className="small" style={{ color: "var(--text-2)" }}>{it.meta}</div>
         </div>
         <div className="modal-foot" style={{ alignItems: "center" }}>
-          <span className="small muted grow hide-mobile">← → — almashtirish · Esc — yopish</span>
-          <button className="btn btn-ghost" onClick={onClose}>Yopish</button>
-          <a className="btn" href={it.src} download={it.file}><I.download size={16} /> Asl faylni yuklab olish</a>
+          <span className="small muted grow hide-mobile">{tx("← → — almashtirish · Esc — yopish")}</span>
+          <button className="btn btn-ghost" onClick={onClose}>{tx("Yopish")}</button>
+          <a className="btn" href={it.src} download={it.file}><I.download size={16} />{" "}{tx("Asl faylni yuklab olish")}</a>
         </div>
       </div>
     </div>

@@ -6,28 +6,33 @@ import { fmtDate, fmtTime, fmtWeekday, isLive, isToday, matchMinute } from "@/li
 import type { Match } from "@/lib/types";
 import { matchPath } from "@/lib/seo";
 
+import { useT } from "@/lib/i18n";
 export function StageBadge({ match }: { match: Match }) {
-  if (isLive(match)) return <span className="badge badge-live">Jonli</span>;
+  const tx = useT();
+  if (isLive(match)) return <span className="badge badge-live">{tx("Jonli")}</span>;
   if (!match.stage) return null;
   const k = match.stage.kind;
-  if (k === "final") return <span className="badge badge-accent">Final</span>;
-  if (k === "group") return <span className="badge badge-muted">{match.round || "Guruh"}</span>;
+  if (k === "final") return <span className="badge badge-accent">{tx("Final")}</span>;
+  if (k === "group") return <span className="badge badge-muted">{match.round || tx("Guruh")}</span>;
   return <span className="badge badge-stage">{match.stage.name}</span>;
 }
 
 function placeholder(m: Match) {
-  return m.stage?.kind === "final" ? "Yarim final g‘olibi" : "Aniqlanmagan";
+  const tx = useT();
+  return m.stage?.kind === "final" ? tx("Yarim final g‘olibi") : tx("Aniqlanmagan");
 }
 
 /** Status badge for the card corner: live minute, date for upcoming, «Yakunlandi» for results. */
 function StatusBadge({ m }: { m: Match }) {
-  if (isLive(m)) return <span className="badge badge-live">Jonli · <LiveMinute match={m} initial={matchMinute(m)} /></span>;
-  if (m.status === "scheduled") return <span className="badge badge-upcoming">{isToday(m.kickoff_at) ? "Bugun" : fmtDate(m.kickoff_at, false)}</span>;
-  if (m.status === "postponed" || m.status === "cancelled") return <span className="badge badge-outline">{m.status === "postponed" ? "Qoldirildi" : "Bekor qilindi"}</span>;
-  return <span className="badge badge-muted">Yakunlandi</span>;
+  const tx = useT();
+  if (isLive(m)) return <span className="badge badge-live">{tx("Jonli ·")}{" "}<LiveMinute match={m} initial={matchMinute(m)} /></span>;
+  if (m.status === "scheduled") return <span className="badge badge-upcoming">{isToday(m.kickoff_at) ? tx("Bugun") : fmtDate(m.kickoff_at, false)}</span>;
+  if (m.status === "postponed" || m.status === "cancelled") return <span className="badge badge-outline">{m.status === "postponed" ? tx("Qoldirildi") : tx("Bekor qilindi")}</span>;
+  return <span className="badge badge-muted">{tx("Yakunlandi")}</span>;
 }
 
 export function MatchCard({ match: m, season = "United MFL 2026" }: { match: Match; season?: string }) {
+  const tx = useT();
   const live = isLive(m);
   const hasScore = m.home_score != null && m.away_score != null && m.status !== "scheduled";
   const stage = m.stage ? (m.stage.kind === "group" ? m.round || m.stage.name : m.stage.name) : season;
@@ -53,16 +58,16 @@ export function MatchCard({ match: m, season = "United MFL 2026" }: { match: Mat
         {row("home")}
         {row("away")}
         {!hasScore && (
-          <div className="match-card-ko"><b className="tnum">{fmtTime(m.kickoff_at)}</b>{fmtWeekday(m.kickoff_at)} · Toshkent vaqti</div>
+          <div className="match-card-ko"><b className="tnum">{fmtTime(m.kickoff_at)}</b>{fmtWeekday(m.kickoff_at)}{" "}{tx("· Toshkent vaqti")}</div>
         )}
-        {hasScore && m.home_pen != null && <div className="match-card-ko">Penaltilar {m.home_pen}:{m.away_pen}</div>}
+        {hasScore && m.home_pen != null && <div className="match-card-ko">{tx("Penaltilar {0}:", m.home_pen)}{m.away_pen}</div>}
       </div>
       <div className="match-card-foot">
         <span className="venue">{m.venue ? m.venue : fmtDate(m.kickoff_at)}</span>
         {m.ticket_url && m.status === "scheduled" ? (
-          <a href={m.ticket_url} target="_blank" rel="noopener noreferrer">Chipta <ArrowRight size={14} /></a>
+          <a href={m.ticket_url} target="_blank" rel="noopener noreferrer">{tx("Chipta")}{" "}<ArrowRight size={14} /></a>
         ) : (
-          <Link href={matchPath(m)}>Match markazi <ArrowRight size={14} /></Link>
+          <Link href={matchPath(m)}>{tx("Match markazi")}{" "}<ArrowRight size={14} /></Link>
         )}
       </div>
     </article>
@@ -70,6 +75,7 @@ export function MatchCard({ match: m, season = "United MFL 2026" }: { match: Mat
 }
 
 export function ResultRow({ match: m }: { match: Match }) {
+  const tx = useT();
   const played = m.home_score != null && m.away_score != null && m.status !== "scheduled";
   return (
     <Link href={matchPath(m)} className="result-row">
@@ -78,7 +84,7 @@ export function ResultRow({ match: m }: { match: Match }) {
         {m.stage?.kind === "group" ? m.round || m.stage.name : m.stage?.name}
       </div>
       <div className="team home">
-        <span>{m.home?.name || "Aniqlanmagan"}</span>
+        <span>{m.home?.name || tx("Aniqlanmagan")}</span>
         <Crest team={m.home} size={24} />
       </div>
       <div className={`result-score tnum${played ? "" : " upcoming"}${isLive(m) ? " live" : ""}`}>
@@ -86,9 +92,9 @@ export function ResultRow({ match: m }: { match: Match }) {
       </div>
       <div className="team">
         <Crest team={m.away} size={24} />
-        <span>{m.away?.name || "Aniqlanmagan"}</span>
+        <span>{m.away?.name || tx("Aniqlanmagan")}</span>
       </div>
-      <span className="result-link" aria-hidden>{isLive(m) ? <span className="badge badge-live">Jonli</span> : <ChevronRight size={18} />}</span>
+      <span className="result-link" aria-hidden>{isLive(m) ? <span className="badge badge-live">{tx("Jonli")}</span> : <ChevronRight size={18} />}</span>
     </Link>
   );
 }

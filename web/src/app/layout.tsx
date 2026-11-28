@@ -8,6 +8,9 @@ import { SiteTracker } from "@/components/SiteTracker";
 import nextDynamic from "next/dynamic";
 import { archivo, inter } from "@/lib/fonts";
 import { DEFAULT_OG, ORG_ID, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { getLang } from "@/lib/i18n/server";
+import { makeT, OG_LOCALE } from "@/lib/i18n";
+import { LangProvider } from "@/lib/i18n/provider";
 import "./globals.css";
 import "./motion.css";
 
@@ -21,13 +24,16 @@ const Analytics = GA_ID ? nextDynamic(() => import("@/components/Analytics").the
 
 const DESCRIPTION = "United MFL — media futbol ligasi: matchlar taqvimi va natijalari, jonli hisob, turnir jadvali, jamoalar, o‘yinchilar va yangiliklar.";
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getLang();
+  const tx = makeT(lang);
+  return {
   metadataBase: new URL(SITE_URL),
   title: { default: "United MFL — Media Football League", template: "%s | United MFL" },
-  description: DESCRIPTION,
+  description: tx(DESCRIPTION),
   applicationName: SITE_NAME,
   icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }, { url: "/icon.png", type: "image/png", sizes: "512x512" }], apple: "/apple-touch-icon.png" },
-  openGraph: { type: "website", siteName: SITE_NAME, locale: "uz_UZ", images: [{ url: DEFAULT_OG, width: 1200, height: 630 }] },
+  openGraph: { type: "website", siteName: SITE_NAME, locale: OG_LOCALE[lang], alternateLocale: [OG_LOCALE[lang === "uz" ? "ru" : "uz"]], images: [{ url: DEFAULT_OG, width: 1200, height: 630 }] },
   twitter: { card: "summary_large_image" },
   formatDetection: { telephone: false },
   verification: {
@@ -36,6 +42,7 @@ export const metadata: Metadata = {
     other: process.env.BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION } : undefined,
   },
 };
+}
 
 export const viewport: Viewport = { themeColor: "#15181C", width: "device-width", initialScale: 1, colorScheme: "light" };
 
@@ -47,22 +54,26 @@ const siteLd = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const lang = await getLang();
+  const tx = makeT(lang);
   const ticketUrl = process.env.TICKETS_URL || "/matchlar";
   return (
     // suppressHydrationWarning: the intro boot script sets data-intro on <html> before hydration.
-    <html lang="uz" className={`${inter.variable} ${archivo.variable}`} suppressHydrationWarning>
+    <html lang={lang} className={`${inter.variable} ${archivo.variable}`} suppressHydrationWarning>
       <body>
+        <LangProvider lang={lang}>
         <script dangerouslySetInnerHTML={{ __html: INTRO_BOOT }} />
         <Intro />
-        <a href="#main" className="sr-only">Asosiy kontentga o‘tish</a>
+        <a href="#main" className="sr-only">{tx("Asosiy kontentga o‘tish")}</a>
         <Header ticketUrl={ticketUrl} />
         <main id="main">{children}</main>
         <Footer />
         <PageTransition />
-        <JsonLd data={siteLd} />
+        <JsonLd data={{ ...siteLd, "@graph": [siteLd["@graph"][0], { ...siteLd["@graph"][1], inLanguage: lang }] }} />
         <Analytics />
         <SiteTracker />
+        </LangProvider>
       </body>
     </html>
   );

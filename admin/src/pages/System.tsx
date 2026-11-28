@@ -10,6 +10,7 @@ import { FormFields, useForm, type FieldSpec } from "@/components/Crud";
 import { Badge, Drawer, ErrorBox, Loading, useConfirm, useToast } from "@/components/ui";
 import { I } from "@/components/Icons";
 
+import { tx } from "@/lib/i18n";
 export { RoleEditPage, RolesPage } from "@/pages/Roles";
 
 type U = { id: number; name: string; email: string; phone: string; telegram_linked: boolean; role: string; role_name: string; status: string; last_login_at: string | null; created_at: string };
@@ -25,23 +26,23 @@ export function UsersPage() {
   const toast = useToast();
   const confirm = useConfirm();
   async function remove(u: U) {
-    if (!(await confirm({ title: "Foydalanuvchini o‘chirish", text: `${u.name} (${u.email})`, ok: "O‘chirish", danger: true }))) return;
-    await api.del(`/admin/users/${u.id}`).then(() => { toast("O‘chirildi"); reload(); }, (e) => toast(e.message, "error"));
+    if (!(await confirm({ title: tx("Foydalanuvchini o‘chirish"), text: `${u.name} (${u.email})`, ok: tx("O‘chirish"), danger: true }))) return;
+    await api.del(`/admin/users/${u.id}`).then(() => { toast(tx("O‘chirildi")); reload(); }, (e) => toast(e.message, "error"));
   }
   return (
     <>
-      <PageHead title="Foydalanuvchilar" sub="Admin panelga kirish huquqiga ega xodimlar" actions={<Allowed to="create"><button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} /> Foydalanuvchi qo‘shish</button></Allowed>} />
+      <PageHead title={tx("Foydalanuvchilar")} sub={tx("Admin panelga kirish huquqiga ega xodimlar")} actions={<Allowed to="create"><button className="btn btn-primary" onClick={() => setEdit(null)}><I.plus size={16} />{" "}{tx("Foydalanuvchi qo‘shish")}</button></Allowed>} />
       <div className="card">
         {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading || !data ? <Loading /> : (
           <div className="table-wrap"><table className="table">
-            <thead><tr><th>Foydalanuvchi</th><th>Rol</th><th>Holat</th><th className="hide-mobile">Oxirgi kirish</th><th /></tr></thead>
+            <thead><tr><th>{tx("Foydalanuvchi")}</th><th>{tx("Rol")}</th><th>{tx("Holat")}</th><th className="hide-mobile">{tx("Oxirgi kirish")}</th><th /></tr></thead>
             <tbody>{data.map((u) => (
               <tr key={u.id} className="clickable" onClick={() => setEdit(u)}>
-                <td><span className="row"><span className="avatar">{u.name.slice(0, 2).toUpperCase()}</span><span><b>{u.name}</b>{u.id === user?.id && <span className="muted small"> (siz)</span>}<div className="muted small">{u.email}</div>{u.phone && <div className="muted small row" style={{ gap: 6 }}>{fmtPhone(u.phone)}{u.telegram_linked && <Badge tone="ok">Telegram</Badge>}</div>}</span></span></td>
+                <td><span className="row"><span className="avatar">{u.name.slice(0, 2).toUpperCase()}</span><span><b>{u.name}</b>{u.id === user?.id && <span className="muted small">{" "}{tx("(siz)")}</span>}<div className="muted small">{u.email}</div>{u.phone && <div className="muted small row" style={{ gap: 6 }}>{fmtPhone(u.phone)}{u.telegram_linked && <Badge tone="ok">{tx("Telegram")}</Badge>}</div>}</span></span></td>
                 <td>{u.role_name || u.role}</td>
-                <td>{u.status === "active" ? <Badge tone="ok">Faol</Badge> : <Badge tone="danger">Bloklangan</Badge>}</td>
+                <td>{u.status === "active" ? <Badge tone="ok">{tx("Faol")}</Badge> : <Badge tone="danger">{tx("Bloklangan")}</Badge>}</td>
                 <td className="hide-mobile nowrap">{u.last_login_at ? fmtDateTime(u.last_login_at) : "—"}</td>
-                <td className="actions" onClick={(e) => e.stopPropagation()}>{u.id !== user?.id && <Allowed to="delete"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => remove(u)} aria-label="O‘chirish"><I.trash size={16} /></button></Allowed>}</td>
+                <td className="actions" onClick={(e) => e.stopPropagation()}>{u.id !== user?.id && <Allowed to="delete"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => remove(u)} aria-label={tx("O‘chirish")}><I.trash size={16} /></button></Allowed>}</td>
               </tr>
             ))}</tbody>
           </table></div>
@@ -54,14 +55,14 @@ export function UsersPage() {
 
 function UserDrawer({ item, roles, onClose, onSaved }: { item: U | null; roles: Role[]; onClose: () => void; onSaved: () => void }) {
   const { can } = useAuth();
-  const options = roles.map((r) => ({ value: r.slug, label: `${r.name} — ${r.is_system ? "barcha sahifalar" : `${r.pages} sahifa`}` }));
+  const options = roles.map((r) => ({ value: r.slug, label: `${r.name} — ${r.is_system ? tx("barcha sahifalar") : tx("{0} sahifa", r.pages)}` }));
   const fields: FieldSpec[] = [
-    { name: "name", label: "Ism", required: true, full: true },
-    { name: "email", label: "Email", required: true, full: true },
-    { name: "role", label: "Rol", type: "select", options, hint: "Foydalanuvchi faqat shu roldagi sahifalarni ko‘radi" },
-    { name: "status", label: "Holat", type: "select", options: [{ value: "active", label: "Faol" }, { value: "blocked", label: "Bloklangan" }] },
-    { name: "phone", label: "Telefon (Telegram Live-pult)", full: true, placeholder: "+998 90 123 45 67", hint: "Shu raqamli Telegram akkaunti Live-pult botiga kira oladi (roli «Live-pult» sahifasini ochsa). Bo‘sh qoldirilsa — botga kirish yo‘q." },
-    { name: "password", label: item ? "Yangi parol (ixtiyoriy)" : "Parol", required: !item, full: true, hint: "Kamida 8 belgi" },
+    { name: "name", label: tx("Ism"), required: true, full: true },
+    { name: "email", label: tx("Email"), required: true, full: true },
+    { name: "role", label: tx("Rol"), type: "select", options, hint: tx("Foydalanuvchi faqat shu roldagi sahifalarni ko‘radi") },
+    { name: "status", label: tx("Holat"), type: "select", options: [{ value: "active", label: tx("Faol") }, { value: "blocked", label: tx("Bloklangan") }] },
+    { name: "phone", label: tx("Telefon (Telegram Live-pult)"), full: true, placeholder: "+998 90 123 45 67", hint: tx("Shu raqamli Telegram akkaunti Live-pult botiga kira oladi (roli «Live-pult» sahifasini ochsa). Bo‘sh qoldirilsa — botga kirish yo‘q.") },
+    { name: "password", label: item ? tx("Yangi parol (ixtiyoriy)") : tx("Parol"), required: !item, full: true, hint: tx("Kamida 8 belgi") },
   ];
   const form = useForm(fields, item ? { ...item, phone: item.phone ? fmtPhone(item.phone) : "", password: "" } : null, { role: roles.find((r) => !r.is_system)?.slug ?? "admin", status: "active", phone: "" });
   const [busy, setBusy] = useState(false);
@@ -73,20 +74,20 @@ function UserDrawer({ item, roles, onClose, onSaved }: { item: U | null; roles: 
     try {
       if (item) await api.patch(`/admin/users/${item.id}`, body);
       else await api.post("/admin/users", body);
-      toast("Saqlandi");
+      toast(tx("Saqlandi"));
       onSaved();
     } catch (e) {
       form.fail(e);
-      toast(e instanceof Error ? e.message : "Xato", "error");
+      toast(e instanceof Error ? e.message : tx("Xato"), "error");
     } finally {
       setBusy(false);
     }
   }
   return (
-    <Drawer title={item ? item.name : "Yangi foydalanuvchi"} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Bekor qilish</button><Allowed to={item ? "edit" : "create"}><button className="btn btn-primary" onClick={save} disabled={busy}>Saqlash</button></Allowed></>}>
+    <Drawer title={item ? item.name : tx("Yangi foydalanuvchi")} onClose={onClose} footer={<><button className="btn" onClick={onClose}>{tx("Bekor qilish")}</button><Allowed to={item ? "edit" : "create"}><button className="btn btn-primary" onClick={save} disabled={busy}>{tx("Saqlash")}</button></Allowed></>}>
       <FormFields fields={fields} values={form.values} set={form.set} errors={form.errors} />
-      {can("roles:create") && <div className="small" style={{ marginTop: 12 }}><Link to="/roles/new" className="accent-text row" style={{ gap: 6, display: "inline-flex" }}><I.plus size={14} /> Yangi rol yaratish</Link></div>}
-      <div className="alert info" style={{ marginTop: 20 }}><I.alert size={16} /> Parolni xodimga xavfsiz kanal orqali yuboring va birinchi kirishdan so‘ng almashtirishni so‘rang.</div>
+      {can("roles:create") && <div className="small" style={{ marginTop: 12 }}><Link to="/roles/new" className="accent-text row" style={{ gap: 6, display: "inline-flex" }}><I.plus size={14} />{" "}{tx("Yangi rol yaratish")}</Link></div>}
+      <div className="alert info" style={{ marginTop: 20 }}><I.alert size={16} />{" "}{tx("Parolni xodimga xavfsiz kanal orqali yuboring va birinchi kirishdan so‘ng almashtirishni so‘rang.")}</div>
     </Drawer>
   );
 }
@@ -97,14 +98,14 @@ export function AuditPage() {
   const { data, error, loading, reload } = useLoad(() => api.get<A[]>(`/admin/audit?limit=50&page=${page}`), [page]);
   return (
     <>
-      <PageHead title="Audit jurnali" sub="Admin paneldagi barcha o‘zgarishlar" />
+      <PageHead title={tx("Audit jurnali")} sub={tx("Admin paneldagi barcha o‘zgarishlar")} />
       <div className="card">
         {error ? <div className="card-pad"><ErrorBox error={error} retry={reload} /></div> : loading || !data ? <Loading /> : (
           <div className="table-wrap"><table className="table">
-            <thead><tr><th>Vaqt</th><th>Foydalanuvchi</th><th>Amal</th><th>Obyekt</th><th className="hide-mobile">Ma’lumot</th></tr></thead>
+            <thead><tr><th>{tx("Vaqt")}</th><th>{tx("Foydalanuvchi")}</th><th>{tx("Amal")}</th><th>{tx("Obyekt")}</th><th className="hide-mobile">{tx("Ma’lumot")}</th></tr></thead>
             <tbody>{data.map((a) => (
               <tr key={a.id}>
-                <td className="nowrap">{fmtDateTime(a.created_at)}</td><td>{a.user_name || "Tizim"}</td><td><Badge plain>{a.action}</Badge></td>
+                <td className="nowrap">{fmtDateTime(a.created_at)}</td><td>{a.user_name || tx("Tizim")}</td><td><Badge plain>{a.action}</Badge></td>
                 <td>{a.entity}{a.entity_id ? ` #${a.entity_id}` : ""}</td>
                 <td className="hide-mobile"><code className="small muted ellipsis" style={{ display: "inline-block", maxWidth: 420 }}>{a.data ? JSON.stringify(a.data) : ""}</code></td>
               </tr>

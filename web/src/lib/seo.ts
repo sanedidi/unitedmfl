@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { Match } from "./types";
 import { fmtDate, TZ } from "./format";
 
+import { OG_LOCALE, useLang, useT } from "@/lib/i18n";
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://unitedmfl.com").replace(/\/$/, "");
 export const SITE_NAME = "United MFL";
 export const ORG_ID = `${SITE_URL}/#organization`;
@@ -80,7 +81,7 @@ export function pageMeta(p: PageMeta): Metadata {
       title: p.title,
       description: p.description,
       siteName: SITE_NAME,
-      locale: "uz_UZ",
+      locale: OG_LOCALE[useLang()],
       images,
       ...(p.type === "article" ? { publishedTime: p.publishedTime, modifiedTime: p.modifiedTime } : {}),
     },
@@ -106,10 +107,11 @@ export function fitTitle(...candidates: string[]) {
 }
 
 export function matchTitle(m: Match) {
-  const h = m.home?.name || "Aniqlanmagan", a = m.away?.name || "Aniqlanmagan";
+  const tx = useT();
+  const h = m.home?.name || tx("Aniqlanmagan"), a = m.away?.name || tx("Aniqlanmagan");
   const played = m.home_score != null && m.away_score != null && m.status !== "scheduled";
-  if (m.status === "live" || m.status === "halftime") return fitTitle(`JONLI: ${h} ${m.home_score ?? 0}:${m.away_score ?? 0} ${a} — ${m.stage?.name || "match"}`, `JONLI: ${h} ${m.home_score ?? 0}:${m.away_score ?? 0} ${a}`);
-  if (played) return fitTitle(`${h} ${m.home_score}:${m.away_score} ${a} — natija, tarkiblar va voqealar`, `${h} ${m.home_score}:${m.away_score} ${a} — natija va tarkiblar`, `${h} ${m.home_score}:${m.away_score} ${a} — natija`);
-  if (!m.home && !m.away) return fitTitle(`${m.stage?.name || "Match"} — ${fmtDate(m.kickoff_at)}${m.venue ? `, ${m.venue.split(",")[0]}` : ""}`, `${m.stage?.name || "Match"} — ${fmtDate(m.kickoff_at)}`);
-  return fitTitle(`${h} — ${a}, ${fmtDate(m.kickoff_at)}: ${m.stage?.name || "match"}`, `${h} — ${a}, ${fmtDate(m.kickoff_at)}`);
+  if (m.status === "live" || m.status === "halftime") return fitTitle(tx("JONLI: {0} {1}:{2} {3} — {4}", h, m.home_score ?? 0, m.away_score ?? 0, a, m.stage?.name || "match"), tx("JONLI: {0} {1}:{2} {3}", h, m.home_score ?? 0, m.away_score ?? 0, a));
+  if (played) return fitTitle(tx("{0} {1}:{2} {3} — natija, tarkiblar va voqealar", h, m.home_score, m.away_score, a), tx("{0} {1}:{2} {3} — natija va tarkiblar", h, m.home_score, m.away_score, a), tx("{0} {1}:{2} {3} — natija", h, m.home_score, m.away_score, a));
+  if (!m.home && !m.away) return fitTitle(`${m.stage?.name || tx("Match")} — ${fmtDate(m.kickoff_at)}${m.venue ? `, ${m.venue.split(",")[0]}` : ""}`, `${m.stage?.name || tx("Match")} — ${fmtDate(m.kickoff_at)}`);
+  return fitTitle(`${h} — ${a}, ${fmtDate(m.kickoff_at)}: ${m.stage?.name || tx("match")}`, `${h} — ${a}, ${fmtDate(m.kickoff_at)}`);
 }

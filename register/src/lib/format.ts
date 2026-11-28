@@ -1,7 +1,8 @@
 import type { Player } from "./api";
 
+import { lang, tx } from "@/lib/i18n";
 const TZ = "Asia/Tashkent";
-const MONTHS = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
+const MONTHS = lang === "ru" ? ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] : ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
 
 function parts(iso: string) {
   const f = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso));
@@ -13,7 +14,7 @@ function parts(iso: string) {
 export function fmtDeadline(iso?: string | null) {
   if (!iso) return "";
   const p = parts(iso);
-  return `${+p.d}-${MONTHS[+p.m - 1]}, ${p.hh}:${p.mm}`;
+  return `${+p.d}${lang === "ru" ? " " : "-"}${MONTHS[+p.m - 1]}, ${p.hh}:${p.mm}`;
 }
 /** «15-noyabr, 13:12» */
 export const fmtDateTime = fmtDeadline;
@@ -28,12 +29,12 @@ export function fmtBirth(d?: string) {
 export const jerseyInput = (s: string) => s.replace(/[^\p{L}0-9]/gu, "").toUpperCase().slice(0, 4);
 
 export const KIT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
-export const REP_ROLES: Record<string, string> = { captain: "Kapitan", manager: "Menejer", coach: "Murabbiy", other: "Boshqa" };
+export const REP_ROLES: Record<string, string> = { captain: tx("Kapitan"), manager: tx("Menejer"), coach: tx("Murabbiy"), other: tx("Boshqa") };
 export const STAFF_ROLES: Record<string, string> = {
-  head_coach: "Bosh murabbiy", assistant: "Murabbiy yordamchisi", gk_coach: "Darvozabonlar murabbiyi",
-  fitness: "Jismoniy tayyorgarlik", doctor: "Shifokor", manager: "Menejer", other: "Boshqa",
+  head_coach: tx("Bosh murabbiy"), assistant: tx("Murabbiy yordamchisi"), gk_coach: tx("Darvozabonlar murabbiyi"),
+  fitness: tx("Jismoniy tayyorgarlik"), doctor: tx("Shifokor"), manager: tx("Menejer"), other: tx("Boshqa"),
 };
-export const ROLE_LABEL: Record<string, string> = { player: "O‘yinchi", goalkeeper: "Darvozabon", media: "Media shaxs" };
+export const ROLE_LABEL: Record<string, string> = { player: tx("O‘yinchi"), goalkeeper: tx("Darvozabon"), media: tx("Media shaxs") };
 
 export const fullName = (p: { first_name: string; last_name: string }) => `${p.first_name} ${p.last_name}`.trim();
 

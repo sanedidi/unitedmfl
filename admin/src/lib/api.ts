@@ -1,3 +1,4 @@
+import { lang, tx } from "@/lib/i18n";
 // Thin client for the Go API with JWT access tokens and rotating refresh tokens.
 
 const BASE = "/api/v1";
@@ -55,7 +56,7 @@ async function refresh(): Promise<boolean> {
       try {
         const res = await fetch(`${BASE}/auth/refresh`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-Lang": lang },
           body: JSON.stringify({ refresh_token: session!.refresh_token }),
         });
         if (!res.ok) return false;
@@ -85,13 +86,13 @@ async function parseError(res: Response): Promise<ApiError> {
     /* not JSON */
   }
   const e = body?.error || {};
-  const msg = e.message || (res.status === 403 ? "Bu amal uchun ruxsat yo‘q" : res.status >= 500 ? "Server xatosi" : `Xatolik (${res.status})`);
+  const msg = e.message || (res.status === 403 ? tx("Bu amal uchun ruxsat yo‘q") : res.status >= 500 ? tx("Server xatosi") : tx("Xatolik ({0})", res.status));
   return new ApiError(res.status, e.code || "error", msg, e.fields || {}, body);
 }
 
 export async function request<T = unknown>(method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<T> {
   const doFetch = () => {
-    const headers: Record<string, string> = { Accept: "application/json", ...extraHeaders };
+    const headers: Record<string, string> = { Accept: "application/json", "X-Lang": lang, ...extraHeaders };
     if (session) headers.Authorization = `Bearer ${session.access_token}`;
     let payload: BodyInit | undefined;
     if (body instanceof FormData || body instanceof Blob) {
@@ -128,7 +129,7 @@ export const api = {
 
 /** Downloads an authenticated file (e.g. an uploaded protocol) as an object URL. */
 export async function blobUrl(path: string): Promise<string> {
-  const go = () => fetch(`${BASE}${path}`, { headers: session ? { Authorization: `Bearer ${session.access_token}` } : {} });
+  const go = () => fetch(`${BASE}${path}`, { headers: session ? { Authorization: `Bearer ${session.access_token}`, "X-Lang": lang } : { "X-Lang": lang } });
   let res = await go();
   if (res.status === 401 && (await refresh())) res = await go();
   if (!res.ok) throw await parseError(res);
@@ -136,7 +137,7 @@ export async function blobUrl(path: string): Promise<string> {
 }
 
 export async function login(email: string, password: string): Promise<User> {
-  const res = await fetch(`${BASE}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+  const res = await fetch(`${BASE}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json", "X-Lang": lang }, body: JSON.stringify({ email, password }) });
   if (!res.ok) throw await parseError(res);
   const d = await res.json();
   save({ access_token: d.access_token, refresh_token: d.refresh_token, expires_at: d.expires_at });
@@ -148,7 +149,7 @@ export async function logout() {
   save(null);
   if (rt) {
     try {
-      await fetch(`${BASE}/auth/logout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: rt }) });
+      await fetch(`${BASE}/auth/logout`, { method: "POST", headers: { "Content-Type": "application/json", "X-Lang": lang }, body: JSON.stringify({ refresh_token: rt }) });
     } catch {
       /* ignore */
     }
@@ -173,6 +174,7 @@ export function uploadWithProgress<T>(path: string, file: File, onProgress: (sha
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${BASE}${path}`);
     xhr.setRequestHeader("Accept", "application/json");
+    xhr.setRequestHeader("X-Lang", lang);
     if (session) xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`);
     xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
     xhr.upload.onload = () => { onProgress(1); onSent?.(); };

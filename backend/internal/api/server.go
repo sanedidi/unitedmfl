@@ -95,7 +95,7 @@ func (s *Server) Routes() http.Handler {
 	_ = os.MkdirAll(s.videosDir(), 0o755)
 
 	r := chi.NewRouter()
-	r.Use(httpx.Recover, httpx.Logger, httpx.SecurityHeaders, httpx.CORS(s.Cfg.CORSOrigins))
+	r.Use(httpx.Recover, httpx.Logger, httpx.SecurityHeaders, httpx.CORS(s.Cfg.CORSOrigins), httpx.Localize)
 
 	r.Get("/healthz", s.health)
 	r.Handle("/uploads/images/*", http.StripPrefix("/uploads/images/", noDirListing(http.FileServer(http.Dir(s.imagesDir())))))

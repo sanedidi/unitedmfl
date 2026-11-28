@@ -1,5 +1,6 @@
 import { api } from "./api";
 
+import { tx } from "@/lib/i18n";
 export type KitStatus = "" | "queued" | "running" | "review" | "approved" | "rejected" | "error" | "skipped" | "multi" | "cancelled";
 
 export type KitAnalysis = {
@@ -56,8 +57,8 @@ export const kitApi = {
 };
 
 export const STAFF_ROLES: Record<string, string> = {
-  head_coach: "Bosh murabbiy", assistant: "Yordamchi murabbiy", gk_coach: "Darvozabonlar murabbiyi",
-  fitness: "Fitnes murabbiyi", doctor: "Shifokor", manager: "Menejer", other: "Shtab a’zosi",
+  head_coach: tx("Bosh murabbiy"), assistant: tx("Yordamchi murabbiy"), gk_coach: tx("Darvozabonlar murabbiyi"),
+  fitness: tx("Fitnes murabbiyi"), doctor: tx("Shifokor"), manager: tx("Menejer"), other: tx("Shtab a’zosi"),
 };
 
 export const busyStatus = (s: KitStatus) => s === "queued" || s === "running";
@@ -65,16 +66,16 @@ export const busyStatus = (s: KitStatus) => s === "queued" || s === "running";
 /** Plain-language lines for the analysis box. */
 export function analysisLines(a: KitAnalysis | null | undefined): string[] {
   if (!a) return [];
-  if (a.skipped) return ["Rasm tahlili o‘chirilgan — rasm oddiy portret deb qabul qilindi"];
+  if (a.skipped) return [tx("Rasm tahlili o‘chirilgan — rasm oddiy portret deb qabul qilindi")];
   const out: string[] = [];
-  if (a.graphic) out.push(a.studio ? "Afisha: matn, logotiplar va grafik fon bor → olib tashlandi, studiya foni" : "Afisha/grafika aniqlandi");
-  if (a.front) out.push("Standart portret: kameraga to‘g‘ri qaraydi, ko‘krakkacha kadr, kulrang studiya foni");
+  if (a.graphic) out.push(a.studio ? tx("Afisha: matn, logotiplar va grafik fon bor → olib tashlandi, studiya foni") : tx("Afisha/grafika aniqlandi"));
+  if (a.front) out.push(tx("Standart portret: kameraga to‘g‘ri qaraydi, ko‘krakkacha kadr, kulrang studiya foni"));
   else if (a.graphic) { /* already said */ }
-  else if (a.studio) out.push("Fon studiya foniga almashtirildi");
-  else out.push("Oddiy rasm — asl fon saqlandi");
-  if (a.people !== undefined) out.push(`${a.people} ta odam${a.face_visible ? ", yuz to‘liq ko‘rinadi" : ", yuz ko‘rinmaydi"}`);
-  if (a.wearing_jersey) out.push("Allaqachon forma kiygan → yangi forma bilan almashtirildi");
-  if (a.head_shoulders && !a.front) out.push("Kadr: bosh va yelka, 3:4 ga kesildi");
+  else if (a.studio) out.push(tx("Fon studiya foniga almashtirildi"));
+  else out.push(tx("Oddiy rasm — asl fon saqlandi"));
+  if (a.people !== undefined) out.push(tx("{0} ta odam{1}", a.people, a.face_visible ? ", yuz to‘liq ko‘rinadi" : ", yuz ko‘rinmaydi"));
+  if (a.wearing_jersey) out.push(tx("Allaqachon forma kiygan → yangi forma bilan almashtirildi"));
+  if (a.head_shoulders && !a.front) out.push(tx("Kadr: bosh va yelka, 3:4 ga kesildi"));
   if (a.notes) out.push(a.notes);
   return out;
 }

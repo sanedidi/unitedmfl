@@ -1,5 +1,6 @@
 import { api } from "./api";
 
+import { tx } from "@/lib/i18n";
 export type ProviderName = "openai" | "gemini";
 
 export type ProviderView = {
@@ -79,10 +80,10 @@ export type AiGeneration = {
 export type BannerText = { title: string; badge: string; meta: boolean; cta: boolean };
 export type Improved = { prompt: string; added: string[]; provider: string; model: string; ms: number };
 
-export const PROVIDER_LABEL: Record<string, string> = { openai: "OpenAI", gemini: "Google Gemini" };
-export const QUALITY_LABEL: Record<string, string> = { low: "Past", medium: "O‘rta", high: "Yuqori" };
+export const PROVIDER_LABEL: Record<string, string> = { openai: "OpenAI", gemini: tx("Google Gemini") };
+export const QUALITY_LABEL: Record<string, string> = { low: tx("Past"), medium: tx("O‘rta"), high: tx("Yuqori") };
 export const STATUS_LABEL: Record<AiGeneration["status"], string> = {
-  running: "Yaratilmoqda", done: "Tayyor", applied: "Bannerda", saved: "Saqlangan", error: "Xato", cancelled: "Bekor qilingan",
+  running: tx("Yaratilmoqda"), done: tx("Tayyor"), applied: tx("Bannerda"), saved: tx("Saqlangan"), error: tx("Xato"), cancelled: tx("Bekor qilingan"),
 };
 
 export const aiApi = {

@@ -4,6 +4,7 @@
 
 import { ApiError, type ImportResult, type MedFile, type Player, type Staff } from "./api";
 
+import { lang, tx } from "@/lib/i18n";
 const BASE = "/api/v1/team";
 
 export type CabPlayer = Player & { id?: number; has_medical: boolean; removed?: boolean };
@@ -90,14 +91,14 @@ async function parse<T>(res: Response): Promise<T> {
   }
   if (!res.ok) {
     const e = body?.error || {};
-    const msg = e.message || (res.status >= 500 ? "Server xatosi — birozdan so‘ng urinib ko‘ring" : `Xatolik (${res.status})`);
+    const msg = e.message || (res.status >= 500 ? tx("Server xatosi — birozdan so‘ng urinib ko‘ring") : tx("Xatolik ({0})", res.status));
     throw new ApiError(res.status, e.code || "error", msg, e.fields || {}, body);
   }
   return body as T;
 }
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = { Accept: "application/json", "X-Lang": lang };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
   let res: Response;
@@ -115,7 +116,7 @@ async function upload<T>(path: string, file: File, fields: Record<string, string
   fd.append("file", file);
   let res: Response;
   try {
-    res = await fetch(BASE + path, { method: "POST", body: fd, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    res = await fetch(BASE + path, { method: "POST", body: fd, headers: token ? { Authorization: `Bearer ${token}`, "X-Lang": lang } : { "X-Lang": lang } });
   } catch {
     throw new ApiError(0, "network", "Internet aloqasi yo‘q — qayta urinib ko‘ring");
   }

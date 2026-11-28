@@ -5,20 +5,26 @@ import type { Season } from "@/lib/types";
 import { PageTitle } from "@/components/SectionHead";
 import { ContactForm } from "@/components/ContactForm";
 
-export const metadata: Metadata = pageMeta({ title: "Liga haqida — format, hamkorlik va aloqa", description: "United MFL media futbol ligasi haqida: mavsum formati, bosqichlar, hamkorlik, homiylik va jamoa ro‘yxatdan o‘tishi bo‘yicha aloqa.", path: "/biz-haqimizda" });
+import { getT } from "@/lib/i18n/server";
+import { lazyT } from "@/lib/i18n";
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getT();
+  return pageMeta({ title: tx("Liga haqida — format, hamkorlik va aloqa"), description: tx("United MFL media futbol ligasi haqida: mavsum formati, bosqichlar, hamkorlik, homiylik va jamoa ro‘yxatdan o‘tishi bo‘yicha aloqa."), path: "/biz-haqimizda" });
+}
 
-const STATUS: Record<string, string> = { finished: "Yakunlangan", live: "Davom etmoqda", scheduled: "Rejalashtirilgan" };
+const STATUS: Record<string, string> = lazyT({ finished: "Yakunlangan", live: "Davom etmoqda", scheduled: "Rejalashtirilgan" });
 
 export default async function AboutPage() {
+  const tx = await getT();
   const seasons = await safe(api<Season[]>("/seasons"), []);
   const s = seasons.find((x) => x.is_active) || seasons[0];
   return (
     <>
-      <PageTitle overline="United MFL" title="Liga haqida" lead="United MFL — blogerlar, sportchilar va san’at yulduzlari jamoalari ishtirok etadigan media futbol ligasi." />
+      <PageTitle overline="United MFL" title={tx("Liga haqida")} lead={tx("United MFL — blogerlar, sportchilar va san’at yulduzlari jamoalari ishtirok etadigan media futbol ligasi.")} />
       <div className="container">
         {s && (
           <section className="section" style={{ paddingBottom: 0 }}>
-            <div className="overline">Mavsum formati</div>
+            <div className="overline">{tx("Mavsum formati")}</div>
             <h2 className="h2" style={{ marginBottom: 24 }}>{s.name}</h2>
             <div className="grid grid-4">
               {s.stages.sort((a, b) => a.ord - b.ord).map((st, i) => (
@@ -29,15 +35,15 @@ export default async function AboutPage() {
                 </div>
               ))}
             </div>
-            <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>{s.teams_planned} jamoa · {s.matches_planned} match</p>
+            <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>{s.teams_planned}{" "}{tx("jamoa · {0} match", s.matches_planned)}</p>
           </section>
         )}
         <section className="section" id="aloqa">
           <div className="grid grid-2" style={{ gap: 48, alignItems: "start" }}>
             <div>
-              <div className="overline">Aloqa</div>
-              <h2 className="h2">Hamkorlik va savollar</h2>
-              <p className="lead" style={{ marginTop: 16 }}>Homiylik, jamoa ro‘yxatdan o‘tishi, chiptalar yoki media bo‘yicha so‘rov qoldiring — menejer siz bilan bog‘lanadi.</p>
+              <div className="overline">{tx("Aloqa")}</div>
+              <h2 className="h2">{tx("Hamkorlik va savollar")}</h2>
+              <p className="lead" style={{ marginTop: 16 }}>{tx("Homiylik, jamoa ro‘yxatdan o‘tishi, chiptalar yoki media bo‘yicha so‘rov qoldiring — menejer siz bilan bog‘lanadi.")}</p>
             </div>
             <div className="card card-pad"><ContactForm /></div>
           </div>

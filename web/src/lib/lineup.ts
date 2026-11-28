@@ -1,16 +1,17 @@
 // Formation geometry and lineup state for the match page.
 // Mirrors backend/internal/lineup and admin/src/lib/lineup.ts.
 import type { LineupMeta, LineupRow, Match, MatchEvent } from "./types";
+import { lazyT } from "@/lib/i18n";
 
 export type Side = "home" | "away";
 export type Slot = { role: string; line: number; index: number; count: number };
 export type Formation = { code: string; size: number; slots: Slot[] };
 
-export const ROLE_LABEL: Record<string, string> = {
+export const ROLE_LABEL: Record<string, string> = lazyT({
   GK: "Darvozabon", LB: "Chap himoyachi", CB: "Markaziy himoyachi", RB: "O‘ng himoyachi", LWB: "Chap qanot himoyachisi", RWB: "O‘ng qanot himoyachisi",
   DM: "Tayanch yarim himoyachi", CM: "Markaziy yarim himoyachi", AM: "Hujumkor yarim himoyachi", LM: "Chap yarim himoyachi", RM: "O‘ng yarim himoyachi",
   LW: "Chap qanot hujumchisi", RW: "O‘ng qanot hujumchisi", ST: "Hujumchi", MF: "Yarim himoyachi",
-};
+});
 
 function lineRoles(li: number, lines: number, n: number): string[] {
   const rep = (r: string) => Array(n).fill(r);

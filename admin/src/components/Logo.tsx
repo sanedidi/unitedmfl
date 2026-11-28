@@ -1,3 +1,4 @@
+import { tx } from "@/lib/i18n";
 /** Official league badge (round «United Media Football League» emblem). */
 export function LogoMark({ size = 32, mono = false }: { size?: number; mono?: boolean }) {
   return <img src={mono ? "/logo-mark.svg" : "/logo.svg"} width={size} height={size} alt="" className="logo-badge" style={{ width: size, height: mono ? "auto" : size }} />;
@@ -8,7 +9,7 @@ export function Logo({ size = 32, compact = false, className = "logo" }: { size?
   return (
     <span className={className} aria-label="United MFL">
       <LogoMark size={size} />
-      {!compact && <span>United MFL</span>}
+      {!compact && <span>{tx("United MFL")}</span>}
     </span>
   );
 }

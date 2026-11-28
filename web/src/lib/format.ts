@@ -1,8 +1,14 @@
 import type { Match } from "./types";
 
+import { lazyT, useLang, useT } from "@/lib/i18n";
 export const TZ = "Asia/Tashkent";
-const MONTHS = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
-const WEEKDAYS = ["yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba"];
+const MONTHS_UZ = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
+const WEEKDAYS_UZ = ["yakshanba", "dushanba", "seshanba", "chorshanba", "payshanba", "juma", "shanba"];
+// Russian: month in the genitive case ("19 июня 2026")
+const MONTHS_RU = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+const WEEKDAYS_RU = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+const month = (i: number) => (useLang() === "ru" ? MONTHS_RU : MONTHS_UZ)[i];
+const weekday = (i: number) => (useLang() === "ru" ? WEEKDAYS_RU : WEEKDAYS_UZ)[i];
 
 function parts(iso: string) {
   const d = new Date(iso);
@@ -25,7 +31,7 @@ function parts(iso: string) {
 export function fmtDate(iso: string | null | undefined, withYear = true) {
   if (!iso) return "";
   const p = parts(iso);
-  return `${p.d} ${MONTHS[p.m - 1]}${withYear ? ` ${p.y}` : ""}`;
+  return `${p.d} ${month(p.m - 1)}${withYear ? ` ${p.y}` : ""}`;
 }
 /** "18:30" */
 export function fmtTime(iso: string | null | undefined) {
@@ -34,13 +40,13 @@ export function fmtTime(iso: string | null | undefined) {
   return `${p.hh}:${p.mm}`;
 }
 export function fmtWeekday(iso: string) {
-  return WEEKDAYS[parts(iso).wd];
+  return weekday(parts(iso).wd);
 }
 /** Date-only string from the API ("2026-07-04") → "4 iyul 2026" */
 export function fmtPlainDate(s: string | null | undefined) {
   if (!s) return "";
   const [y, m, d] = s.slice(0, 10).split("-").map(Number);
-  return `${d} ${MONTHS[m - 1]} ${y}`;
+  return `${d} ${month(m - 1)} ${y}`;
 }
 export function dayKey(iso: string) {
   const p = parts(iso);
@@ -51,27 +57,28 @@ export function isToday(iso: string) {
 }
 
 export function fmtUZS(n: number) {
-  return new Intl.NumberFormat("ru-RU").format(n).replace(/ /g, " ") + " so‘m";
+  const tx = useT();
+  return new Intl.NumberFormat("ru-RU").format(n).replace(/ /g, " ") + tx(" so‘m");
 }
 
 export const isLive = (m: Pick<Match, "status">) => m.status === "live" || m.status === "halftime";
 export const isFinished = (m: Pick<Match, "status">) => m.status === "finished";
 
-export const STATUS_LABEL: Record<string, string> = {
+export const STATUS_LABEL: Record<string, string> = lazyT({
   scheduled: "Rejalashtirilgan",
   live: "Jonli",
   halftime: "Tanaffus",
   finished: "Yakunlandi",
   postponed: "Qoldirildi",
   cancelled: "Bekor qilindi",
-};
+});
 
-export const POSITION_LABEL: Record<string, string> = {
+export const POSITION_LABEL: Record<string, string> = lazyT({
   GK: "Darvozabon",
   DF: "Himoyachi",
   MF: "Yarim himoyachi",
   FW: "Hujumchi",
-};
+});
 
 /** Current match minute from clock fields; serverOffsetMs corrects client clock skew. */
 export function matchMinute(m: Pick<Match, "period" | "clock_started_at" | "clock_offset_sec">, now = Date.now(), serverOffsetMs = 0) {
